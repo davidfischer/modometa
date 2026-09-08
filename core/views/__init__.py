@@ -47,7 +47,9 @@ def home(request):
     active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
     format_metas = []
     for fmt_slug in active_slugs:
-        fmt_name = FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
+        fmt_name = (
+            FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
+        )
         # Query decks in window
         decks_qs = Deck.objects.filter(
             format=fmt_slug,
@@ -115,10 +117,9 @@ def home(request):
             }
         )
 
-    recent_tournaments = (
-        Tournament.objects.filter(format__in=active_slugs)
-        .order_by("-date", "-id")[:10]
-    )
+    recent_tournaments = Tournament.objects.filter(format__in=active_slugs).order_by(
+        "-date", "-id"
+    )[:10]
 
     return render(
         request,
@@ -181,18 +182,13 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
 
     sorted_cards = any_counts.most_common()
     card_names = [c[0] for c in sorted_cards]
-    cards_map = {
-        c.name: c
-        for c in Card.objects.filter(name__in=card_names)
-    }
+    cards_map = {c.name: c for c in Card.objects.filter(name__in=card_names)}
     missing_names = [n for n in card_names if n not in cards_map]
     if missing_names:
         lookups = CardLookup.objects.filter(
             lookup_name__in=[normalize_card_name(n) for n in missing_names]
         ).select_related("card")
-        lookup_dict = {
-            cl.lookup_name: cl.card for cl in lookups if cl.card
-        }
+        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
         for n in missing_names:
             norm = normalize_card_name(n)
             if norm in lookup_dict:
@@ -208,7 +204,9 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
                 "mana_cost": card.mana_cost if card and card.mana_cost else "",
                 "type_line": card.type_line if card else "Card",
                 "image_uri": card.image_uri if card else None,
-                "scryfall_url": card.scryfall_url if card else get_scryfall_url(name=name),
+                "scryfall_url": card.scryfall_url
+                if card
+                else get_scryfall_url(name=name),
                 "gatherer_url": card.gatherer_url if card else get_gatherer_url(name),
                 "any_count": cnt,
                 "mb_count": mb_counts[name],
@@ -415,9 +413,7 @@ def player_detail(request, player):
         raise Http404(f"No records found for player '{player}'")
 
     total_top8s = decks_qs.filter(is_top8=True).count()
-    total_5_0s = decks_qs.filter(
-        tournament__event_type="league", is_5_0=True
-    ).count()
+    total_5_0s = decks_qs.filter(tournament__event_type="league", is_5_0=True).count()
     chall_appearances = decks_qs.filter(tournament__event_type="challenge").count()
     conversion_rate = (
         round((total_top8s / chall_appearances) * 100, 1)
@@ -490,8 +486,12 @@ def deck_detail(request, player, event, deck_index=1):
                 "count": item["count"],
                 "image_uri": card.image_uri if card else None,
                 "mana_cost": card.mana_cost if card else None,
-                "scryfall_url": card.scryfall_url if card else get_scryfall_url(name=item["card"]),
-                "gatherer_url": card.gatherer_url if card else get_gatherer_url(name=item["card"]),
+                "scryfall_url": card.scryfall_url
+                if card
+                else get_scryfall_url(name=item["card"]),
+                "gatherer_url": card.gatherer_url
+                if card
+                else get_gatherer_url(name=item["card"]),
                 "is_banned": item["card"] in illegal_set,
             }
         )
@@ -506,8 +506,12 @@ def deck_detail(request, player, event, deck_index=1):
                 "count": item["count"],
                 "image_uri": card.image_uri if card else None,
                 "mana_cost": card.mana_cost if card else None,
-                "scryfall_url": card.scryfall_url if card else get_scryfall_url(name=item["card"]),
-                "gatherer_url": card.gatherer_url if card else get_gatherer_url(name=item["card"]),
+                "scryfall_url": card.scryfall_url
+                if card
+                else get_scryfall_url(name=item["card"]),
+                "gatherer_url": card.gatherer_url
+                if card
+                else get_gatherer_url(name=item["card"]),
                 "is_banned": item["card"] in illegal_set,
             }
         )
@@ -554,11 +558,17 @@ def deck_detail(request, player, event, deck_index=1):
             parts = str(n["deck_id"]).rsplit("_", 1)
             d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
             db_deck = deck_map.get(str(n["deck_id"]))
-            tourn_id = db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
+            tourn_id = (
+                db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
+            )
             player = db_deck["player"] if db_deck else n["player"]
             archetype = db_deck["archetype"] if db_deck else n["archetype"]
             colors = (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
-            color_name = (db_deck["color_name"] if db_deck else None) or n.get("color_name") or ""
+            color_name = (
+                (db_deck["color_name"] if db_deck else None)
+                or n.get("color_name")
+                or ""
+            )
             format_neighbors.append(
                 {
                     "player": player,
@@ -576,11 +586,17 @@ def deck_detail(request, player, event, deck_index=1):
             parts = str(n["deck_id"]).rsplit("_", 1)
             d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
             db_deck = deck_map.get(str(n["deck_id"]))
-            tourn_id = db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
+            tourn_id = (
+                db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
+            )
             player = db_deck["player"] if db_deck else n["player"]
             archetype = db_deck["archetype"] if db_deck else n["archetype"]
             colors = (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
-            color_name = (db_deck["color_name"] if db_deck else None) or n.get("color_name") or ""
+            color_name = (
+                (db_deck["color_name"] if db_deck else None)
+                or n.get("color_name")
+                or ""
+            )
             cross_format_neighbors.append(
                 {
                     "player": player,
@@ -688,17 +704,14 @@ def archetype_detail(request, format, archetype):
     core_cards = []
     top_cards = card_counts.most_common(12)
     cards_map = {
-        c.name: c
-        for c in Card.objects.filter(name__in=[c[0] for c in top_cards])
+        c.name: c for c in Card.objects.filter(name__in=[c[0] for c in top_cards])
     }
     missing_top_cards = [c[0] for c in top_cards if c[0] not in cards_map]
     if missing_top_cards:
         lookups = CardLookup.objects.filter(
             lookup_name__in=[normalize_card_name(n) for n in missing_top_cards]
         ).select_related("card")
-        lookup_dict = {
-            cl.lookup_name: cl.card for cl in lookups if cl.card
-        }
+        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
         for n in missing_top_cards:
             norm = normalize_card_name(n)
             if norm in lookup_dict:
@@ -716,8 +729,12 @@ def archetype_detail(request, format, archetype):
                 "adoption_pct": adopt_pct,
                 "avg_copies": avg_cp,
                 "image_uri": card.image_uri if card else None,
-                "scryfall_url": card.scryfall_url if card else get_scryfall_url(name=name),
-                "gatherer_url": card.gatherer_url if card else get_gatherer_url(name=name),
+                "scryfall_url": card.scryfall_url
+                if card
+                else get_scryfall_url(name=name),
+                "gatherer_url": card.gatherer_url
+                if card
+                else get_gatherer_url(name=name),
             }
         )
 
@@ -918,9 +935,7 @@ def search_index(request):
             .order_by("-count")
         )
         players = [
-            {"name": p["player"], "count": p["count"]}
-            for p in player_qs
-            if p["player"]
+            {"name": p["player"], "count": p["count"]} for p in player_qs if p["player"]
         ]
 
         data = {
@@ -932,4 +947,3 @@ def search_index(request):
     response = JsonResponse(data)
     response["Cache-Control"] = "public, max-age=3600"
     return response
-

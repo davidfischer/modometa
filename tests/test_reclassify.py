@@ -197,4 +197,3 @@ def test_reclassify_matches_sideboard_companion(sample_tournament):
     assert deck.archetype == "Yorion Death & Taxes"
     assert deck.archetype_slug == "yorion-death-taxes"
     assert deck.colors == "W"
-

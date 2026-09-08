@@ -36,7 +36,10 @@ def test_get_scryfall_url():
 def test_get_gatherer_url():
     # Standard card
     url = get_gatherer_url("Phelia, Exuberant Shepherd")
-    assert url == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    assert (
+        url
+        == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    )
 
     # Split card uses the front face name
     url_split = get_gatherer_url("Fire // Ice")
@@ -44,7 +47,10 @@ def test_get_gatherer_url():
 
     # Adventure card uses the front face name
     url_adv = get_gatherer_url("Brazen Borrower // Petty Theft")
-    assert url_adv == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Brazen+Borrower"
+    assert (
+        url_adv
+        == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Brazen+Borrower"
+    )
 
     # Empty / none
     assert get_gatherer_url("") == "https://gatherer.wizards.com/"
@@ -57,10 +63,22 @@ def test_card_model_helpers():
         oracle_id="b71f005a-2eec-4a92-959a-5f50fa540026",
         name="Phelia, Exuberant Shepherd",
     )
-    assert card.scryfall_url == "https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"
-    assert card.get_scryfall_url() == "https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"
-    assert card.gatherer_url == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
-    assert card.get_gatherer_url() == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    assert (
+        card.scryfall_url
+        == "https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"
+    )
+    assert (
+        card.get_scryfall_url()
+        == "https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"
+    )
+    assert (
+        card.gatherer_url
+        == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    )
+    assert (
+        card.get_gatherer_url()
+        == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    )
 
 
 def test_card_verbose_names():
@@ -85,8 +103,13 @@ def test_card_admin_external_links():
         name="Phelia, Exuberant Shepherd",
     )
     html = str(admin.external_links(card))
-    assert 'href="https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"' in html
-    assert 'href="https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"' in html
+    assert (
+        'href="https://scryfall.com/card/55707746-da6e-46e5-a5ca-7ac843fdc38e"' in html
+    )
+    assert (
+        'href="https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"'
+        in html
+    )
     assert "Scryfall" in html
     assert "Gatherer" in html
     assert 'target="_blank"' in html
@@ -106,7 +129,6 @@ def test_deck_verbose_names_and_help_text():
 
     assert Tournament._meta.get_field("id").verbose_name == "ID"
     assert Tournament._meta.get_field("uri").verbose_name == "URI"
-
 
 
 def test_admin_ordering_and_hierarchy():
@@ -151,7 +173,10 @@ def test_admin_timeframe_filter():
     # None / empty returns unfiltered queryset
     req_none = factory.get("/admin/core/deck/")
     filter_none = TimeframeFilter(req_none, {}, Deck, deck_admin)
-    assert filter_none.queryset(req_none, Deck.objects.all()).count() == Deck.objects.count()
+    assert (
+        filter_none.queryset(req_none, Deck.objects.all()).count()
+        == Deck.objects.count()
+    )
 
 
 def test_deck_decklist_text_and_admin_display():
@@ -170,17 +195,17 @@ def test_deck_decklist_text_and_admin_display():
     )
 
     expected_text = (
-        "4 Brainstorm\n"
-        "4 Force of Will\n\n"
-        "// Sideboard\n"
-        "2 Surgical Extraction"
+        "4 Brainstorm\n4 Force of Will\n\n// Sideboard\n2 Surgical Extraction"
     )
     assert deck.decklist_text == expected_text
     assert deck.to_text() == expected_text
 
     # Verify round-trip parsing
     mb, sb = parse_text_decklist(deck.decklist_text)
-    assert mb == [{"card": "Brainstorm", "count": 4}, {"card": "Force of Will", "count": 4}]
+    assert mb == [
+        {"card": "Brainstorm", "count": 4},
+        {"card": "Force of Will", "count": 4},
+    ]
     assert sb == [{"card": "Surgical Extraction", "count": 2}]
 
     # Test DeckAdmin readonly field
@@ -264,11 +289,15 @@ def test_deck_get_absolute_url_and_admin(admin_client):
 
     # Now deck1 is index 1 (default url) and deck2 is index 2 (disambiguated url)
     assert deck1.get_absolute_url() == "/player/Ark4n/deck/legacy-challenge-2024-05-10/"
-    assert deck2.get_absolute_url() == "/player/Ark4n/deck/legacy-challenge-2024-05-10/2/"
+    assert (
+        deck2.get_absolute_url() == "/player/Ark4n/deck/legacy-challenge-2024-05-10/2/"
+    )
 
     # Attribute deck_index overrides
     deck1.deck_index = 3
-    assert deck1.get_absolute_url() == "/player/Ark4n/deck/legacy-challenge-2024-05-10/3/"
+    assert (
+        deck1.get_absolute_url() == "/player/Ark4n/deck/legacy-challenge-2024-05-10/3/"
+    )
 
     # Unsaved or empty deck
     assert Deck().get_absolute_url() == ""
@@ -282,7 +311,6 @@ def test_deck_get_absolute_url_and_admin(admin_client):
     assert "/admin/r/" in view_on_site_url
     resp = admin_client.get(view_on_site_url)
     assert resp.status_code == 302
-    assert resp.url == "http://testserver/player/Ark4n/deck/legacy-challenge-2024-05-10/"
-
-
-
+    assert (
+        resp.url == "http://testserver/player/Ark4n/deck/legacy-challenge-2024-05-10/"
+    )

@@ -18,4 +18,3 @@ __all__ = [
     "get_scryfall_url",
     "normalize_card_name",
 ]
-

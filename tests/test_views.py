@@ -218,7 +218,9 @@ def test_archetype_detail_view(client):
         ls_tt = f'title="{stats["league_5_0_count"]}/{stats["total_5_0s"]}"'.encode()
         cs_tt = f'title="{stats["challenge_appearances"]}/{stats["total_chall_decks"]}"'.encode()
         t8_tt = f'title="{stats["top8_count"]}/{stats["total_top8_slots"]}"'.encode()
-        cc_tt = f'title="{stats["top8_count"]}/{stats["challenge_appearances"]}"'.encode()
+        cc_tt = (
+            f'title="{stats["top8_count"]}/{stats["challenge_appearances"]}"'.encode()
+        )
         assert ls_tt in content
         assert cs_tt in content
         assert t8_tt in content
@@ -237,7 +239,10 @@ def test_archetype_detail_view(client):
 
         # Verify number of finishes in timeframe is shown
         assert "total_decks" in response.context
-        assert f'{response.context["total_decks"]} finishes last {response.context["days"]} days'.encode() in content
+        assert (
+            f"{response.context['total_decks']} finishes last {response.context['days']} days".encode()
+            in content
+        )
 
         # Verify Recent Tournament Finishes appears before Core Cards
         pos_finishes = content.find(b"Recent Tournament Finishes")
@@ -397,6 +402,7 @@ def test_deck_detail_similar_decks_mana_symbols(client):
 @pytest.mark.django_db
 def test_deck_detail_similar_decks_uses_db_archetype_over_stale_knn_index(client):
     from unittest.mock import MagicMock
+
     from core.engine.knn import set_global_knn_index
     from core.models.tournament import Tournament
 
@@ -466,7 +472,6 @@ def test_deck_detail_similar_decks_uses_db_archetype_over_stale_knn_index(client
         set_global_knn_index(None, loaded=False)
 
 
-
 @pytest.mark.django_db
 def test_faq_view(client):
     response = client.get("/faq/")
@@ -498,7 +503,9 @@ def test_cards_list_view_external_links(client):
         assert "gatherer_url" in first_card
         assert "mana_cost" in first_card
         assert "scryfall.com" in first_card["scryfall_url"]
-        assert "gatherer.wizards.com/Pages/Card/Details.aspx" in first_card["gatherer_url"]
+        assert (
+            "gatherer.wizards.com/Pages/Card/Details.aspx" in first_card["gatherer_url"]
+        )
 
         content = response.content.decode()
         assert first_card["scryfall_url"] in content
@@ -556,12 +563,14 @@ def test_mdfc_mana_cost_display(client):
         ],
     }
     assert _extract_mana_cost(dual_spell_mdfc) == "{1}{W} // {2}{B}{B}"
- 
- 
+
+
 @pytest.mark.django_db
 def test_format_overview_archetype_colors_and_card_mana_symbols(client):
-    from core.models import Card
     from django.core.cache import cache
+
+    from core.models import Card
+
     cache.clear()
 
     Card.objects.create(name="Force of Will", mana_cost="{3}{U}{U}")
@@ -652,7 +661,7 @@ def test_search_box_in_header_replaces_window_switcher(client):
     assert header_start != -1 and header_end != -1
     header_html = content[header_start:header_end]
     assert "Window:" not in header_html
-    assert 'data-timeframe-toggle' not in header_html
+    assert "data-timeframe-toggle" not in header_html
 
     # But sidebar aside still contains the timeframe switcher
     aside_start = content.find("<aside")
@@ -703,8 +712,3 @@ def test_hidden_formats_still_accessible_via_direct_url_for_search(client):
     # The sidebar navigation on the Modern page still only displays Vintage and Legacy
     nav_formats = [fmt["slug"] for fmt in response.context["MODOMETA_FORMATS"]]
     assert nav_formats == ["vintage", "legacy"]
-
-
-
-
-

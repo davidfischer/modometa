@@ -80,8 +80,6 @@ class FormatAutodetector:
 
         all_entries = mb_items + sb_items
         all_unique_names = list({name for name, _ in all_entries if name})
-        mb_names = [name for name, _ in mb_items if name]
-        sb_names = [name for name, _ in sb_items if name]
 
         # Resolve card models
         card_models: dict[str, Card | None] = {
@@ -140,26 +138,31 @@ class FormatAutodetector:
             # - Add specificity bonus
             score = 0.0
 
-            if not_legal_count == 0:
-                # Fully within the card pool
-                score += 500.0
-
-                if banned_count == 0:
-                    # 100% legal today!
+            total_resolved = len(legal_cards) + len(banned_cards) + len(not_legal_cards)
+            if total_resolved > 0:
+                if not_legal_count == 0:
+                    # Fully within the card pool
                     score += 500.0
+
+                    if banned_count == 0:
+                        # 100% legal today!
+                        score += 500.0
+                    else:
+                        # Historically in format pool, but currently has bans
+                        score -= banned_count * 50.0
+
+                    if fmt == "vintage" and restricted_errors:
+                        score -= len(restricted_errors) * 100.0
+
+                    # Specificity bonus
+                    score += FORMAT_SPECIFICITY.get(fmt, 0)
                 else:
-                    # Historically in format pool, but currently has bans
+                    # Has cards outside format's card pool
+                    score -= not_legal_count * 100.0
                     score -= banned_count * 50.0
-
-                if fmt == "vintage" and restricted_errors:
-                    score -= len(restricted_errors) * 100.0
-
-                # Specificity bonus
-                score += FORMAT_SPECIFICITY.get(fmt, 0)
             else:
-                # Has cards outside format's card pool
-                score -= not_legal_count * 100.0
-                score -= banned_count * 50.0
+                # No card legality data resolved in database; rely on specificity and archetype match
+                score += FORMAT_SPECIFICITY.get(fmt, 0)
 
             # Test Archetype engine match
             (
@@ -169,7 +172,7 @@ class FormatAutodetector:
                 _,
                 is_fallback,
                 debug_arch,
-            ) = self.archetype_engine.classify(mb_names, fmt, sideboard_cards=sb_names)
+            ) = self.archetype_engine.classify(mb_items, fmt, sideboard_cards=sb_items)
 
             if not is_fallback:
                 # Direct YAML rule matched in this format!
@@ -184,7 +187,12 @@ class FormatAutodetector:
 
             # Special case for Pauper:
             # If all cards are common and not_legal_count == 0
-            if fmt == "pauper" and not_legal_count == 0 and banned_count == 0:
+            if (
+                fmt == "pauper"
+                and total_resolved > 0
+                and not_legal_count == 0
+                and banned_count == 0
+            ):
                 score += 100.0
 
             format_scores[fmt] = score

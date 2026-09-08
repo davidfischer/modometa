@@ -84,13 +84,13 @@ def expand_card_counts(cards: Iterable[Any]) -> Counter[str]:
             c_name = item.get("card") or item.get("name") or ""
             try:
                 c_count = int(item.get("count", 1))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 c_count = 1
         elif isinstance(item, tuple) and len(item) == 2:
             c_name = item[0]
             try:
                 c_count = int(item[1])
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 c_count = 1
         elif isinstance(item, str):
             m = re.match(r"^(\d+)x?\s+(.*)$", item.strip())
@@ -133,9 +133,7 @@ class Card(models.Model):
     """Scryfall Oracle-level card entity."""
 
     id = models.CharField(max_length=64, primary_key=True, verbose_name="ID")
-    oracle_id = models.CharField(
-        max_length=64, db_index=True, verbose_name="Oracle ID"
-    )
+    oracle_id = models.CharField(max_length=64, db_index=True, verbose_name="Oracle ID")
     name = models.CharField(max_length=255, db_index=True)
     normalized_name = models.CharField(max_length=255, db_index=True)
     mana_cost = models.CharField(max_length=128, blank=True, null=True)
@@ -155,9 +153,11 @@ class Card(models.Model):
     def save(self, *args, **kwargs):
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())
         if not self.oracle_id:
             import uuid
+
             self.oracle_id = str(uuid.uuid4())
         if not self.normalized_name and self.name:
             self.normalized_name = normalize_card_name(self.name)

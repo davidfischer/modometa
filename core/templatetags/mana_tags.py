@@ -46,7 +46,7 @@ def mana_symbols_filter(colors, title: str | None = None) -> str:
     icons = "".join(_format_symbol(c) for c in valid_chars)
     title_attr = f' title="{html.escape(str(title))}"' if title else ""
     output = f'<span class="inline-flex items-center gap-0.5 align-middle"{title_attr}>{icons}</span>'
-    return mark_safe(output)
+    return mark_safe(output)  # noqa: S308
 
 
 @register.simple_tag(name="mana_symbols")
@@ -82,6 +82,4 @@ def mana_cost_filter(cost_str) -> str:
         )
 
     separator = ' <span class="text-zinc-500 font-sans mx-1 text-2xs">//</span> '
-    return mark_safe(separator.join(formatted_parts))
-
-
+    return mark_safe(separator.join(formatted_parts))  # noqa: S308

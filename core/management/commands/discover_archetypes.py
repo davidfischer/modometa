@@ -25,8 +25,7 @@ def get_valid_card_names() -> set[str]:
     lookup_names = set(CardLookup.objects.values_list("lookup_name", flat=True))
     card_names = set(Card.objects.values_list("normalized_name", flat=True))
     raw_names = {
-        normalize_card_name(n)
-        for n in Card.objects.values_list("name", flat=True)
+        normalize_card_name(n) for n in Card.objects.values_list("name", flat=True)
     }
     return lookup_names | card_names | raw_names
 
@@ -114,7 +113,11 @@ class Command(BaseCommand):
                 arch_name = r.get("name", "Unknown")
                 for key in ("mandatory", "signatures", "anti_signatures"):
                     for item in r.get(key, []):
-                        card = item.get("card") or item.get("name") if isinstance(item, dict) else item
+                        card = (
+                            item.get("card") or item.get("name")
+                            if isinstance(item, dict)
+                            else item
+                        )
                         if not is_known_card(card, valid_names):
                             raise CommandError(
                                 f"Unrecognized card '{card}' found in {yaml_file} for archetype '{arch_name}' ({key})."

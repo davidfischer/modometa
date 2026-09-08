@@ -112,7 +112,11 @@ npm run build:css   # Production minified build
 npm run watch:css   # Development watch mode
 ```
 
-### Running Tests
+### Running Pre-commit & Tests
 ```bash
-uv run pytest
+make check          # Runs full pre-commit pipeline: CSS build, linters, formatters, migrations, and tests
+make test           # uv run pytest
+make lint           # uv run pre-commit run --all-files
+make format         # Auto-format and fix with ruff
+make help           # List all available Makefile commands
 ```

@@ -128,7 +128,9 @@ def test_discover_archetypes_command_rejects_unsupported_format():
 
 @pytest.mark.django_db
 def test_discover_archetypes_errors_on_empty_card_database():
-    from core.models.card import Card, CardLookup
+    from core.models.card import Card
+    from core.models.card import CardLookup
+
     CardLookup.objects.all().delete()
     Card.objects.all().delete()
     with pytest.raises(CommandError, match="No cards found in database"):
@@ -139,6 +141,7 @@ def test_discover_archetypes_errors_on_empty_card_database():
 def test_discover_archetypes_errors_on_unrecognized_yaml_card(monkeypatch, tmp_path):
     import yaml
     from django.conf import settings
+
     from core.models.card import Card
 
     Card.objects.create(name="Force of Will", normalized_name="force of will")
@@ -167,6 +170,7 @@ def test_discover_archetypes_errors_on_unrecognized_yaml_card(monkeypatch, tmp_p
 def test_discover_archetypes_errors_on_unrecognized_deck_card(monkeypatch, tmp_path):
     import yaml
     from django.conf import settings
+
     from core.models.card import Card
     from core.models.deck import Deck
     from core.models.tournament import Tournament
@@ -189,7 +193,10 @@ def test_discover_archetypes_errors_on_unrecognized_deck_card(monkeypatch, tmp_p
     monkeypatch.setattr(settings, "ARCHETYPES_DIR", yaml_dir)
 
     t = Tournament.objects.create(
-        id="tourn-test-1", name="Legacy Challenge", format="legacy", date=date(2024, 1, 1)
+        id="tourn-test-1",
+        name="Legacy Challenge",
+        format="legacy",
+        date=date(2024, 1, 1),
     )
     Deck.objects.create(
         id="deck-test-1",
@@ -211,8 +218,10 @@ def test_discover_archetypes_errors_on_unrecognized_deck_card(monkeypatch, tmp_p
 @pytest.mark.django_db
 def test_discover_archetypes_sorted_by_cluster_size(monkeypatch, tmp_path):
     from io import StringIO
+
     import yaml
     from django.conf import settings
+
     from core.models.card import Card
     from core.models.deck import Deck
     from core.models.tournament import Tournament
@@ -237,7 +246,10 @@ def test_discover_archetypes_sorted_by_cluster_size(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "ARCHETYPES_DIR", yaml_dir)
 
     t = Tournament.objects.create(
-        id="tourn-sort-test", name="Legacy Challenge", format="legacy", date=date(2024, 1, 1)
+        id="tourn-sort-test",
+        name="Legacy Challenge",
+        format="legacy",
+        date=date(2024, 1, 1),
     )
 
     # 3 Burn decks (larger cluster)
@@ -279,21 +291,24 @@ def test_discover_archetypes_sorted_by_cluster_size(monkeypatch, tmp_path):
         )
 
     out = StringIO()
-    call_command("discover_archetypes", format="legacy", min_cluster=2, eps=0.2, stdout=out)
+    call_command(
+        "discover_archetypes", format="legacy", min_cluster=2, eps=0.2, stdout=out
+    )
     output = out.getvalue()
 
     pos_3 = output.find("3 Decks")
     pos_2 = output.find("2 Decks")
     assert pos_3 != -1, "Expected cluster with 3 decks in output"
     assert pos_2 != -1, "Expected cluster with 2 decks in output"
-    assert pos_3 < pos_2, "Expected larger cluster (3 Decks) to appear before smaller cluster (2 Decks)"
+    assert pos_3 < pos_2, (
+        "Expected larger cluster (3 Decks) to appear before smaller cluster (2 Decks)"
+    )
 
     # With min_cluster_size=3, only the 3-deck cluster should be discovered
     out2 = StringIO()
-    call_command("discover_archetypes", format="legacy", min_cluster_size=3, eps=0.2, stdout=out2)
+    call_command(
+        "discover_archetypes", format="legacy", min_cluster_size=3, eps=0.2, stdout=out2
+    )
     output2 = out2.getvalue()
     assert "3 Decks" in output2
     assert "2 Decks" not in output2
-
-
-

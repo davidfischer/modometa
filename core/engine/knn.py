@@ -264,15 +264,9 @@ class DeckKNNIndex:
             recency_weight = 0.5 ** (days_diff / self.half_life_days)
             final_score = base_sim * recency_weight
 
-            deck_colors = (
-                str(self.deck_colors[i])
-                if len(self.deck_colors) > i
-                else ""
-            )
+            deck_colors = str(self.deck_colors[i]) if len(self.deck_colors) > i else ""
             deck_color_name = (
-                str(self.deck_color_names[i])
-                if len(self.deck_color_names) > i
-                else ""
+                str(self.deck_color_names[i]) if len(self.deck_color_names) > i else ""
             )
 
             results.append(
@@ -449,7 +443,11 @@ def get_global_knn_index(force_reload: bool = False) -> DeckKNNIndex | None:
     except OSError:
         current_mtime = 0.0
 
-    if _GLOBAL_INDEX_LOADED and not force_reload and current_mtime <= _GLOBAL_INDEX_MTIME:
+    if (
+        _GLOBAL_INDEX_LOADED
+        and not force_reload
+        and current_mtime <= _GLOBAL_INDEX_MTIME
+    ):
         return _GLOBAL_INDEX
 
     try:
@@ -473,7 +471,9 @@ def set_global_knn_index(index: DeckKNNIndex | None, loaded: bool = True) -> Non
     _GLOBAL_INDEX_LOADED = loaded
     if index is not None:
         index_path = getattr(
-            settings, "KNN_INDEX_PATH", Path(settings.BASE_DIR) / "data" / "knn_index.npz"
+            settings,
+            "KNN_INDEX_PATH",
+            Path(settings.BASE_DIR) / "data" / "knn_index.npz",
         )
         p = Path(index_path)
         try:

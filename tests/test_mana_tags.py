@@ -30,33 +30,33 @@ def test_mana_symbols_filter_colorless():
 
 
 def test_mana_symbols_filter_empty_and_invalid():
-    assert '—' in mana_symbols_filter("")
-    assert '—' in mana_symbols_filter(None)
-    assert '—' in mana_symbols_filter("XYZ")
+    assert "—" in mana_symbols_filter("")
+    assert "—" in mana_symbols_filter(None)
+    assert "—" in mana_symbols_filter("XYZ")
 
 
 def test_mana_symbols_tag():
     html = mana_symbols_tag("UR", title="Izzet")
-    assert 'ms-u' in html
-    assert 'ms-r' in html
+    assert "ms-u" in html
+    assert "ms-r" in html
     assert 'title="Izzet"' in html
 
 
 def test_mana_cost_filter():
     cost = mana_cost_filter("{1}{U}{B}")
-    assert 'ms-1' in cost
-    assert 'ms-u' in cost
-    assert 'ms-b' in cost
+    assert "ms-1" in cost
+    assert "ms-u" in cost
+    assert "ms-b" in cost
 
     phyrexian = mana_cost_filter("{W/P}")
-    assert 'ms-wp' in phyrexian
+    assert "ms-wp" in phyrexian
 
     hybrid = mana_cost_filter("{W/U}")
-    assert 'ms-wu' in hybrid
+    assert "ms-wu" in hybrid
 
     split = mana_cost_filter("{4}{U} // {1}{U}")
-    assert 'ms-4' in split
-    assert '//' in split
+    assert "ms-4" in split
+    assert "//" in split
 
 
 def test_mana_cost_filter_empty():
@@ -65,14 +65,16 @@ def test_mana_cost_filter_empty():
 
 
 def test_template_integration():
-    template_str = "{% load mana_tags %}{{ colors|mana_symbols:title }}|{{ cost|mana_cost }}"
+    template_str = (
+        "{% load mana_tags %}{{ colors|mana_symbols:title }}|{{ cost|mana_cost }}"
+    )
     template = Template(template_str)
-    rendered = template.render(Context({"colors": "WUBG", "title": "4-Color", "cost": "{2}{R}"}))
-    assert 'ms-w' in rendered
-    assert 'ms-u' in rendered
-    assert 'ms-b' in rendered
-    assert 'ms-g' in rendered
-    assert 'ms-2' in rendered
-    assert 'ms-r' in rendered
-
-
+    rendered = template.render(
+        Context({"colors": "WUBG", "title": "4-Color", "cost": "{2}{R}"})
+    )
+    assert "ms-w" in rendered
+    assert "ms-u" in rendered
+    assert "ms-b" in rendered
+    assert "ms-g" in rendered
+    assert "ms-2" in rendered
+    assert "ms-r" in rendered

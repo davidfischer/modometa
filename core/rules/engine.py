@@ -10,7 +10,6 @@ import yaml
 from django.conf import settings
 
 from core.models.card import expand_card_counts
-from core.models.card import expand_card_names
 from core.models.card import normalize_card_name
 from core.rules.colors import deduce_deck_colors
 
@@ -121,7 +120,7 @@ class ArchetypeEngine:
                         c_name = item.get("card") or item.get("name") or ""
                         try:
                             min_cnt = int(item.get("min", item.get("count", 1)))
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             min_cnt = 1
                     else:
                         c_name = str(item)
@@ -130,7 +129,9 @@ class ArchetypeEngine:
                     if norm:
                         mandatory[norm] = min_cnt
 
-                signatures = {normalize_card_name(c) for c in r.get("signatures", []) if c}
+                signatures = {
+                    normalize_card_name(c) for c in r.get("signatures", []) if c
+                }
                 anti_signatures = {
                     normalize_card_name(c) for c in r.get("anti_signatures", []) if c
                 }

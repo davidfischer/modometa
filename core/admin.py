@@ -29,15 +29,12 @@ class TimeframeFilter(admin.SimpleListFilter):
             ref = latest or date.today()
             cutoff = ref - timedelta(days=days)
             date_field = (
-                "tournament__date"
-                if hasattr(queryset.model, "tournament")
-                else "date"
+                "tournament__date" if hasattr(queryset.model, "tournament") else "date"
             )
             return queryset.filter(
                 **{f"{date_field}__gte": cutoff, f"{date_field}__lte": ref}
             )
         return queryset
-
 
 
 @admin.register(Card)
@@ -53,12 +50,11 @@ class CardAdmin(admin.ModelAdmin):
             return "-"
         return format_html(
             '<a href="{}" target="_blank" rel="noopener noreferrer">Scryfall ↗</a>'
-            '&nbsp;&nbsp;|&nbsp;&nbsp;'
+            "&nbsp;&nbsp;|&nbsp;&nbsp;"
             '<a href="{}" target="_blank" rel="noopener noreferrer">Gatherer ↗</a>',
             obj.scryfall_url,
             obj.gatherer_url,
         )
-
 
 
 @admin.register(CardLookup)
@@ -110,9 +106,8 @@ class DeckAdmin(admin.ModelAdmin):
             return "-"
         return format_html(
             '<pre style="white-space: pre-wrap; font-family: ui-monospace, monospace; '
-            'font-size: 13px; line-height: 1.5; max-height: 500px; overflow-y: auto; '
-            'padding: 10px 14px; border-radius: 6px; border: 1px solid var(--hairline-color, #ccc); '
+            "font-size: 13px; line-height: 1.5; max-height: 500px; overflow-y: auto; "
+            "padding: 10px 14px; border-radius: 6px; border: 1px solid var(--hairline-color, #ccc); "
             'background: var(--darkened-bg, #f8f9fa); color: var(--body-fg, #333); margin: 0;">{}</pre>',
             obj.decklist_text,
         )
-

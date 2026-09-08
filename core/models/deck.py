@@ -151,4 +151,3 @@ class Deck(models.Model):
             "core:deck_detail",
             kwargs={"player": self.player, "event": self.tournament_id},
         )
-

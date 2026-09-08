@@ -22,4 +22,7 @@ def test_gatherer_url_filter():
 
     template = Template("{% load card_tags %}{{ name|gatherer_url }}")
     rendered = template.render(Context({"name": "Phelia, Exuberant Shepherd"}))
-    assert rendered == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    assert (
+        rendered
+        == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
+    )

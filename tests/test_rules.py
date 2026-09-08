@@ -307,11 +307,11 @@ def test_mandatory_string_format_backward_compatibility(tmp_path):
 
     # 1 copy satisfies mandatory
     name, _, _, _, is_fallback, _ = engine.classify(
-        [{"card": "Delver of Secrets", "count": 1}, {"card": "Lightning Bolt", "count": 4}],
+        [
+            {"card": "Delver of Secrets", "count": 1},
+            {"card": "Lightning Bolt", "count": 4},
+        ],
         "testfmt",
     )
     assert is_fallback is False
     assert name == "Classic Delver"
-
-
-

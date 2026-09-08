@@ -16,9 +16,7 @@ class Tournament(models.Model):
     format = models.CharField(max_length=32, choices=Format.choices)
     event_type = models.CharField(max_length=32)  # challenge, league, etc.
     date = models.DateField(db_index=True)
-    uri = models.URLField(
-        max_length=512, blank=True, null=True, verbose_name="URI"
-    )
+    uri = models.URLField(max_length=512, blank=True, null=True, verbose_name="URI")
     deck_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -52,4 +50,3 @@ class Tournament(models.Model):
             "core:tournament_detail",
             kwargs={"format": self.format, "event": self.id},
         )
-

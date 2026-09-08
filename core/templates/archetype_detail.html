@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}{{ archetype_name }} ({{ format_name }}) — Modometa{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="/" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <a href="/{{ format_slug }}/?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-zinc-500">Archetypes</span>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">{{ archetype_name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+  <!-- Archetype Header -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="rounded bg-zinc-800 px-2 py-0.5 text-2xs font-semibold uppercase text-zinc-300">
+            {{ format_name }}
+          </span>
+          {{ colors|mana_symbols:color_name }}
+          <span class="text-xs text-zinc-400 font-medium">{{ color_name }}</span>
+        </div>
+        <h1 class="mt-2 text-3xl font-bold text-white sm:text-4xl">{{ archetype_name }}</h1>
+        <p class="mt-1 text-sm text-zinc-400">
+          Metagame statistics and performance over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+        </p>
+      </div>
+    </div>
+
+    <!-- Metagame Performance Metrics (30d vs 90d) -->
+    <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 pt-6 border-t border-zinc-800">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.league_5_0_count }}/{{ stats.total_5_0s }}">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">League Share</div>
+        <div class="mt-1 text-2xl font-bold font-mono text-sky-400">{{ stats.league_share }}%</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.league_5_0_count }} trophies</div>
+      </div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.challenge_appearances }}/{{ stats.total_chall_decks }}">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Share</div>
+        <div class="mt-1 text-2xl font-bold font-mono text-white">{{ stats.challenge_share }}%</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.challenge_appearances }} entries</div>
+      </div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count }}/{{ stats.total_top8_slots }}">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Top 8 Share</div>
+        <div class="mt-1 text-2xl font-bold font-mono text-emerald-400">{{ stats.top8_share }}%</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.top8_count }} Top 8s</div>
+      </div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count }}/{{ stats.challenge_appearances }}">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Conversion</div>
+        <div class="mt-1 text-2xl font-bold font-mono {% if stats.conversion_rate >= 20 %}text-emerald-400{% else %}text-zinc-300{% endif %}">
+          {{ stats.conversion_rate }}%
+        </div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">T8s / appearances</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Tournament Finishes -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+      <h2 class="text-base font-bold text-white">Recent Tournament Finishes</h2>
+      <span class="text-2xs text-zinc-500 font-mono">{{ total_decks }} finish{{ total_decks|pluralize:"es" }} last {{ days }} days</span>
+    </div>
+
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
+        <tr>
+          <th class="py-3 px-4">Date</th>
+          <th class="py-3 px-4">Deck</th>
+          <th class="py-3 px-4">Player</th>
+          <th class="py-3 px-4">Event</th>
+          <th class="py-3 px-4">Result</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono">
+        {% for d in finishes %}
+          <tr class="hover:bg-zinc-800/30 transition-colors">
+            <td class="py-3 px-4 text-zinc-400">
+              {{ d.tournament.date|date:"Y-m-d" }}
+            </td>
+            <td class="py-3 px-4 font-sans font-medium text-white">
+              <a href="/player/{{ d.player }}/deck/{{ d.tournament_id }}/{{ d.deck_index }}/" class="hover:text-emerald-400">
+                {{ d.archetype }}
+              </a>
+              {% if d.colors %}
+                <span class="ml-1.5 align-middle">{{ d.colors|mana_symbols:d.color_name }}</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 font-sans font-medium text-white">
+              <a href="/player/{{ d.player }}/" class="hover:text-emerald-400">
+                {{ d.player }}
+              </a>
+            </td>
+            <td class="py-3 px-4 font-sans">
+              <a href="/{{ format_slug }}/tournaments/{{ d.tournament_id }}/" class="text-zinc-200 hover:text-emerald-400">
+                {{ d.tournament.name }}
+              </a>
+            </td>
+            <td class="py-3 px-4">
+              {% if d.is_top8 %}
+                <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30">
+                  ★ {{ d.result }}
+                </span>
+              {% elif d.is_5_0 %}
+                <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30">
+                  🏆 5-0
+                </span>
+              {% else %}
+                <span class="text-zinc-400">{{ d.result }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="py-8 text-center text-zinc-500 italic">No finishes found for this archetype.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+      <div class="flex items-center justify-between text-xs text-zinc-400 p-4 border-t border-zinc-800 bg-zinc-950/20">
+        <div>
+          {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} finishes
+        </div>
+        <div class="flex items-center gap-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&days={{ days }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white transition-colors">
+              ← Previous
+            </a>
+          {% endif %}
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&days={{ days }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white transition-colors">
+              Next →
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Core Cards -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
+    <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+      <h2 class="text-base font-bold text-white">Core Cards</h2>
+      <span class="text-2xs text-zinc-500 font-mono">Top signature cards by adoption</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 lg:gap-x-12 gap-y-1">
+      {% for card in core_cards %}
+        <div class="flex items-center justify-between text-xs py-2 border-b border-zinc-800/40">
+          <div class="flex items-center gap-1.5 truncate min-w-0 pr-3">
+            <a href="{{ card.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ card.image_uri }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
+              {{ card.name }}
+            </a>
+            {% if card.mana_cost %}
+              <span class="shrink-0 align-middle">{{ card.mana_cost|mana_cost }}</span>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-3 shrink-0 font-mono text-zinc-400 pl-2">
+            <span class="text-emerald-400 font-semibold">{{ card.adoption_pct }}%</span>
+            <span class="text-zinc-500 text-2xs">avg {{ card.avg_copies }}x</span>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-xs text-zinc-500 italic py-2">No card statistics available for this archetype.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

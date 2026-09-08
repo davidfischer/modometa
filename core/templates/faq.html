@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}FAQ & About — Modometa{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="/" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">FAQ &amp; About</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+  <!-- Page Header -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 sm:p-8">
+    <div class="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+      <span>About the Platform</span>
+    </div>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Frequently Asked Questions</h1>
+    <p class="mt-2 text-sm text-zinc-400 leading-relaxed">
+      Everything you need to know about ModoMeta's tournament data coverage, metagame metrics, deck classification engine, and third-party credits.
+    </p>
+
+    <!-- Quick Navigation Pills -->
+    <div class="mt-6 flex flex-wrap items-center gap-2 pt-4 border-t border-zinc-800/80 text-xs">
+      <span class="text-zinc-500 mr-1">Jump to:</span>
+      <a href="#tournament-data" class="rounded-lg bg-zinc-800/70 px-2.5 py-1 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors">
+        Tournament Coverage
+      </a>
+      <a href="#metagame-metrics" class="rounded-lg bg-zinc-800/70 px-2.5 py-1 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors">
+        Metagame Metrics
+      </a>
+      <a href="#classification-and-colors" class="rounded-lg bg-zinc-800/70 px-2.5 py-1 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors">
+        Classification &amp; Colors
+      </a>
+      <a href="#credits-and-acknowledgments" class="rounded-lg bg-zinc-800/70 px-2.5 py-1 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors">
+        Credits &amp; Acknowledgments
+      </a>
+    </div>
+  </div>
+
+  <!-- Section: Tournament Data & Coverage -->
+  <div class="space-y-4">
+    <h2 id="tournament-data" class="group text-lg font-bold text-white flex items-center gap-2 scroll-mt-24">
+      <span class="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">1</span>
+      <span>Tournament Data &amp; Coverage</span>
+      <a href="#tournament-data" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-sm select-none" title="Direct link to Tournament Data & Coverage" aria-label="Direct link to Tournament Data & Coverage">#</a>
+    </h2>
+
+    <div class="space-y-4">
+      <!-- Incomplete Challenge Data -->
+      <div id="incomplete-challenge-data" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-2 scroll-mt-24">
+        <h3 class="group text-base font-semibold text-white flex items-center gap-2">
+          <span>Is the Magic Online Challenge data incomplete?</span>
+          <a href="#incomplete-challenge-data" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link to this question" aria-label="Direct link to this question">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          Daybreak Games (the studio operating MTGO) typically publishes only the <strong>top 32 decks</strong> from Magic Online Challenges, regardless of total tournament players.
+          Whether a Challenge draws 64, 128, or 250+ players, only the top 32 decklists and standings are published in the official MTGO tournament results dumps.
+        </p>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          Because finishes below 32nd place are omitted from official results dumps, our Challenge Share and metagame metrics reflect only these top 32 lists.
+          Decks that finish outside the top 32 are effectively invisible to ModoMeta.
+          Some analyses like the <a href="https://www.patreon.com/legacydatacollection" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Legacy Data Collection Project</a> attempt to capture a more complete picture with painstaking work (support them!), but ModoMeta only uses the official published results.
+        </p>
+      </div>
+
+      <!-- Preliminaries & LCQs Ignored -->
+      <div id="excluded-events" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-2 scroll-mt-24">
+        <h3 class="group text-base font-semibold text-white flex items-center gap-2">
+          <span>What about Preliminaries and Last Chance Qualifiers (LCQs)?</span>
+          <a href="#excluded-events" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link to this question" aria-label="Direct link to this question">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          Preliminaries (usually 4-round events) and Last Chance Qualifiers (LCQs) are largely excluded from ModoMeta's metagame statistics because there are relatively few of them in the dataset.
+          While we ingest these events for tournament and player records, they are excluded from Challenge and League share metrics.
+        </p>
+      </div>
+
+      <!-- How League 5-0s Work -->
+      <div id="league-5-0s" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-2 scroll-mt-24">
+        <h3 class="group text-base font-semibold text-white flex items-center gap-2">
+          <span>How do League 5-0 decks work?</span>
+          <a href="#league-5-0s" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link to this question" aria-label="Direct link to this question">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          Daybreak publishes decks that achieved a <strong>5-0 match record</strong> in constructed Leagues.
+          Our League Share metric counts the number of 5-0 decks published for each archetype over the total 5-0 league decks.
+          However, decks that don't achieve a 5-0 are not published, so we don't have visibility into the total number of league decks played.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Metagame Metrics -->
+  <div class="space-y-4">
+    <h2 id="metagame-metrics" class="group text-lg font-bold text-white flex items-center gap-2 scroll-mt-24">
+      <span class="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">2</span>
+      <span>Metagame Metrics Explained</span>
+      <a href="#metagame-metrics" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-sm select-none" title="Direct link to Metagame Metrics Explained" aria-label="Direct link to Metagame Metrics Explained">#</a>
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div id="challenge-share" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-2 scroll-mt-24">
+        <h3 class="group text-sm font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>Challenge Share</span>
+          </span>
+          <a href="#challenge-share" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link" aria-label="Direct link to Challenge Share">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          The percentage of all published Challenge decks (typically 32 per event) represented by a given archetype within the selected timeframe.
+          Reflects competitive adoption at the premier tournament level.
+        </p>
+      </div>
+
+      <div id="top8-share" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-2 scroll-mt-24">
+        <h3 class="group text-sm font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>Top 8 Share</span>
+          </span>
+          <a href="#top8-share" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link" aria-label="Direct link to Top 8 Share">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          The percentage of total available Top 8 playoff spots (<code class="font-mono text-zinc-300">8 × challenge_count</code>) captured by this archetype. High Top 8 Share indicates high absolute tournament success.
+        </p>
+      </div>
+
+      <div id="conversion-rate" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-2 scroll-mt-24">
+        <h3 class="group text-sm font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>Conversion Rate</span>
+          </span>
+          <a href="#conversion-rate" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link" aria-label="Direct link to Conversion Rate">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          Calculated as <code class="font-mono text-zinc-300">Top 8 Finishes / Challenge Appearances</code>.
+          Measures an archetype's win efficiency: when a player brings this deck, how likely are they to convert their run into a Top 8 appearance?
+          Very strong decks, especially those with lower overall play rates, will have a high conversion rate.
+        </p>
+      </div>
+
+      <div id="league-share" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-2 scroll-mt-24">
+        <h3 class="group text-sm font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>League Share</span>
+          </span>
+          <a href="#league-share" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link" aria-label="Direct link to League Share">#</a>
+        </h3>
+        <p class="text-xs text-zinc-300 leading-relaxed">
+          The proportion of all verified League 5-0 trophies earned by an archetype within the selected timeframe.
+          While Challenges represent premier competitive play, League Share reflects everyday popularity, accessibility, and brewing viability.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Archetypes & Colors -->
+  <div class="space-y-4">
+    <h2 id="classification-and-colors" class="group text-lg font-bold text-white flex items-center gap-2 scroll-mt-24">
+      <span class="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">3</span>
+      <span>Classification &amp; Color Inferences</span>
+      <a href="#classification-and-colors" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-sm select-none" title="Direct link to Classification & Color Inferences" aria-label="Direct link to Classification & Color Inferences">#</a>
+    </h2>
+
+    <div id="how-classification-works" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-3 scroll-mt-24">
+      <h3 class="group text-base font-semibold text-white flex items-center gap-2">
+        <span>How does ModoMeta identify archetypes and colors?</span>
+        <a href="#how-classification-works" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link to this question" aria-label="Direct link to this question">#</a>
+      </h3>
+      <p class="text-xs text-zinc-300 leading-relaxed">
+        Decklists are processed through a multi-stage classification pipeline:
+      </p>
+      <ol class="list-decimal list-inside text-xs text-zinc-300 space-y-2 pl-1">
+        <li>
+          <strong>Curated Signatures:</strong> Formats define archetype signatures with mandatory cards, minimum signature card thresholds, and anti-signatures (cards that exclude a deck from an archetype, like preventing Delver lists with Bowmasters from matching Izzet Delver).
+        </li>
+        <li>
+          <strong>TF-IDF &amp; k-Nearest Neighbors (kNN):</strong> Unclassified decks are matched against known archetypes using TF-IDF cosine similarity with recency decay.
+        </li>
+        <li>
+          <strong>True Color Deductions:</strong> Color identities are inferred by examining whether the deck's mana base (lands and permanent mana producers) can produce the colors required by its castable spells. Free pitch spells/cards (<code class="font-mono text-zinc-300">Faerie Macabre</code>) and Phyrexian mana (<code class="font-mono text-zinc-300">Dismember</code>, <code class="font-mono text-zinc-300">Surgical Extraction</code>) do not count toward a deck's color identity unless its mana base actually produces their colors.
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Section: Credits & Acknowledgments -->
+  <div class="space-y-4">
+    <!-- Anchor targets for both #credits and #credits-and-acknowledgments -->
+    <div id="credits" class="scroll-mt-24"></div>
+    <h2 id="credits-and-acknowledgments" class="group text-lg font-bold text-white flex items-center gap-2 scroll-mt-24">
+      <span class="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">4</span>
+      <span>Credits &amp; Acknowledgments</span>
+      <a href="#credits-and-acknowledgments" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-sm select-none" title="Direct link to Credits & Acknowledgments" aria-label="Direct link to Credits & Acknowledgments">#</a>
+    </h2>
+
+    <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
+      <p class="text-xs text-zinc-400 leading-relaxed">
+        ModoMeta is built with gratitude to the open-source Magic: The Gathering developer and data communities:
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <!-- Scryfall -->
+        <div id="scryfall" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">Scryfall</h4>
+            <span class="text-2xs text-emerald-400 font-mono">Card data</span>
+          </div>
+          <p class="text-xs text-zinc-400">
+            Card metadata, imagery, legality rules, and mana costs are powered by <a href="https://scryfall.com/docs/api/bulk-data" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Scryfall bulk data</a>.
+          </p>
+        </div>
+
+        <!-- Mana Font -->
+        <div id="mana-font" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">Mana Font</h4>
+            <span class="text-2xs text-emerald-400 font-mono">Symbols</span>
+          </div>
+          <p class="text-xs text-zinc-400">
+            All MTG mana symbols, color icons, and card costs are rendered using the <a href="https://github.com/andrewgioia/Mana" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Mana font</a> created and maintained by <strong>Andrew Gioia</strong>.
+            These symbols are copyright Wizards of the Coast.
+          </p>
+        </div>
+
+        <!-- MTG Decklist Cache -->
+        <div id="decklist-cache" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">MTG Decklist Cache</h4>
+            <span class="text-2xs text-emerald-400 font-mono">Archive</span>
+          </div>
+          <p class="text-xs text-zinc-400">
+            Tournament decklists and tournament standings are sourced from the <a href="https://github.com/fbettega/MTG_decklistcache" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">MTG_decklistcache</a> archive curated by <strong>Francisco Bettega</strong>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Legal Notice -->
+      <div class="mt-4 pt-4 border-t border-zinc-800/80 text-2xs text-zinc-500 leading-relaxed">
+        <p>
+          ModoMeta is unofficial Fan Content permitted under the <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener" class="text-zinc-400 underline hover:text-white">Fan Content Policy</a>. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Anchor link copy feedback
+  document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+    anchor.addEventListener('click', function() {
+      const hash = this.getAttribute('href');
+      if (hash && hash !== '#') {
+        const fullUrl = window.location.origin + window.location.pathname + window.location.search + hash;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(fullUrl).catch(function() {});
+        }
+        if (this.textContent.trim() === '#') {
+          const original = this.textContent;
+          this.textContent = '✓';
+          this.classList.add('text-emerald-400');
+          const el = this;
+          setTimeout(function() {
+            el.textContent = original;
+            el.classList.remove('text-emerald-400');
+          }, 1200);
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

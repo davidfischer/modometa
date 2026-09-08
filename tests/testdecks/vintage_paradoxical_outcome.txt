@@ -1,0 +1,36 @@
+// Vintage Paradoxical Outcome
+1 Black Lotus
+1 Mox Sapphire
+1 Mox Jet
+1 Mox Ruby
+1 Mox Pearl
+1 Mox Emerald
+1 Sol Ring
+1 Mana Crypt
+1 Time Walk
+1 Ancestral Recall
+4 Paradoxical Outcome
+4 Force of Will
+4 Force of Negation
+4 Urza's Saga
+2 Flooded Strand
+2 Polluted Delta
+4 Island
+4 Mishra's Bauble
+4 Urza's Bauble
+4 Mox Opal
+2 Flusterstorm
+2 Mental Misstep
+2 Repeal
+2 Sensei's Divining Top
+1 Time Vault
+1 Manifold Key
+
+Sideboard
+2 Mindbreak Trap
+2 Hurkyl's Recall
+2 The Tabernacle at Pendrell Vale
+2 Pithing Needle
+2 Grafdigger's Cage
+2 Tormod's Crypt
+3 Pyroblast

@@ -1,0 +1,18 @@
+// Standard Red Deck Wins
+4 Slickshot Show-Off
+4 Emberheart Challenger
+4 Manifold Mouse
+4 Hired Claw
+4 Shock
+4 Lightning Strike
+4 Turn Inside Out
+4 Might of the Meek
+4 Sunspine Lynx
+4 Rockface Village
+20 Mountain
+
+Sideboard
+4 Witchstalker Frenzy
+4 Magebane Lizard
+4 Abrade
+3 Pyroclasm

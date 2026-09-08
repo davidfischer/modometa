@@ -1,0 +1,1305 @@
+# Legacy Archetypes
+
+
+#####################################################################
+# Tempo Archetypes
+#####################################################################
+- name: "Temur Delver"
+  category: "Tempo"
+  priority: 100
+  mandatory:
+    - "delver of secrets"
+  signatures:
+    - "daze"
+    - "tarmogoyf"
+    - "questing druid"
+    - "lightning bolt"
+    - "force of will"
+    - "tropical island"
+  min_signatures: 2
+  anti_signatures:
+    - "orcish bowmasters"
+    - "psychic frog"
+    - "underground sea"
+
+- name: "Izzet Delver"
+  category: "Tempo"
+  priority: 100
+  mandatory:
+    - "delver of secrets"
+  signatures:
+    - "daze"
+    - "murktide regent"
+    - "dragon's rage channeler"
+    - "lightning bolt"
+    - "force of will"
+    - "volcanic island"
+    - "cori-steel cutter"
+  min_signatures: 2
+  anti_signatures:
+    - "psychic frog"
+    - "underground sea"
+    - "tropical island"
+
+- name: "Grixis Delver"
+  category: "Tempo"
+  priority: 100
+  mandatory:
+    - "delver of secrets"
+  signatures:
+    - "daze"
+    - "orcish bowmasters"
+    - "snuff out"
+    - "lightning bolt"
+    - "underground sea"
+    - "volcanic island"
+  min_signatures: 2
+
+- name: "Death's Shadow"
+  category: "Tempo"
+  priority: 95
+  mandatory:
+    - "death's shadow"
+  signatures:
+    - "street wraith"
+    - "snuff out"
+    - "dismember"
+    - "daze"
+    - "thoughtseize"
+    - "watery grave"
+  min_signatures: 2
+
+- name: "Dimir Ninjas"
+  category: "Tempo"
+  priority: 95
+  mandatory:
+    - "yuriko, the tiger's shadow"
+  signatures:
+    - "ingenious infiltrator"
+    - "retrofitter foundry"
+    - "changeling outcast"
+    - "satoru, the infiltrator"
+    - "moon-circuit hacker"
+    - "ornithopter"
+  min_signatures: 2
+
+- name: "Dimir Tempo"
+  category: "Tempo"
+  priority: 75
+  mandatory:
+    - "daze"
+  signatures:
+    - "orcish bowmasters"
+    - "murktide regent"
+    - "force of will"
+    - "undercity sewers"
+    # Banned
+    - "psychic frog"
+  min_signatures: 3
+  anti_signatures:
+    - "delver of secrets"
+    - "yuriko, the tiger's shadow"
+    - "doomsday"
+    - "up the beanstalk"
+    - "tropical island"
+    - "volcanic island"
+
+- name: "UW Tempo"
+  category: "Tempo"
+  priority: 75
+  mandatory:
+    - "daze"
+    - "swords to plowshares"
+  signatures:
+    - "brainstorm"
+    - "flooded strand"
+    - "ponder"
+    - "force of will"
+    - "wasteland"
+    - "stifle"
+    - "phelia, exuberant shepherd"
+  min_signatures: 3
+  anti_signatures:
+    - "tropical island"
+    - "underground sea"
+
+- name: "Infect"
+  category: "Tempo"
+  priority: 90
+  mandatory:
+    - "blighted agent"
+  signatures:
+    - "berserk"
+    - "pendelhaven"
+    - "vines of vastwood"
+    - "mutagenic growth"
+    - "scale up"
+    - "inkmoth nexus"
+    - "glistener elf"
+  min_signatures: 3
+
+- name: "Stiflenought"
+  category: "Tempo"
+  priority: 90
+  mandatory:
+    - "phyrexian dreadnought"
+  signatures:
+    - "slip out the back"
+    - "dress down"
+    - "stifle"
+    - "torpor orb"
+    - "nulldrifter"
+    - "curie, emergent intelligence"
+    - "Doorkeeper Thrull"
+  min_signatures: 3
+
+
+#####################################################################
+# Aggro Archetypes
+#####################################################################
+
+- name: "RW Energy"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "guide of souls"
+  signatures:
+    - "ocelot pride"
+    - "ajani, nacatl pariah"
+    - "amped raptor"
+    - "goblin bombardment"
+  min_signatures: 2
+  anti_signatures:
+    - "orcish bowmasters"
+    - "cabal therapy"
+
+- name: "Mardu Energy"
+  category: "Aggro"
+  priority: 92
+  mandatory:
+    - "guide of souls"
+  signatures:
+    - "ocelot pride"
+    - "ajani, nacatl pariah"
+    - "orcish bowmasters"
+    - "cabal therapy"
+  min_signatures: 2
+  anti_signatures:
+    - "veteran explorer"
+    - "green sun's zenith"
+
+- name: "Goblins"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "goblin lackey"
+    - "goblin ringleader"
+    - "muxus, goblin grandee"
+    - "rundvelt hordemaster"
+    - "goblin matron"
+  min_signatures: 2
+
+- name: "Merfolk"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "lord of atlantis"
+    - "master of the pearl trident"
+    - "vodalian hexcatcher"
+    - "silvergill adept"
+    - "cursecatcher"
+  min_signatures: 2
+
+- name: "Hogaak"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "hogaak, arisen necropolis"
+  signatures:
+    # Combo Hogaak
+    - "altar of dementia"
+    - "vengevine"
+    - "stitcher's supplier"
+    - "cabal therapy"
+    - "Bridge from Below"
+    - "Gravecrawler"
+    # "Fair" Hogaak
+    - "Moonshadow"
+    - "wight of the reliquary"
+    - "sylvan safekeeper"
+    - "elvish reclaimer"
+    # Banned
+    - "grief"
+    - "troll of khazad-dum"
+  min_signatures: 3
+  anti_signatures:
+    - "Dark Depths"
+    - "Smallpox"
+
+- name: "MadVine"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "vengevine"
+    - "basking rootwalla"
+    - "blazing rootwalla"
+  signatures:
+    - "burning inquiry"
+    - "Faithless Looting"
+    - "ox of agonas"
+    - "Anje's Ravager"
+    - "Hollow One"
+    - "Anger"
+    - "Poxwalkers"
+  min_signatures: 2
+
+- name: "Humans"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Cavern of Souls"
+  signatures:
+    - "urdnan dromoka warrior"
+    - "voice of victory"
+    - "guide of souls"
+    - "haliya guided by light"
+    - "esper sentinel"
+    - "coppercoat vanguard"
+    - "Kitesail Freebooter"
+    - "thalias lieutenant"
+    - "Thalia, Guardian of Thraben"
+    - "Champion of the Parish"
+    - "Unclaimed Territory"
+  min_signatures: 4
+
+#####################################################################
+# Midrange Archetypes
+#####################################################################
+
+- name: "UW Midrange"
+  category: "Midrange"
+  priority: 60
+  mandatory:
+    - "swords to plowshares"
+  signatures:
+    - "brainstorm"
+    - "flooded strand"
+    - "ponder"
+    - "force of will"
+    - "phelia, exuberant shepherd"
+    - "quantum riddler"
+  min_signatures: 3
+  anti_signatures:
+    # UW Tempo
+    - "daze"
+    # Esper Vial/ UW Vial
+    - "aether vial"
+    - "stoneforge mystic"
+    - "orcish bowmasters"
+    - "up the beanstalk"
+    - "underground sea"
+    - "tropical island"
+
+- name: "Maverick"
+  category: "Midrange"
+  priority: 85
+  mandatory:
+    - "knight of the reliquary"
+  signatures:
+    - "green sun's zenith"
+    - "dryad arbor"
+    - "wasteland"
+    - "swords to plowshares"
+    - "endurance"
+  min_signatures: 2
+  anti_signatures:
+    - "natural order"
+    - "force of will"
+
+- name: "Cradle Control"
+  category: "Midrange"
+  priority: 85
+  mandatory:
+    - "gaea's cradle"
+  signatures:
+    - "green sun's zenith"
+    - "dryad arbor"
+    - "wight of the reliquary"
+    - "natural order"
+  min_signatures: 2
+  anti_signatures:
+    - "knight of the reliquary"
+    - "veteran explorer"
+
+- name: "Nic Fit"
+  category: "Midrange"
+  priority: 85
+  mandatory:
+    - "veteran explorer"
+  signatures:
+    - "cabal therapy"
+    - "green sun's zenith"
+    - "phyrexian tower"
+    - "assassin's trophy"
+  min_signatures: 2
+  anti_signatures:
+    - "aluren"
+
+- name: "Blue Zenith"
+  category: "Midrange"
+  priority: 75
+  mandatory:
+    - "green suns zenith"
+    - "Force of Will"
+  signatures:
+    - "green suns zenith"
+    - "ice-fang coatl"
+    - "delighted halfling"
+    - "teferi, time raveler"
+    - "Uro, Titan of Nature's Wrath"
+    - "Atraxa, Grand Unifier"
+  min_signatures: 3
+  anti_signatures:
+    # Bant NO
+    - "Natural Order"
+    - "Nadu, Winged Wisdom"
+
+# Maybe "YES - Yorion Ephemerate Spellseeker"
+- name: "Spellseeker"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "spellseeker"
+    - "ephemerate"
+  signatures:
+    - "orims chant"
+    - "Eternal Witness"
+    - "Swords to Plowshares"
+    - "Phelia, Exuberant Shepherd"
+    - "Teferi, Time Raveler"
+    - "Uro, Titan of Nature's Wrath"
+  min_signatures: 3
+
+
+#####################################################################
+# Stompy Archetypes
+#####################################################################
+
+- name: "Red Prison"
+  category: "Stompy"
+  priority: 90
+  mandatory:
+    - "blood moon"
+  signatures:
+    - "chalice of the void"
+    - "broadside bombardiers"
+    - "magus of the moon"
+    - "fable of the mirror-breaker"
+    - "the one ring"
+    - "simian spirit guide"
+    - "ancient tomb"
+    - "trinisphere"
+  min_signatures: 3
+  anti_signatures:
+    - "goblin welder"
+    - "goblin engineer"
+    - "caves of chaos adventurer"
+
+- name: "Red Stompy"
+  # Lower priority than Red Prison
+  category: "Stompy"
+  priority: 85
+  mandatory:
+    - "shatterskull smashing"
+  signatures:
+    - "sundering eruption"
+    - "pyrogoyf"
+    - "the one ring"
+    - "magus of the moon"
+    - "fable of the mirror-breaker"
+    - "simian spirit guide"
+    - "broadside bombardiers"
+  min_signatures: 3
+  anti_signatures:
+    - "goblin welder"
+    - "goblin engineer"
+
+- name: "Eldrazi"
+  category: "Stompy"
+  priority: 90
+  mandatory:
+    - "eye of ugin"
+    - "eldrazi temple"
+  signatures:
+    - "thought-knot seer"
+    - "reality smasher"
+    - "devourer of destiny"
+    - "matter reshaper"
+    - "kozilek's command"
+  min_signatures: 2
+
+- name: "8-Cast / Affinity"
+  category: "Stompy"
+  priority: 85
+  mandatory:
+    - "emry, lurker of the loch"
+  signatures:
+    - "kappa cannoneer"
+    - "thoughtcast"
+    - "thought monitor"
+    - "sai, master thopterist"
+    - "mishra's bauble"
+    - "mox opal"
+    - "pinnacle emissary"
+  min_signatures: 3
+
+- name: "Mono-White Stompy"
+  category: "Stompy"
+  # Must be higher priority than initiative
+  priority: 95
+  mandatory:
+    - "archon of emeria"
+    - "anointed peacekeeper"
+  signatures:
+    - "solitude"
+    - "elite spellbinder"
+    - "seasoned dungeoneer"
+    - "witch enchanter"
+  min_signatures: 2
+  anti_signatures:
+    - "caves of chaos adventurer"
+    - "undermountain adventurer"
+    - "passageway seer"
+    - "plateau"
+
+- name: "Initiative"
+  category: "Stompy"
+  priority: 90
+  signatures:
+    - "caves of chaos adventurer"
+    - "undermountain adventurer"
+    - "seasoned dungeoneer"
+    - "passageway seer"
+    - "ravenloft adventurer"
+    - "ancient tomb"
+    - "city of traitors"
+  min_signatures: 3
+
+- name: "Patchwork Stompy"
+  category: "Stompy"
+  # Higher than 8Cast
+  priority: 90
+  mandatory:
+    - "simulacrum synthesizer"
+    - "patchwork automaton"
+  signatures:
+    - "thought monitor"
+    - "metallic rebuke"
+    - "chalice of the void"
+    - "sicarian infiltrator"
+  min_signatures: 2
+
+
+#####################################################################
+# Control Archetypes
+#####################################################################
+
+- name: "Lands"
+  category: "Control"
+  priority: 85
+  mandatory:
+    - "exploration"
+    - "life from the loam"
+  signatures:
+    - "dark depths"
+    - "thespian's stage"
+    - "crop rotation"
+    - "urza's saga"
+    - "mox diamond"
+  min_signatures: 2
+  anti_signatures:
+    - "knight of the reliquary"
+    - "vampire hexmage"
+    - "smallpox"
+
+- name: "Death & Taxes"
+  category: "Control"
+  priority: 85
+  mandatory:
+    - "aether vial"
+    - "recruiter of the guard"
+  signatures:
+    - "thalia, guardian of thraben"
+    - "flickerwisp"
+    - "stoneforge mystic"
+    - "solitude"
+    - "karakas"
+    - "skyclave apparition"
+  min_signatures: 2
+  anti_signatures:
+    # Esper Vial
+    - "force of will"
+    - "brainstorm"
+
+- name: "Yorion Death & Taxes"
+  category: "Control"
+  # Must be higher priority than regular D&T
+  priority: 88
+  mandatory:
+    - "yorion, sky nomad"
+    - "recruiter of the guard"
+  signatures:
+    - "aether vial"
+    - "stoneforge mystic"
+    - "solitude"
+    - "karakas"
+    - "swords to plowshares"
+  min_signatures: 3
+  anti_signatures:
+    - "force of will"
+    - "brainstorm"
+
+- name: "Esper Vial"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "aether vial"
+    - "force of will"
+  signatures:
+    - "recruiter of the guard"
+    - "swords to plowshares"
+    - "baleful strix"
+    - "meddling mage"
+    - "orcish bowmasters"
+  min_signatures: 2
+  anti_signatures:
+    - "lord of atlantis"
+
+- name: "Stryfo Pile"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "dack fayden"
+    - "assassins trophy"
+  signatures:
+    - "fable of the mirror-breaker"
+    - "dress down"
+    - "punishing fire"
+    - "grove of the burnwillows"
+    - "force of will"
+  min_signatures: 3
+
+- name: "Grixis Control"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "Lightning Bolt"
+    - "baleful strix"
+  signatures:
+    - "orcish bowmasters"
+    - "Kolaghan's Command"
+    - "Nimble Obstructionist"
+    - "Cling to Dust"
+    - "Brazen Borrower"
+  min_signatures: 2
+  anti_signatures:
+    - "assassins trophy"
+    - "daze"
+
+- name: "Domain Beanstalk"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "leyline of the guildpact"
+    - "up the beanstalk"
+  signatures:
+    - "leyline binding"
+    - "murktide regent"
+    - "scion of draco"
+    - "force of will"
+  min_signatures: 2
+
+- name: "Beanstalk"
+  category: "Control"
+  priority: 85
+  mandatory:
+    - "up the beanstalk"
+  signatures:
+    - "leyline binding"
+    - "murktide regent"
+    - "murderous cut"
+    - "quantum riddler"
+    - "force of will"
+    - "triumph of saint katherine"
+  min_signatures: 2
+  anti_signatures:
+    - "leyline of the guildpact"
+    - "scion of draco"
+
+- name: "Stoneblade"
+  category: "Control"
+  # Low priority - Any other stoneforge deck should match before this one
+  priority: 75
+  mandatory:
+    - "stoneforge mystic"
+  signatures:
+    - "swords to plowshares"
+    # Usually UW but could be other combinations
+    - "snapcaster mage"
+    - "back to basics"
+    - "teferi, time raveler"
+  min_signatures: 2
+  anti_signatures:
+    # Combo deck of some variety: Nadu, Breakfast, etc.
+    - "shuko"
+    # Maverick
+    - "green sun's zenith"
+
+- name: "Loam Pox"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "smallpox"
+    - "life from the loam"
+  signatures:
+    - "eumidian hatchery"
+    - "urza's saga"
+    - "mox diamond"
+    - "witherbloom command"
+    - "wasteland"
+    - "boseiju, who endures"
+  min_signatures: 2
+
+- name: "Pox"
+  category: "Control"
+  # Lower priority than loam pox
+  priority: 85
+  mandatory:
+    - "smallpox"
+  signatures:
+    - "eumidian hatchery"
+    - "urza's saga"
+    - "mox diamond"
+    - "liliana of the veil"
+    - "wasteland"
+  min_signatures: 2
+  anti_signatures:
+    - "life from the loam"
+
+- name: "Landstill"
+  category: "Control"
+  priority: 100
+  mandatory:
+    - "standstill"
+  signatures:
+    - "supreme verdict"
+    - "snapcaster mage"
+    - "timeless dragon"
+    - "urza's saga"
+    - "Shark Typhoon"
+  min_signatures: 2
+
+#####################################################################
+# Combo Archetypes
+#####################################################################
+
+# eg. BANT NO, Sultai NO
+- name: "Natural Order"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "natural order"
+  signatures:
+    - "green suns zenith"
+    - "ice-fang coatl"
+    - "delighted halfling"
+    - "teferi, time raveler"
+    - "Uro, Titan of Nature's Wrath"
+    - "Atraxa, Grand Unifier"
+  min_signatures: 3
+  anti_signatures:
+    # Elves or Cradle Control
+    - "Elvish Visionary"
+    - "Gaea's Cradle"
+
+
+- name: "Painter"
+  category: "Combo"
+  priority: 85
+  mandatory:
+    - "painter's servant"
+  signatures:
+    - "grindstone"
+    - "goblin welder"
+    - "goblin engineer"
+    - "chaos defiler"
+    - "fable of the mirror-breaker"
+    - "pyroblast"
+    - "fury"
+    - "urza's saga"
+  min_signatures: 3
+
+- name: "Sewer Cam Combo"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "sewer-veillance cam"
+    - "goblin welder"
+  signatures:
+    - "goblin engineer"
+    - "agathas soul cauldron"
+    - "great furnace"
+    - "emry, lurker of the loch"
+    - "legion extruder"
+  min_signatures: 3
+  anti_signatures:
+    - "painter's servant"
+
+- name: "Engineers"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "goblin engineer"
+    - "agathas soul cauldron"
+  signatures:
+    - "phyrexian devourer"
+    - "great furnace"
+    - "goblin welder"
+    - "phyrexian dragon engine"
+  min_signatures: 2
+  anti_signatures:
+    - "painter's servant"
+    - "sewer-veillance cam"
+
+# It's not "combo" exactly...
+- name: "Cloudpost"
+  category: "Combo"
+  priority: 85
+  mandatory:
+    - "cloudpost"
+  signatures:
+    - "glimmerpost"
+    - "primeval titan"
+    - "expedition map"
+    - "planar nexus"
+    - "Stock Up"
+    # Banned
+    - "candelabra of tawnos"
+  min_signatures: 2
+
+- name: "Creative Technique"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "creative technique"
+  signatures:
+    - "apex devastator"
+    - "maelstrom wanderer"
+    - "throes of chaos"
+    - "mossfire valley"
+    - "dwarven ruins"
+    - "tibalts trickery"
+    - "violent outburst"
+  min_signatures: 3
+
+- name: "GW / Naya Depths"
+  category: "Combo"
+  priority: 85
+  mandatory:
+    - "dark depths"
+    - "knight of the reliquary"
+  signatures:
+    - "thespian's stage"
+    - "crop rotation"
+    - "elvish reclaimer"
+    - "mox diamond"
+  min_signatures: 2
+  anti_signatures:
+    - "exploration"
+    - "vampire hexmage"
+
+- name: "Turbo Depths"
+  category: "Combo"
+  priority: 85
+  mandatory:
+    - "dark depths"
+    - "thespian's stage"
+    - "vampire hexmage"
+  signatures:
+    - "lotus petal"
+    - "thoughtseize"
+    - "Elvish Spirit Guide"
+    - "Crop Rotation"
+    - "Sylvan Scrying"
+  min_signatures: 2
+  anti_signatures:
+    - "knight of the reliquary"
+    - "exploration"
+
+- name: "Elves"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "glimpse of nature"
+  signatures:
+    - "heritage druid"
+    - "craterhoof behemoth"
+    - "wirewood symbiote"
+    - "allosaurus shepherd"
+    - "nettle sentinel"
+    - "natural order"
+    - "Elvish Visionary"
+  min_signatures: 3
+  anti_signatures:
+    - "wight of the reliquary"
+
+- name: "Reanimator"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "reanimate"
+  signatures:
+    - "exhume"
+    - "archon of cruelty"
+    - "atraxa, grand unifier"
+    - "animate dead"
+    - "thoughtseize"
+    - "faithless looting"
+    - "Griselbrand"
+    # Banned
+    - "entomb"
+    - "grief"
+  min_signatures: 3
+
+- name: "Doomsday"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "doomsday"
+  signatures:
+    - "thassa's oracle"
+    - "dark ritual"
+    - "personal tutor"
+    - "edge of autumn"
+    - "Cavern of Souls"
+  min_signatures: 3
+
+- name: "Sneak and Show"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "show and tell"
+    - "sneak attack"
+  signatures:
+    - "omniscience"
+    - "atraxa, grand unifier"
+    - "emrakul, the aeons torn"
+  min_signatures: 2
+
+- name: "Omni-Tell"
+  category: "Combo"
+  priority: 96
+  mandatory:
+    - "show and tell"
+    - "omniscience"
+  signatures:
+    - "atraxa, grand unifier"
+    - "emrakul, the aeons torn"
+    - "acererak, the archlich"
+    - "cunning wish"
+    - "intuition"
+    - "stock up"
+  min_signatures: 2
+  anti_signatures:
+    - "sneak attack"
+
+- name: "Storm (ANT / TES)"
+  category: "Combo"
+  priority: 90
+  signatures:
+    - "tendrils of agony"
+    - "infernal tutor"
+    - "wishclaw talisman"
+    - "dark ritual"
+    - "lion's eye diamond"
+    - "burning wish"
+    - "lotus petal"
+    - "ad nauseam"
+  min_signatures: 3
+  anti_signatures:
+    - "birgi, god of storytelling"
+    - "ruby medallion"
+
+- name: "Necro Storm"
+  category: "Combo"
+  # Needs to be higher priority than storm
+  priority: 95
+  mandatory:
+    - "necrodominance"
+  signatures:
+    - "Borne Upon a Wind"
+    - "Beseech the Mirror"
+    - "Pact of Negation"
+    - "dark ritual"
+    - "lotus petal"
+    - "Manamorphose"
+  min_signatures: 3
+
+- name: "Saga Storm"
+  category: "Combo"
+  # Needs to be higher priority than storm
+  priority: 95
+  mandatory:
+    - "urza's saga"
+    - "tendrils of agony"
+  signatures:
+    - "Beseech the Mirror"
+    - "Gaea's Will"
+    - "Wishclaw Talisman"
+    - "lotus petal"
+    - "Vault of Whispers"
+    - "Lion's Eye Diamond"
+  min_signatures: 3
+
+- name: "Ruby Storm"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "ruby medallion"
+  signatures:
+    - "birgi, god of storytelling"
+    - "burning wish"
+    - "bonus round"
+    - "gamble"
+    - "ral, monsoon mage"
+    - "seething song"
+  min_signatures: 2
+
+- name: "Riddler"
+  category: "Combo"
+  priority: 100
+  mandatory:
+    - "riddlesmith"
+  signatures:
+    - "gamble"
+    - "lion's eye diamond"
+    - "echo of eons"
+    - "urzas saga"
+    - "ancient tomb"
+    - "Ovalchase Daredevil"
+  min_signatures: 3
+
+- name: "The Epic Gamble"
+  category: "Combo"
+  priority: 97
+  mandatory:
+    - "gamble"
+  signatures:
+    - "birgi, god of storytelling"
+    - "burning wish"
+    - "ral, monsoon mage"
+    - "lion's eye diamond"
+    - "echo of eons"
+  min_signatures: 3
+  anti_signatures:
+    # More likely to be TES
+    - "Beseech the Mirror"
+    # Ruby storm
+    - "ruby medallion"
+
+- name: "Jewel"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "coveted jewel"
+  signatures:
+    - "the one ring"
+    - "manifold key"
+    - "glaring fleshraker"
+    - "urzas saga"
+    - "voltaic key"
+    - "copy artifact"
+    - "grim monolith"
+  min_signatures: 3
+
+- name: "Cephalid Breakfast"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "cephalid illusionist"
+  signatures:
+    - "nomads en-kor"
+    - "dread return"
+    - "thassa's oracle"
+    - "shuko"
+    # Banned
+    - "nadu, winged wisdom"
+  min_signatures: 2
+
+# Banned in Legacy, but still a known archetype
+- name: "Nadu"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "nadu winged wisdom"
+  signatures:
+    - "nomads en-kor"
+    - "sylvan safekeeper"
+    - "shuko"
+    - "green sun's zenith"
+    - "plagon, lord of the beach"
+  min_signatures: 2
+  anti_signatures:
+    # Classify these as "Cephalid Breakfast" instead of "Nadu"
+    - "cephalid illusionist"
+    - "dread return"
+
+- name: "Dredge"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "golgari grave-troll"
+  signatures:
+    - "stinkweed imp"
+    - "bridge from below"
+    - "ichorid"
+    - "narcomoeba"
+    - "cabal therapy"
+    - "lion's eye diamond"
+    - "Otherworldly Gaze"
+    - "Poxwalkers"
+  min_signatures: 3
+  anti_signatures:
+    - "balustrade spy"
+
+- name: "Oops All Spells"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "balustrade spy"
+  signatures:
+    - "narcomoeba"
+    - "dread return"
+    - "chancellor of the annex"
+    - "thassa's oracle"
+    - "poxwalkers"
+    # Banned
+    - "undercity informer"
+  min_signatures: 2
+
+- name: "Belcher"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "goblin charbelcher"
+  signatures:
+    - "tinder wall"
+    - "rite of flame"
+    - "lotus petal"
+    - "land grant"
+  min_signatures: 2
+  anti_signatures:
+    # Don't count the Belcher pivot in Oops
+    - "balustrade spy"
+
+- name: "High Tide"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "high tide"
+  signatures:
+    - "time spiral"
+    - "snap"
+    - "cloud of faeries"
+    - "minds desire"
+    - "turnabout"
+    - "merchant scroll"
+    - "cunning wish"
+  min_signatures: 3
+
+- name: "Tron"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "urza's tower"
+  signatures:
+    - "kozileks command"
+    - "karn the great creator"
+    - "planar nexus"
+    - "urzas saga"
+    - "urza's mine"
+    - "ancient tomb"
+    - "grim monolith"
+    - "the one ring"
+  min_signatures: 3
+
+- name: "Cascade"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "shardless agent"
+    - "crashing footfalls"
+  signatures:
+    - "elvish spirit guide"
+    - "fire // ice"
+    - "violent outburst"
+    - "simian spirit guide"
+    - "wooded foothills"
+    - "brazen borrower"
+  min_signatures: 3
+
+- name: "Necro Spike"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "soul spike"
+    - "necrodominance"
+  signatures:
+    - "march of wretched sorrow"
+    - "fell the profane // fell mire"
+    - "sheoldred the apocalypse"
+    - "the one ring"
+    - "ancient cellarspawn"
+  min_signatures: 3
+
+- name: "Wheels"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "hullbreacher"
+  signatures:
+    - "saprazzan skerry"
+    - "narset, parter of veils"
+    - "day's undoing"
+    - "sink into stupor // soporific springs"
+    - "lion's eye diamond"
+    - "echo of eons"
+  min_signatures: 3
+
+- name: "Bomberman"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "auriok salvagers"
+    - "lion's eye diamond"
+  signatures:
+    - "chalice of the void"
+    - "karn the great creator"
+    - "glaring fleshraker"
+  min_signatures: 2
+
+- name: "Living End"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "living end"
+  signatures:
+    - "bloodbraid marauder"
+    - "incubation // incongruity"
+    - "generous ent"
+    - "colossal skyturtle"
+    - "animate dead"
+    # Banned
+    - "troll of khazad-dum"
+    - "grief"
+  min_signatures: 2
+
+- name: "OracleShift"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "thought lash"
+    - "thassas oracle"
+    - "paradigm shift"
+  signatures:
+    - "step through"
+    - "cavern of souls"
+    - "impulse"
+    - "chalice of the void"
+    - "stock up"
+  min_signatures: 2
+
+- name: "Burn"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "lava spike"
+    - "rift bolt"
+  signatures:
+    - "rift bolt"
+    - "fireblast"
+    - "price of progress"
+    - "eidolon of the great revel"
+    - "goblin guide"
+    - "skewer the critics"
+    - "exquisite firecraft"
+  min_signatures: 3
+
+- name: "Food Chain"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "food chain"
+  signatures:
+    - "misthollow griffin"
+    - "squee, the immortal"
+    - "eternal scourge"
+    - "questing druid // seek the beast"
+    - "unstable amulet"
+    - "galvanic discharge"
+  min_signatures: 3
+  anti_signatures:
+    - "muxus, goblin grandee"
+    - "goblin ringleader"
+
+- name: "Enchantress"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "argothian enchantress"
+  signatures:
+    - "serra's sanctum"
+    - "utopia sprawl"
+    - "on thin ice"
+    - "wild growth"
+    - "destiny spinner"
+    - "enchantresss presence"
+    - "sythis harvests hand"
+  min_signatures: 3
+
+- name: "Paradoxical Outcome (PO)"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "paradoxical outcome"
+  signatures:
+    - "glaring fleshraker"
+    - "grim monolith"
+    - "manifold key"
+    - "mystic forge"
+    - "voltaic key"
+    - "kozileks command"
+  min_signatures: 3
+
+# Mostly replaced by Tron
+- name: "Mystic Forge"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "mystic forge"
+  signatures:
+    - "grim monolith"
+    - "manifold key"
+    - "glaring fleshraker"
+    - "urzas workshop"
+    - "basalt monolith"
+    - "karn the great creator"
+    - "the one ring"
+    # Banned
+    - "vexing bauble"
+  min_signatures: 3
+  anti_signatures:
+    - "paradoxical outcome"
+    # Tron
+    - "planar nexus"
+

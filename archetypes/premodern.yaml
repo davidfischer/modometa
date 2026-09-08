@@ -1,0 +1,96 @@
+# Premodern Archetype Signatures for Modometa
+
+- name: "Terrageddon"
+  category: "Aggro-Control"
+  priority: 95
+  signatures:
+    - "terravore"
+    - "armageddon"
+    - "knight of the reliquary"
+    - "swords to plowshares"
+    - "crop rotation"
+  min_signatures: 2
+
+- name: "Sligh / Burn"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "jackal pup"
+    - "goblin guide"
+    - "ball lightning"
+    - "fireblast"
+    - "price of progress"
+    - "cursed scroll"
+  min_signatures: 3
+
+- name: "Deadguy Ale"
+  category: "Midrange"
+  priority: 90
+  signatures:
+    - "hypnotic specter"
+    - "sinkhole"
+    - "hymn to tourach"
+    - "vindicate"
+    - "gerrard's verdict"
+    - "swords to plowshares"
+  min_signatures: 3
+
+- name: "Psychatog"
+  category: "Control"
+  priority: 95
+  mandatory:
+    - "psychatog"
+  signatures:
+    - "fact or fiction"
+    - "counterspell"
+    - "accumulated knowledge"
+    - "deep analysis"
+    - "chainer's edict"
+  min_signatures: 2
+
+- name: "Landstill"
+  category: "Control"
+  priority: 95
+  mandatory:
+    - "standstill"
+  signatures:
+    - "mishra's factory"
+    - "faerie conclave"
+    - "wrath of god"
+    - "swords to plowshares"
+    - "counterspell"
+  min_signatures: 2
+
+- name: "The Rock"
+  category: "Midrange"
+  priority: 90
+  signatures:
+    - "spiritmonger"
+    - "pernicious deed"
+    - "deranged hermit"
+    - "birds of paradise"
+    - "cabal therapy"
+    - "duress"
+  min_signatures: 3
+
+- name: "Elves"
+  category: "Combo"
+  priority: 90
+  signatures:
+    - "priest of titania"
+    - "wirewood symbiote"
+    - "llanowar elves"
+    - "quirion ranger"
+    - "natural order"
+  min_signatures: 3
+
+- name: "Goblins"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "goblin lackey"
+    - "goblin ringleader"
+    - "goblin piledriver"
+    - "siege-gang commander"
+    - "goblin matron"
+  min_signatures: 3

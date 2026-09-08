@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}Modometa — MTGO Metagame Overview{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-10">
+  <!-- Hero Section -->
+  <div>
+    <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">MTGO Metagame Analyzer</h1>
+    <p class="mt-2 text-base text-zinc-400">
+      Tracking competitive Magic Online metagames across 30-day and 90-day windows. Analyzing Challenge share, Top 8 share, League 5-0 trophies, and conversion rates.
+    </p>
+  </div>
+
+  <!-- Format Cards Grid -->
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+    {% for item in format_metas %}
+      <div class="flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 hover:border-zinc-700 transition-colors">
+        <div>
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-bold text-white capitalize">{{ item.format_name }}</h2>
+            <a href="/{{ item.format_slug }}/?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+              View Meta →
+            </a>
+          </div>
+
+          <p class="mt-1 text-xs text-zinc-500">
+            {{ item.total_decks }} decks recorded in last {{ TIMEFRAME }} days
+          </p>
+
+          <!-- Top 3-5 Archetypes Table -->
+          <div class="mt-4">
+            <h3 class="text-2xs font-semibold uppercase tracking-wider text-zinc-400">Top Archetypes</h3>
+            <div class="mt-2 space-y-2">
+              {% for arch in item.top_archetypes %}
+                <div class="flex items-center justify-between text-xs py-1 border-b border-zinc-800/60 last:border-0">
+                  <div class="flex items-center gap-2 truncate pr-2">
+                    {{ arch.colors|mana_symbols:arch.color_name }}
+                    <a href="/{{ item.format_slug }}/archetype/{{ arch.slug }}/?days={{ TIMEFRAME }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
+                      {{ arch.name }}
+                    </a>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0 font-mono text-zinc-400">
+                    <span title="{{ arch.top8_count }}/{{ item.total_top8_slots }}" class="text-emerald-400 font-semibold cursor-help">
+                      {{ arch.top8_share }}% T8
+                    </span>
+                    <span title="{{ arch.count }}/{{ item.total_decks }}" class="text-zinc-500 cursor-help">
+                      ({{ arch.count }})
+                    </span>
+                  </div>
+                </div>
+              {% empty %}
+                <p class="text-xs text-zinc-500 italic py-2">No decks recorded in this timeframe yet.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+          <span>{{ item.challenge_count }} Challenges</span>
+          <span>{{ item.league_count }} Leagues</span>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Recent Tournaments Across All Formats -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-white">Recent Competitive Events</h2>
+      <span class="text-xs text-zinc-500">Latest MTGO dumps</span>
+    </div>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-xs text-zinc-300">
+        <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500">
+          <tr>
+            <th class="py-2.5 px-3">Date</th>
+            <th class="py-2.5 px-3">Format</th>
+            <th class="py-2.5 px-3">Event Name</th>
+            <th class="py-2.5 px-3">Type</th>
+            <th class="py-2.5 px-3 text-right">Decks</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-zinc-800/60 font-mono">
+          {% for t in recent_tournaments %}
+            <tr class="hover:bg-zinc-800/30 transition-colors">
+              <td class="py-2.5 px-3 text-zinc-400">{{ t.date|date:"Y-m-d" }}</td>
+              <td class="py-2.5 px-3 capitalize">
+                <span class="rounded bg-zinc-800 px-2 py-0.5 text-zinc-300 font-sans">
+                  {{ t.format }}
+                </span>
+              </td>
+              <td class="py-2.5 px-3 font-sans">
+                <a href="/{{ t.format }}/tournaments/{{ t.id }}/" class="text-white hover:text-emerald-400 font-medium">
+                  {{ t.name }}
+                </a>
+              </td>
+              <td class="py-2.5 px-3 uppercase text-2xs text-zinc-400">{{ t.event_type }}</td>
+              <td class="py-2.5 px-3 text-right text-emerald-400">{{ t.deck_count }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="py-4 text-center text-zinc-500">No tournaments loaded yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

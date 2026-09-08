@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../../templates/**/*.html";
+
+@theme {
+  --color-emerald-500: #10b981;
+  --color-emerald-400: #34d399;
+  --color-emerald-600: #059669;
+
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+}
+
+[inert] ::-webkit-scrollbar {
+  display: none;
+}
+
+/* Light mode theme tokens and overrides */
+html:not(.dark) {
+  color-scheme: light;
+  --color-zinc-950: #f8fafc;
+  --color-zinc-900: #ffffff;
+  --color-zinc-800: #e2e8f0;
+  --color-zinc-700: #cbd5e1;
+  --color-zinc-600: #64748b;
+  --color-zinc-500: #64748b;
+  --color-zinc-400: #475569;
+  --color-zinc-300: #334155;
+  --color-zinc-200: #1e293b;
+  --color-zinc-100: #0f172a;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Light mode typography & contrast refinements */
+html:not(.dark) :is(h1, h2, h3, h4, h5, h6, th) {
+  color: #0f172a !important;
+}
+
+html:not(.dark) .text-white:not(
+  [class*="bg-emerald"],
+  [class*="bg-rose"],
+  [class*="bg-sky"],
+  [class*="hover:bg-emerald"]:hover,
+  [class*="selection:text-white"]
+) {
+  color: #0f172a;
+}
+
+html:not(.dark) .hover\:text-white:hover:not(
+  [class*="hover:bg-emerald"],
+  [class*="bg-emerald"]
+) {
+  color: #0f172a;
+}
+
+html:not(.dark) .hover\:text-zinc-100:hover,
+html:not(.dark) .hover\:text-zinc-200:hover {
+  color: #0f172a;
+}
+
+/* High contrast accents in light mode */
+html:not(.dark) .text-emerald-400 {
+  color: #059669;
+}
+
+html:not(.dark) .hover\:text-emerald-400:hover {
+  color: #047857;
+}
+
+html:not(.dark) .text-emerald-300 {
+  color: #065f46;
+}
+
+html:not(.dark) .text-sky-300 {
+  color: #0369a1;
+}
+
+html:not(.dark) .text-rose-300 {
+  color: #be123c;
+}
+
+/* Container, card, and sidebar styles in light mode */
+html:not(.dark) .rounded-xl.border {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+html:not(.dark) #sidebar {
+  background-color: #ffffff;
+  border-right-color: #e2e8f0;
+}
+
+html:not(.dark) header.sticky {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-bottom-color: #e2e8f0;
+}
+
+html:not(.dark) .bg-zinc-950\/40,
+html:not(.dark) .bg-zinc-950\/60 {
+  background-color: #f1f5f9;
+}
+
+html:not(.dark) .hover\:bg-zinc-800\/40:hover,
+html:not(.dark) .hover\:bg-zinc-800\/30:hover {
+  background-color: #f1f5f9;
+}
+
+html:not(.dark) .hover\:bg-zinc-800\/60:hover,
+html:not(.dark) .hover\:bg-zinc-800\/50:hover {
+  background-color: #e2e8f0;
+}
+
+html:not(.dark) .hover\:border-zinc-700:hover {
+  border-color: #cbd5e1;
+}
+
+html:not(.dark) .divide-zinc-800\/60 > :not(:last-child) {
+  border-color: #e2e8f0;
+}
+
+html:not(.dark) .border-zinc-800\/60,
+html:not(.dark) .border-zinc-800\/80 {
+  border-color: #e2e8f0;
+}
+
+/* Banned card warning banner */
+html:not(.dark) .bg-rose-950\/40 {
+  background-color: #fff1f2;
+  border-color: #fecdd3;
+  color: #9f1239;
+}
+
+/* Scryfall Card Image Hover Tooltip */
+#card-hover-tooltip {
+  pointer-events: none;
+  position: fixed;
+  z-index: 100;
+  display: none;
+  max-width: 260px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  transition: opacity 0.15s ease;
+}

@@ -1,0 +1,89 @@
+# Pauper Archetype Signatures for Modometa
+
+- name: "Kuldotha Red"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - "kuldotha rebirth"
+  signatures:
+    - "goblin bushwhacker"
+    - "experimental synthesizer"
+    - "galvanic blast"
+    - "lightning bolt"
+    - "great furnace"
+  min_signatures: 3
+
+- name: "Grixis Affinity"
+  category: "Midrange"
+  priority: 95
+  signatures:
+    - "kenku artificer"
+    - "deadly dispute"
+    - "blood fountain"
+    - "galvanic blast"
+    - "thoughtcast"
+    - "mistvault bridge"
+    - "silverbluff bridge"
+    - "drossforge bridge"
+  min_signatures: 3
+
+- name: "Dimir Terror"
+  category: "Tempo"
+  priority: 95
+  signatures:
+    - "tolarian terror"
+    - "cryptic serpent"
+    - "thought scour"
+    - "mental note"
+    - "snuff out"
+    - "counterspell"
+    - "lorien revealed"
+  min_signatures: 3
+
+- name: "Mono-Blue Faeries"
+  category: "Tempo"
+  priority: 95
+  signatures:
+    - "spellstutter sprite"
+    - "faerie seer"
+    - "ninja of the deep hours"
+    - "snap"
+    - "moon-circuit hacker"
+  min_signatures: 3
+
+- name: "Caw-Gates"
+  category: "Midrange"
+  priority: 95
+  mandatory:
+    - "basilisk gate"
+  signatures:
+    - "squadron hawk"
+    - "sacred cat"
+    - "brainstorm"
+    - "guardian of the guildpact"
+    - "heap gate"
+  min_signatures: 2
+
+- name: "Bogles"
+  category: "Aggro"
+  priority: 95
+  signatures:
+    - "slippery bogle"
+    - "gladecover scout"
+    - "ethereal armor"
+    - "ancestral mask"
+    - "armadillo cloak"
+    - "abundant growth"
+  min_signatures: 3
+
+- name: "Golgari Gardens"
+  category: "Control"
+  priority: 95
+  signatures:
+    - "crypt rats"
+    - "avenging hunter"
+    - "deadly dispute"
+    - "chainer's edict"
+    - "cast down"
+    - "spinning darkness"
+  min_signatures: 3

@@ -1,0 +1,23 @@
+// Premodern UB Psychatog
+4 Psychatog
+4 Fact or Fiction
+4 Counterspell
+4 Accumulated Knowledge
+4 Deep Analysis
+4 Force Spike
+4 Duress
+4 Smother
+4 Underground River
+4 Polluted Delta
+8 Island
+6 Swamp
+4 Cephalid Coliseum
+2 Intuition
+4 Standstill
+
+Sideboard
+3 Hydroblast
+3 Blue Elemental Blast
+3 Engineered Plague
+3 Coffin Purge
+3 Perish

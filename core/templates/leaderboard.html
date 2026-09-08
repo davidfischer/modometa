@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ format_name }} Leaderboard — Modometa{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="/" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <a href="/{{ format_slug }}/?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">Leaderboard</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-semibold uppercase text-emerald-400 border border-emerald-500/30">
+          Rankings
+        </span>
+      </div>
+      <h1 class="mt-2 text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Leaderboard</h1>
+      <p class="mt-1 text-sm text-zinc-400">
+        Top 100 competitors ranked by Challenge Top 8 finishes over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+      </p>
+    </div>
+  </div>
+
+  <!-- Leaderboard Table -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
+        <tr>
+          <th class="py-3 px-4 w-12 text-center">#</th>
+          <th class="py-3 px-4">Player</th>
+          <th class="py-3 px-4 text-right" title="Challenge Top 8 finishes in period">Top 8s</th>
+          <th class="py-3 px-4 text-right" title="Total Challenge appearances">Appearances</th>
+          <th class="py-3 px-4 text-right" title="Top 8 finishes / Challenge appearances">Conversion Rate</th>
+          <th class="py-3 px-4 text-right" title="League 5-0 trophies in period">5-0 Trophies</th>
+          <th class="py-3 px-4">Top Archetype</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono">
+        {% for p in players %}
+          <tr class="hover:bg-zinc-800/40 transition-colors {% if forloop.counter <= 3 %}bg-emerald-500/[0.03]{% endif %}">
+            <td class="py-3 px-4 text-center font-bold">
+              {% if forloop.counter == 1 %}
+                <span class="text-amber-400">🥇 1</span>
+              {% elif forloop.counter == 2 %}
+                <span class="text-zinc-300">🥈 2</span>
+              {% elif forloop.counter == 3 %}
+                <span class="text-amber-600">🥉 3</span>
+              {% else %}
+                <span class="text-zinc-500">{{ forloop.counter }}</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 font-sans font-medium text-white">
+              <a href="/player/{{ p.player }}/" class="hover:text-emerald-400 text-sm">
+                {{ p.player }}
+              </a>
+            </td>
+            <td class="py-3 px-4 text-right text-emerald-400 font-bold text-sm">
+              {{ p.top8_count }}
+            </td>
+            <td class="py-3 px-4 text-right text-zinc-300">
+              {{ p.challenge_appearances }}
+            </td>
+            <td class="py-3 px-4 text-right" title="{{ p.top8_count }}/{{ p.challenge_appearances }}">
+              <span class="rounded px-2 py-0.5 text-2xs font-semibold {% if p.conversion_rate >= 30 %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% elif p.conversion_rate >= 15 %}bg-sky-500/20 text-sky-300{% else %}text-zinc-400{% endif %}">
+                {{ p.conversion_rate }}%
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right text-sky-400 font-semibold">
+              {{ p.league_count }}
+            </td>
+            <td class="py-3 px-4 font-sans">
+              {% if p.top_archetype %}
+                <a href="/{{ format_slug }}/archetype/{{ p.top_archetype_slug }}/" class="text-zinc-300 hover:text-emerald-400">
+                  {{ p.top_archetype }}
+                </a>
+              {% else %}
+                <span class="text-zinc-600">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="py-8 text-center text-zinc-500 italic">No player leaderboard data available for this timeframe.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

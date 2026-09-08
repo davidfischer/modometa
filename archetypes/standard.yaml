@@ -1,0 +1,77 @@
+# Standard Archetype Signatures for Modometa
+
+- name: "Golgari Midrange"
+  category: "Midrange"
+  priority: 95
+  signatures:
+    - "glissa sunslayer"
+    - "mosswood dreadknight"
+    - "sheoldred, the apocalypse"
+    - "cut down"
+    - "go for the throat"
+    - "restless cottage"
+  min_signatures: 3
+
+- name: "Domain Ramp"
+  category: "Ramp"
+  priority: 95
+  mandatory:
+    - "atraxa, grand unifier"
+  signatures:
+    - "archangel of wrath"
+    - "sunfall"
+    - "herd migration"
+    - "leyline binding"
+    - "up the beanstalk"
+  min_signatures: 3
+
+- name: "Boros Convoke"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - "knight-errant of eos"
+  signatures:
+    - "gleeful demolition"
+    - "warden of the inner sky"
+    - "resolute reinforcements"
+    - "novice inspector"
+    - "case of the gateway express"
+  min_signatures: 3
+
+- name: "Mono-Red Aggro"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "monastery swiftspear"
+    - "kumano faces kakkazan"
+    - "slickshot show-off"
+    - "screaming nemesis"
+    - "monstrous rage"
+    - "lightning strike"
+    - "emberheart challenger"
+    - "hired claw"
+    - "manifold mouse"
+    - "sunspine lynx"
+  min_signatures: 3
+
+- name: "Dimir Midrange"
+  category: "Midrange"
+  priority: 90
+  signatures:
+    - "deep-cavern bat"
+    - "preacher of the schism"
+    - "gix, yawgmoth praetor"
+    - "subterranean schooner"
+    - "faerie mastermind"
+  min_signatures: 3
+
+- name: "Azorius Control"
+  category: "Control"
+  priority: 90
+  signatures:
+    - "sunfall"
+    - "the wandering emperor"
+    - "no more lies"
+    - "beza, the bounding spring"
+    - "get lost"
+  min_signatures: 3

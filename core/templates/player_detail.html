@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}{{ player_name }}'s Record — Modometa{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="/" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-zinc-500">Players</span>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">{{ player_name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+  <!-- Player Profile Header -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-wider text-emerald-400 font-semibold font-mono">Player Profile</span>
+        </div>
+        <h1 class="mt-1 text-3xl font-bold text-white">{{ player_name }}</h1>
+        <p class="mt-1 text-xs text-zinc-400">
+          Record across {{ total_decks }} events in {{ formats_played|join:", " }} over <strong class="text-emerald-400 font-semibold">all time</strong>.
+        </p>
+      </div>
+
+      <!-- Lifetime Summary Cards -->
+      <div class="flex items-center gap-3 font-mono">
+        <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 text-center min-w-20">
+          <div class="text-2xs text-zinc-500 uppercase">League 5-0 Trophies</div>
+          <div class="text-xl font-bold text-sky-400">{{ total_5_0s }}</div>
+        </div>
+        <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 text-center min-w-20 cursor-help" title="{{ total_top8s }}/{{ chall_appearances }}">
+          <div class="text-2xs text-zinc-500 uppercase">Challenge T8</div>
+          <div class="text-xl font-bold text-emerald-400">{{ total_top8s }}</div>
+        </div>
+        <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 text-center min-w-20 cursor-help" title="{{ total_top8s }}/{{ chall_appearances }}">
+          <div class="text-2xs text-zinc-500 uppercase">Conversion</div>
+          <div class="text-xl font-bold text-white">{{ conversion_rate }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tournament Appearances & Decks -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-white">Event History</h2>
+      <span class="text-2xs text-zinc-500 font-mono">{{ total_decks }} recorded finishes</span>
+    </div>
+
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
+        <tr>
+          <th class="py-3 px-4">Date</th>
+          <th class="py-3 px-4">Format</th>
+          <th class="py-3 px-4">Event</th>
+          <th class="py-3 px-4">Archetype</th>
+          <th class="py-3 px-4">Result</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono">
+        {% for d in decks %}
+          <tr class="hover:bg-zinc-800/40 transition-colors">
+            <td class="py-3 px-4">
+              <a href="/player/{{ d.player }}/deck/{{ d.tournament_id }}/{{ d.deck_index }}/" class="text-white hover:text-emerald-400 hover:underline">
+                {{ d.tournament.date|date:"Y-m-d" }}
+              </a>
+            </td>
+            <td class="py-3 px-4 font-sans capitalize">
+              <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-2xs font-bold text-zinc-300">
+                {{ d.format }}
+              </span>
+            </td>
+            <td class="py-3 px-4 font-sans">
+              <a href="/{{ d.format }}/tournaments/{{ d.tournament_id }}/" class="text-zinc-200 hover:text-emerald-400">
+                {{ d.tournament.name }}
+              </a>
+            </td>
+            <td class="py-3 px-4 font-sans">
+              <a href="/{{ d.format }}/archetype/{{ d.archetype_slug }}/" class="text-emerald-400 hover:underline font-medium">
+                {{ d.archetype }}
+              </a>
+              <span class="ml-1.5 align-middle">{{ d.colors|mana_symbols:d.color_name }}</span>
+            </td>
+            <td class="py-3 px-4">
+              {% if d.is_top8 %}
+                <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30">
+                  ★ {{ d.result }}
+                </span>
+              {% elif d.is_5_0 %}
+                <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30">
+                  🏆 5-0
+                </span>
+              {% else %}
+                <span class="text-zinc-400">{{ d.result }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="py-8 text-center text-zinc-500 italic">No events found for this player.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between text-xs text-zinc-400 pt-4">
+      <div>
+        {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} events
+      </div>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            ← Previous
+          </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            Next →
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

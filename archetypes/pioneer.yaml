@@ -1,0 +1,90 @@
+# Pioneer Archetype Signatures for Modometa
+
+- name: "Izzet Phoenix"
+  category: "Tempo"
+  priority: 95
+  mandatory:
+    - "arclight phoenix"
+  signatures:
+    - "treasure cruise"
+    - "temporal trespass"
+    - "pieces of the puzzle"
+    - "lightning axe"
+    - "picklock prankster"
+    - "sleight of hand"
+  min_signatures: 2
+
+- name: "Rakdos Vampires"
+  category: "Midrange"
+  priority: 95
+  mandatory:
+    - "sorin, imperious bloodlord"
+    - "vein ripper"
+  signatures:
+    - "thoughtseize"
+    - "fable of the mirror-breaker"
+    - "fatal push"
+    - "bloodtithe harvester"
+  min_signatures: 2
+
+- name: "Mono-Green Devotion"
+  category: "Ramp"
+  priority: 95
+  mandatory:
+    - "nykthos, shrine to nyx"
+    - "karn, the great creator"
+  signatures:
+    - "kiora, behemoth beckoner"
+    - "storm the festival"
+    - "old-growth troll"
+    - "cavalier of thorns"
+    - "elvish mystic"
+  min_signatures: 2
+
+- name: "Lotus Field Combo"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "lotus field"
+    - "thespian's stage"
+  signatures:
+    - "hidden strings"
+    - "pore over the pages"
+    - "emergent ultimatum"
+    - "vizier of tumbling sands"
+  min_signatures: 2
+
+- name: "Boros Heroic / Convoke"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "venerated loxodon"
+    - "knight-errant of eos"
+    - "gleeful demolition"
+    - "monastery swiftspear"
+    - "favored hoplite"
+  min_signatures: 2
+
+- name: "Waste Not"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "waste not"
+  signatures:
+    - "thoughtseize"
+    - "geier reach sanitarium"
+    - "go for the throat"
+    - "sheoldred, the apocalypse"
+  min_signatures: 2
+
+- name: "Azorius Control"
+  category: "Control"
+  priority: 90
+  signatures:
+    - "teferi, hero of dominaria"
+    - "supreme verdict"
+    - "the wandering emperor"
+    - "absorb"
+    - "dovin's veto"
+    - "shark typhoon"
+  min_signatures: 3

@@ -1,0 +1,20 @@
+{
+  "name": "modometa",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i core/static/css/input.css -o core/static/css/protocol.css --minify",
+    "watch:css": "tailwindcss -i core/static/css/input.css -o core/static/css/protocol.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.16",
+    "tailwindcss": "^4.3.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "mana-font": "^1.18.0"
+  }
+}

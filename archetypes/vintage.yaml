@@ -1,0 +1,351 @@
+# Vintage Archetypes
+
+#####################################################################
+# Shops Archetypes
+#####################################################################
+
+- name: "Jewel Shops"
+  category: "Prison"
+  priority: 95
+  mandatory:
+    - "coveted jewel"
+    - card: "mishra's workshop"
+      min: 3
+  signatures:
+    - "Tinker"
+    - "trinisphere"
+    - "The One Ring"
+    - "Phyrexian Metamorph"
+    - "Transmute Artifact"
+  min_signatures: 2
+
+- name: "Raker Shops"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "mishra's workshop"
+      min: 3
+    - "Glaring Fleshraker"
+  signatures:
+    - "Sensei's Divining Top"
+    - "patchwork automaton"
+    - "Tezzeret, Cruel Captain"
+    - "The One Ring"
+  min_signatures: 2
+  # If a deck contains Jewel,
+  # it won't be classified as Raker Shops
+  anti_signatures:
+    - "coveted jewel"
+
+- name: "Sphere Shops"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "mishra's workshop"
+      min: 3
+    - card: "Sphere of Resistance"
+      min: 3
+  signatures:
+    - "Thorn of Amethyst"
+    - "patchwork automaton"
+    - "Golos, Tireless Pilgrim"
+    - "Stonecoil Serpent"
+    - "Nettlecyst"
+  min_signatures: 2
+  # If a deck contains Jewel,
+  # it won't be classified as Sphere Shops
+  anti_signatures:
+    - "coveted jewel"
+
+- name: "Oath"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "oath of druids"
+      min: 2
+  signatures:
+    - "forbidden orchard"
+    - "atraxa, grand unifier"
+    - "show and tell"
+    - "flash"
+    - "gaea's blessing"
+  min_signatures: 2
+  anti_signatures:
+    - "doomsday"
+    - "paradoxical outcome"
+
+- name: "Doomsday"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "doomsday"
+  signatures:
+    - "thassa's oracle"
+    - "dark ritual"
+    - "gush"
+    - "demonic consultation"
+    - "time walk"
+  min_signatures: 2
+
+- name: "Paradoxical Outcome (PO)"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "paradoxical outcome"
+      min: 3
+  signatures:
+    - "mox opal"
+    - "tinker"
+    - "bolas's citadel"
+    - "urza's saga"
+    - "tolarian academy"
+  min_signatures: 2
+  anti_signatures:
+    - "mishra's workshop"
+    # Lurrus PO
+    - "Lurrus of the Dream-Den"
+
+- name: "Dredge"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - card: "bazaar of baghdad"
+      min: 3
+  signatures:
+    - "golgari grave-troll"
+    - "stinkweed imp"
+    - "hollow one"
+    - "ichorid"
+    - "Creeping Chill"
+  min_signatures: 2
+  anti_signatures:
+    - "Vengevine"
+
+- name: "CounterVine"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - card: "bazaar of baghdad"
+      min: 3
+    - "Vengevine"
+  signatures:
+    - "basking rootwalla"
+    - "blazing rootwalla"
+    - "master of death"
+    - "squee, goblin nabob"
+    - "hollow one"
+    - "force of will"
+  min_signatures: 3
+
+- name: "Mono-White Initiative"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - card: "White Plume Adventurer"
+      min: 3
+    - card: "Seasoned Dungeoneer"
+      min: 3
+  signatures:
+    - "Archon of Emeria"
+    - "Anointed Peacekeeper"
+    - "Clarion Conqueror"
+    - "Chancellor of the Annex"
+    - "Chrome Mox"
+    - "Cavern of Souls"
+  min_signatures: 3
+
+- name: "Tinker"
+  category: "Combo"
+  priority: 100
+  mandatory:
+    - "Tinker"
+  signatures:
+    - "Transmute Artifact"
+    - "Bolas's Citadel"
+    - "Paradox Engine"
+    - "Time Vault"
+    - "Tezzeret the Seeker"
+  min_signatures: 2
+  anti_signatures:
+    # This deck is very close to Jewel Shops
+    - "coveted jewel"
+    - "underworld breach"
+
+# Like Legacy Oops but with Vintage cards (and cards banned in legacy)
+- name: "Oops All Spells"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "balustrade spy"
+    - "undercity informer"
+  signatures:
+    - "narcomoeba"
+    - "dread return"
+    - "chancellor of the annex"
+    - "thassa's oracle"
+    - "boggart trawler"
+    - "fell the profane"
+    - "pact of negation"
+  min_signatures: 2
+
+- name: "Eldrazi"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "sowing mycospawn"
+    - "glaring fleshraker"
+  signatures:
+    - "wastescape battlemage"
+    - "kozileks command"
+    - "thought-knot seer"
+    - "eye of ugin"
+    - "gaeas cradle"
+    - "eldrazi temple"
+  min_signatures: 3
+
+- name: "Energy"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "ocelot pride"
+    - "guide of souls"
+  signatures:
+    - "ajani, nacatl pariah"
+    - "voice of victory"
+    - "swords to plowshares"
+    - "skullclamp"
+    - "mai scornful striker"
+    - "dark confidant"
+  min_signatures: 2
+
+- name: "Red Prison"
+  category: "Stompy"
+  priority: 90
+  mandatory:
+    - "simian spirit guide"
+    - "magus of the moon"
+  signatures:
+    - "city of traitors"
+    - "blood moon"
+    - "fury"
+    - "broadside bombardiers"
+    - "null rod"
+  min_signatures: 2
+
+- name: "Storm"
+  category: "Stompy"
+  priority: 90
+  signatures:
+    - "beseech the mirror"
+    - "necropotence"
+    - "dark petition"
+    - "dark ritual"
+    - "tendrils of agony"
+  min_signatures: 3
+  anti_signatures:
+    - "Underworld Breach"
+
+- name: "Lands"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "crop rotation"
+    - "fastbond"
+  signatures:
+    - "crucible of worlds"
+    - "perennial behemoth"
+    - "exploration"
+    - "bazaar of baghdad"
+    - "mishras workshop"
+    - "glacial chasm"
+    - "life from the loam"
+  min_signatures: 3
+
+- name: "Merfolk"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - card: "Cavern of Souls"
+      min: 3
+  signatures:
+    - "true-name nemesis"
+    - "vodalian hexcatcher"
+    - "thieving skydiver"
+    - "Tishana's Tidebinder"
+    - "Hullbreacher"
+    - "Floodpits Drowner"
+  min_signatures: 3
+
+- name: "Underworld Breach"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Underworld Breach"
+  signatures:
+    # Lurrus not strictly required
+    - "Lurrus of the Dream-Den"
+    - "Brain Freeze"
+    - "Gifts Ungiven"
+    - "Demonic Tutor"
+    - "Merchant Scroll"
+    - "wheel of fortune"
+  min_signatures: 3
+
+#####################################################################
+# Lurrus Archetypes
+#####################################################################
+
+- name: "Lurrus PO"
+  category: "Combo"
+  priority: 100
+  mandatory:
+    - "Lurrus of the Dream-Den"
+    - "paradoxical outcome"
+  signatures:
+    - "Mana Crypt"
+    - "Thundertrap Trainer"
+    - "Flame of Anor"
+    - "Tolarian Academy"
+  min_signatures: 2
+
+- name: "Dimir Lurrus"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Lurrus of the Dream-Den"
+  signatures:
+    - "Psychic Frog"
+    - "Orcish Bowmasters"
+    - "Underground Sea"
+  min_signatures: 2
+  anti_signatures:
+    - "Swords to Plowshares"
+    - "Tundra"
+    - "Tropical Island"
+    - "paradoxical outcome"
+
+- name: "Esper Lurrus"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "Lurrus of the Dream-Den"
+  signatures:
+    - "Swords to Plowshares"
+    - "Psychic Frog"
+    - "Tundra"
+    - "Underground Sea"
+  min_signatures: 3
+
+- name: "BUG Lurrus"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Lurrus of the Dream-Den"
+    - "Deathrite Shaman"
+  signatures:
+    - "Kishla Skimmer"
+    - "Psychic Frog"
+    - "Abrupt Decay"
+    - "Collector Ouphe"
+    - "Force of Vigor"
+  min_signatures: 3

@@ -1,0 +1,203 @@
+# Modern Archetype Signatures for Modometa
+
+- name: "Boros Energy"
+  category: "Aggro"
+  priority: 100
+  signatures:
+    - "ocelot pride"
+    - "guide of souls"
+    - "ajani, nacatl pariah"
+    - "amped raptor"
+    - "phlage, titan of fire's fury"
+    - "galvanic discharge"
+  min_signatures: 3
+  anti_signatures:
+    - "blood crypt"
+    - "orcish bowmasters"
+    - "chthonian nightmare"
+
+- name: "Mardu Energy"
+  category: "Midrange"
+  priority: 105
+  signatures:
+    - "ocelot pride"
+    - "guide of souls"
+    - "ajani, nacatl pariah"
+    - "chthonian nightmare"
+    - "orcish bowmasters"
+    - "phlage, titan of fire's fury"
+  min_signatures: 3
+
+- name: "Mono-Black Necro"
+  category: "Midrange"
+  priority: 95
+  mandatory:
+    - "necrodominance"
+  signatures:
+    - "soul spike"
+    - "grief"
+    - "dauthi voidwalker"
+    - "march of wretched sorrow"
+    - "sheoldred, the apocalypse"
+  min_signatures: 2
+
+- name: "Amulet Titan"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "amulet of vigor"
+    - "primeval titan"
+  signatures:
+    - "summoner's pact"
+    - "urza's saga"
+    - "valakut, the molten pinnacle"
+    - "dryad of the Ilysian grove"
+  min_signatures: 2
+
+- name: "Eldrazi Tron / Eldrazi Aggro"
+  category: "Aggro"
+  priority: 95
+  signatures:
+    - "eldrazi temple"
+    - "devourer of destiny"
+    - "thought-knot seer"
+    - "chalice of the void"
+    - "all is dust"
+    - "urza's tower"
+  min_signatures: 3
+
+- name: "Mono-Green Tron"
+  category: "Ramp"
+  priority: 90
+  mandatory:
+    - "urza's tower"
+    - "urza's power plant"
+    - "urza's mine"
+  signatures:
+    - "karn the great creator"
+    - "karn liberated"
+    - "expedition map"
+    - "sylvan scrying"
+    - "ancient stirrings"
+    - "the one ring"
+  min_signatures: 2
+  anti_signatures:
+    - "eldrazi temple"
+
+- name: "Dimir Murktide / Frogtide"
+  category: "Tempo"
+  priority: 95
+  signatures:
+    - "psychic frog"
+    - "murktide regent"
+    - "counterspell"
+    - "fatal push"
+    - "drown in the loch"
+    - "subtlety"
+  min_signatures: 3
+
+- name: "Izzet Murktide"
+  category: "Tempo"
+  priority: 90
+  signatures:
+    - "murktide regent"
+    - "dragon's rage channeler"
+    - "lightning bolt"
+    - "unholy heat"
+    - "counterspell"
+    - "mishra's bauble"
+  min_signatures: 3
+  anti_signatures:
+    - "psychic frog"
+
+- name: "Golgari Yawgmoth"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "yawgmoth, thran physician"
+  signatures:
+    - "chord of calling"
+    - "young wolf"
+    - "strangleroot geist"
+    - "orcish bowmasters"
+    - "delighted halfling"
+  min_signatures: 2
+
+- name: "Living End"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "living end"
+  signatures:
+    - "shardless agent"
+    - "violent outburst"
+    - "grief"
+    - "striped riverwinder"
+    - "curator of mysteries"
+    - "oliphaunt"
+  min_signatures: 3
+
+- name: "Burn"
+  category: "Aggro"
+  priority: 85
+  signatures:
+    - "lightning bolt"
+    - "lava spike"
+    - "rift bolt"
+    - "monastery swiftspear"
+    - "eidolon of the great revel"
+    - "boros charm"
+    - "searing blaze"
+  min_signatures: 3
+  anti_signatures:
+    - "guide of souls"
+    - "ocelot pride"
+
+- name: "Domain Zoo"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "scion of draco"
+    - "territorial kavu"
+    - "nishoba brawler"
+    - "tribal flames"
+    - "leyline of the guildpact"
+  min_signatures: 3
+
+- name: "Hardened Scales"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - "hardened scales"
+  signatures:
+    - "arcbound ravager"
+    - "zabaz, the glimmerwasp"
+    - "agatha's soul cauldron"
+    - "the ozolith"
+  min_signatures: 2
+
+- name: "Mill"
+  category: "Control"
+  priority: 95
+  signatures:
+    - "archive trap"
+    - "glimpse the unthinkable"
+    - "tasha's hideous laughter"
+    - "hedron crab"
+    - "ruin crab"
+    - "fractured sanity"
+  min_signatures: 3
+
+- name: "Ruby Storm"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "ruby medallion"
+  signatures:
+    - "ral, monsoon mage"
+    - "desperate ritual"
+    - "pyretic ritual"
+    - "gorging vulture"
+    - "grapeshot"
+    - "wish"
+  min_signatures: 3

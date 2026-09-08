@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}Most Played Cards in {{ format_name }} — Modometa{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="/" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <a href="/{{ format_slug }}/?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">Most Played Cards</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Cards</h1>
+      <p class="mt-1 text-sm text-zinc-400">
+        Most commonly played cards across {{ total_decks }} {% if active_type == 'challenge' %}Challenge{% elif active_type == 'league' %}League{% else %}League and Challenge{% endif %} decks in {{ format_name }} over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+      </p>
+    </div>
+
+    <!-- Event Filter Pills -->
+    <div class="flex items-center gap-1.5 rounded-lg bg-zinc-900 p-1 border border-zinc-800 text-xs">
+      <a href="?days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if not active_type %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+        All
+      </a>
+      <a href="?type=challenge&days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'challenge' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+        Challenges
+      </a>
+      <a href="?type=league&days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'league' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+        Leagues
+      </a>
+    </div>
+  </div>
+
+  <!-- Cards Table -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
+        <tr>
+          <th class="py-3 px-4 w-12 text-center">#</th>
+          <th class="py-3 px-4">Card Name</th>
+          <th class="py-3 px-4">Type</th>
+          <th class="py-3 px-4 text-right whitespace-nowrap" title="Percentage of decks containing this card in mainboard or sideboard">Adoption&nbsp;%</th>
+          <th class="py-3 px-4 text-right whitespace-nowrap" title="Percentage of decks containing this card in mainboard">Mainboard&nbsp;%</th>
+          <th class="py-3 px-4 text-right whitespace-nowrap" title="Percentage of decks containing this card in sideboard">Sideboard&nbsp;%</th>
+          <th class="py-3 px-4 text-right">Avg Copies</th>
+          <th class="py-3 px-4 text-right">External</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono">
+        {% for c in cards %}
+          <tr class="hover:bg-zinc-800/30 transition-colors">
+            <td class="py-3 px-4 text-center text-zinc-500">{{ forloop.counter0|add:page_obj.start_index }}</td>
+            <td class="py-3 px-4 font-sans font-medium text-white">
+              <a href="{{ c.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ c.image_uri }}" class="hover:text-emerald-400 cursor-help">
+                {{ c.name }}
+              </a>
+              {% if c.mana_cost %}
+                <span class="ml-1.5 align-middle">{{ c.mana_cost|mana_cost }}</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-zinc-400 font-sans text-2xs">{{ c.type_line }}</td>
+            <td class="py-3 px-4 text-right font-bold text-emerald-400 whitespace-nowrap" title="{{ c.any_count }}/{{ total_decks }}">{{ c.adoption_pct }}%</td>
+            <td class="py-3 px-4 text-right text-zinc-300 whitespace-nowrap" title="{{ c.mb_count }}/{{ total_decks }}">{{ c.mb_pct }}%</td>
+            <td class="py-3 px-4 text-right text-zinc-400 whitespace-nowrap" title="{{ c.sb_count }}/{{ total_decks }}">{{ c.sb_pct }}%</td>
+            <td class="py-3 px-4 text-right text-zinc-400">{{ c.avg_copies }}x</td>
+            <td class="py-3 px-4 text-right font-sans whitespace-nowrap">
+              <a href="{{ c.gatherer_url }}" target="_blank" rel="noopener" class="text-zinc-500 hover:text-zinc-300 text-2xs mr-2 whitespace-nowrap">
+                Gatherer&nbsp;↗
+              </a>
+              <a href="{{ c.scryfall_url }}" target="_blank" rel="noopener" class="text-zinc-500 hover:text-zinc-300 text-2xs whitespace-nowrap">
+                Scryfall&nbsp;↗
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8" class="py-8 text-center text-zinc-500 italic">No card statistics available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between text-xs text-zinc-400 pt-4">
+      <div>
+        {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} cards
+      </div>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if active_type %}&type={{ active_type }}{% endif %}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            ← Previous
+          </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if active_type %}&type={{ active_type }}{% endif %}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            Next →
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

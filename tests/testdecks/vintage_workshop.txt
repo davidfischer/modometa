@@ -1,0 +1,30 @@
+// Vintage Mishra's Workshop Aggro
+4 Mishra's Workshop
+1 Black Lotus
+1 Mox Ruby
+1 Mox Sapphire
+1 Mox Jet
+1 Mox Pearl
+1 Mox Emerald
+1 Sol Ring
+1 Mana Crypt
+1 Trinisphere
+1 Lodestone Golem
+4 Phyrexian Revoker
+4 Thought-Knot Seer
+4 Reality Smasher
+4 Ancient Tomb
+4 Wasteland
+1 Strip Mine
+4 Crucible of Worlds
+4 Chalice of the Void
+4 Thorn of Amethyst
+4 Sphere of Resistance
+4 Arcbound Ravager
+2 Walking Ballista
+
+Sideboard
+4 Leyline of the Void
+3 Grafdigger's Cage
+4 Dismember
+4 Wurmcoil Engine

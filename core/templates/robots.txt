@@ -1,0 +1,11 @@
+# There's no need to scrape MODOMeta.
+# You can download the database directly (~800MB)!
+#
+# https://data.modometa.com/modometa.db
+#
+# See the GitHub repository for more details:
+# https://github.com/davidfischer/modometa
+
+User-agent: *
+Allow: /
+Crawl-delay: 2

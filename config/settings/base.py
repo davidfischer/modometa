@@ -95,3 +95,4 @@ ACTIVE_FORMAT_SLUGS = ["vintage", "legacy"]
 ARCHETYPES_DIR = BASE_DIR / "archetypes"
 DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "MTG_decklistcache" / "Tournaments" / "MTGO"
 KNN_INDEX_PATH = BASE_DIR / "data" / "knn_index.npz"
+IS_TESTING = False

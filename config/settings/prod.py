@@ -27,11 +27,16 @@ CSRF_TRUSTED_ORIGINS = [
 # Zero-write cookie sessions (no database writes needed for visitors)
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
-# In-memory application cache
+# In-memory application cache (5000 entries ~50MB RAM, safe for 1GB container)
+# https://docs.djangoproject.com/en/dev/topics/cache/
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "modometa-prod-cache",
+        "OPTIONS": {
+            "MAX_ENTRIES": 5_000,
+            "CULL_FREQUENCY": 3,
+        },
     }
 }
 

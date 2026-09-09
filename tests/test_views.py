@@ -5,6 +5,8 @@ from datetime import date
 import pytest
 from django.test import Client
 
+from core.models import Card
+from core.models import CardLookup
 from core.models import Deck
 from core.models import Tournament
 
@@ -712,3 +714,64 @@ def test_hidden_formats_still_accessible_via_direct_url_for_search(client):
     # The sidebar navigation on the Modern page still only displays Vintage and Legacy
     nav_formats = [fmt["slug"] for fmt in response.context["MODOMETA_FORMATS"]]
     assert nav_formats == ["vintage", "legacy"]
+
+
+def test_healthz_endpoint(client):
+    """Health check endpoint should return 200 OK."""
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.content == b"OK"
+
+
+@pytest.mark.django_db
+def test_deck_detail_resolves_mdfc_image_uri(client):
+    """Deck detail view resolves image_uri for DFC/MDFC cards listed by front face name."""
+    card = Card.objects.create(
+        id="test-outland-liberator-uuid",
+        name="Outland Liberator // Frenzied Trapbreaker",
+        normalized_name="outland liberator // frenzied trapbreaker",
+        mana_cost="{1}{G}",
+        cmc=2.0,
+        type_line="Creature — Human Werewolf",
+        image_uri="https://cards.scryfall.io/test-outland-liberator.jpg",
+    )
+    CardLookup.objects.create(
+        lookup_name="outland liberator",
+        canonical_name="Outland Liberator // Frenzied Trapbreaker",
+        card=card,
+        priority=10,
+    )
+
+    t = Tournament.objects.create(
+        id="legacy-league-mdfc-test",
+        name="Legacy League",
+        format="legacy",
+        event_type="league",
+        date=date(2024, 7, 7),
+    )
+    deck = Deck.objects.create(
+        id="legacy-league-mdfc-test_player_1",
+        tournament=t,
+        format="legacy",
+        player="Moonmadness-_-",
+        player_lower="moonmadness-_-",
+        archetype="Maverick",
+        mainboard=[{"card": "Outland Liberator", "count": 1}],
+        sideboard=[],
+    )
+
+    response = client.get(f"/player/{deck.player}/deck/{t.id}/1/")
+    assert response.status_code == 200
+
+    mb_items = response.context["deck"].mainboard
+    assert len(mb_items) == 1
+    assert mb_items[0]["card"] == "Outland Liberator"
+    assert (
+        mb_items[0]["image_uri"]
+        == "https://cards.scryfall.io/test-outland-liberator.jpg"
+    )
+    assert mb_items[0]["mana_cost"] == "{1}{G}"
+    assert (
+        b'data-card-image="https://cards.scryfall.io/test-outland-liberator.jpg"'
+        in response.content
+    )

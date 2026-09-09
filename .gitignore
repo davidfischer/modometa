@@ -137,3 +137,4 @@ dmypy.json
 *.db-journal
 node_modules/
 data/
+staticfiles/

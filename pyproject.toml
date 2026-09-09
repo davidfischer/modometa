@@ -13,12 +13,14 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "django>=5.2",
+    "gunicorn>=23.0",
     "httpx>=0.28",
     "numpy>=2.0",
     "pyyaml>=6.0",
     "scikit-learn>=1.5",
     "scipy>=1.15",
     "tqdm>=4.66",
+    "whitenoise>=6.8",
 ]
 
 [project.scripts]

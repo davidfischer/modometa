@@ -35,27 +35,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Scryfall Card Hover Tooltip
   const tooltip = document.getElementById('card-hover-tooltip');
   if (tooltip) {
-    document.addEventListener('mouseover', (e) => {
-      const target = e.target.closest('[data-card-image]');
-      if (!target) return;
+    let activeImgUri = '';
+    let loadRequestId = 0;
+    let lastClientX = 0;
+    let lastClientY = 0;
 
-      const imgUri = target.getAttribute('data-card-image');
-      if (!imgUri) return;
+    function positionTooltip(clientX, clientY) {
+      let x = clientX + 20;
+      let y = clientY - 140;
 
-      tooltip.src = imgUri;
-      tooltip.style.display = 'block';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (tooltip.style.display !== 'block') return;
-
-      const padding = 15;
-      let x = e.clientX + 20;
-      let y = e.clientY - 140;
-
-      // Bound checking
+      // Viewport collision bounds
       if (x + 270 > window.innerWidth) {
-        x = e.clientX - 280;
+        x = clientX - 280;
       }
       if (y + 360 > window.innerHeight) {
         y = window.innerHeight - 370;
@@ -64,12 +55,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tooltip.style.left = `${x}px`;
       tooltip.style.top = `${y}px`;
+    }
+
+    document.addEventListener('mouseover', (e) => {
+      const target = e.target.closest('[data-card-image]');
+      if (!target) return;
+
+      const imgUri = target.getAttribute('data-card-image');
+      if (!imgUri) return;
+
+      lastClientX = e.clientX;
+      lastClientY = e.clientY;
+      positionTooltip(lastClientX, lastClientY);
+
+      // If moving to a different card, immediately hide and clear to avoid showing the old card
+      if (activeImgUri !== imgUri) {
+        tooltip.style.display = 'none';
+        tooltip.removeAttribute('src');
+      }
+
+      activeImgUri = imgUri;
+      const currentReq = ++loadRequestId;
+
+      const preloader = new Image();
+      preloader.src = imgUri;
+
+      // If image is already cached in memory, show immediately
+      if (preloader.complete && preloader.naturalWidth > 0) {
+        tooltip.src = imgUri;
+        tooltip.style.display = 'block';
+        return;
+      }
+
+      // Otherwise wait for network load before displaying tooltip
+      preloader.onload = () => {
+        if (currentReq === loadRequestId && activeImgUri === imgUri) {
+          tooltip.src = imgUri;
+          positionTooltip(lastClientX, lastClientY);
+          tooltip.style.display = 'block';
+        }
+      };
+
+      preloader.onerror = () => {
+        if (currentReq === loadRequestId) {
+          tooltip.style.display = 'none';
+        }
+      };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      lastClientX = e.clientX;
+      lastClientY = e.clientY;
+      if (tooltip.style.display === 'block') {
+        positionTooltip(lastClientX, lastClientY);
+      }
     });
 
     document.addEventListener('mouseout', (e) => {
       const target = e.target.closest('[data-card-image]');
-      if (target) {
+      if (!target) return;
+
+      const related = e.relatedTarget ? e.relatedTarget.closest('[data-card-image]') : null;
+      if (!related) {
+        activeImgUri = '';
+        loadRequestId++;
         tooltip.style.display = 'none';
+        tooltip.removeAttribute('src');
       }
     });
   }

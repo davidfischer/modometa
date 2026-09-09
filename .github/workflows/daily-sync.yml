@@ -1,0 +1,155 @@
+name: Daily Data Sync & R2 Push
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC (02:00 EDT)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      force_ingest:
+        description: "Force re-ingest all tournament files"
+        required: false
+        type: boolean
+        default: false
+      refresh_days:
+        description: "Days to refresh from latest date in cache (default: 8)"
+        required: false
+        type: number
+        default: 8
+      skip_scryfall:
+        description: "Skip Scryfall card synchronization"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-sync
+  cancel-in-progress: false
+
+env:
+  R2_BUCKET: modometa-data
+  R2_PUBLIC_URL: https://data.modometa.com
+
+jobs:
+  sync:
+    name: Sync MTGO Data & Push to R2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd sqlite3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install project dependencies
+        run: uv sync --frozen
+
+      - name: Configure AWS credentials for Cloudflare R2
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=auto" >> $GITHUB_ENV
+          echo "R2_ENDPOINT=https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" >> $GITHUB_ENV
+
+      - name: Pull current database and kNN index from R2
+        run: |
+          mkdir -p data
+          echo "Attempting to download current database from Cloudflare R2..."
+
+          if aws s3 cp "s3://${R2_BUCKET}/modometa.db.zst" modometa.db.zst --endpoint-url "$R2_ENDPOINT"; then
+            echo "Downloaded compressed database. Decompressing..."
+            zstd -d --rm -f modometa.db.zst -o modometa.db
+          elif aws s3 cp "s3://${R2_BUCKET}/modometa.db" modometa.db --endpoint-url "$R2_ENDPOINT"; then
+            echo "Downloaded uncompressed database."
+          else
+            echo "No existing database found in R2. Creating fresh database schema..."
+            uv run modometa migrate --no-input
+          fi
+
+          if aws s3 cp "s3://${R2_BUCKET}/knn_index.npz" data/knn_index.npz --endpoint-url "$R2_ENDPOINT"; then
+            echo "Downloaded existing kNN index."
+          else
+            echo "No existing kNN index found. Will build new index after ingestion."
+          fi
+
+      - name: Apply any pending database migrations
+        run: uv run modometa migrate --no-input
+
+      - name: Sync latest Scryfall card data
+        if: ${{ !inputs.skip_scryfall }}
+        run: uv run modometa sync_scryfall
+
+      - name: Shallow clone MTG_decklistcache repository
+        run: |
+          rm -rf MTG_decklistcache
+          git clone --depth 1 https://github.com/fbettega/MTG_decklistcache.git MTG_decklistcache
+
+      - name: Ingest tournaments
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_ingest }}" = "true" ]; then
+            EXTRA_ARGS="--force"
+          elif [ -n "${{ inputs.refresh_days }}" ]; then
+            EXTRA_ARGS="--refresh-days ${{ inputs.refresh_days }}"
+          else
+            EXTRA_ARGS="--refresh-days 8"
+          fi
+          uv run modometa ingest_tournaments --dir MTG_decklistcache/Tournaments/MTGO $EXTRA_ARGS
+
+      - name: Reclassify tournament decks
+        run: uv run modometa reclassify_decks
+
+      - name: Rebuild kNN similarity index
+        run: uv run modometa build_knn
+
+      - name: Optimize SQLite database
+        run: |
+          echo "Optimizing SQLite database (VACUUM and ANALYZE)..."
+          sqlite3 modometa.db "PRAGMA journal_mode = WAL; VACUUM; ANALYZE; PRAGMA optimize;"
+          ls -lh modometa.db
+
+      - name: Compress database with zstd
+        run: |
+          echo "Compressing modometa.db with zstd..."
+          zstd -3 -f -T0 modometa.db -o modometa.db.zst
+          ls -lh modometa.db.zst
+
+      - name: Upload updated database and kNN index to Cloudflare R2
+        run: |
+          echo "Uploading modometa.db.zst to R2..."
+          aws s3 cp modometa.db.zst "s3://${R2_BUCKET}/modometa.db.zst" --endpoint-url "$R2_ENDPOINT"
+
+          echo "Uploading uncompressed modometa.db to R2..."
+          aws s3 cp modometa.db "s3://${R2_BUCKET}/modometa.db" --endpoint-url "$R2_ENDPOINT"
+
+          if [ -f data/knn_index.npz ]; then
+            echo "Uploading knn_index.npz to R2..."
+            aws s3 cp data/knn_index.npz "s3://${R2_BUCKET}/knn_index.npz" --endpoint-url "$R2_ENDPOINT"
+          fi
+
+      - name: Restart Fly.io application
+        if: env.FLY_API_TOKEN != ''
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "Installing flyctl..."
+          curl -L https://fly.io/install.sh | sh
+          export FLYCTL_INSTALL="/home/runner/.fly"
+          export PATH="$FLYCTL_INSTALL/bin:$PATH"
+
+          APP_NAME="${{ secrets.FLY_APP_NAME || 'modometa' }}"
+          echo "Restarting Fly application: $APP_NAME..."
+          flyctl apps restart "$APP_NAME"

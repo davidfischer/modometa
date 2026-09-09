@@ -1,0 +1,40 @@
+# fly.toml app configuration file generated for Modometa
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "modometa"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DJANGO_SETTINGS_MODULE = "config.settings.prod"
+  PORT = "8000"
+  DATABASE_PATH = "/app/modometa.db"
+  KNN_INDEX_PATH = "/app/data/knn_index.npz"
+  GUNICORN_WORKERS = "2"
+  GUNICORN_THREADS = "2"
+  GUNICORN_TIMEOUT = "60"
+  R2_PUBLIC_URL = "https://data.modometa.com"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  # https://fly.io/docs/machines/guides-examples/machine-sizing/
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+  cpu_kind = "shared"
+  cpus = 1

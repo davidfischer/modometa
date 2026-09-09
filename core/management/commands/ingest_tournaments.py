@@ -1,13 +1,18 @@
 """Management command to ingest MTGO tournament JSON files."""
 
+import re
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
+from django.db.models import Max
 
 from core.formats import FORMAT_NAMES
 from core.formats import is_valid_format
+from core.models.tournament import Tournament
 from core.pipeline.ingest import IngestionPipeline
 from core.pipeline.ingest import parse_date
 
@@ -33,6 +38,16 @@ class Command(BaseCommand):
             type=str,
             default=None,
             help="Only process tournaments on or after this date (YYYY-MM-DD). Existing tournaments in this date range will be refreshed.",
+        )
+        parser.add_argument(
+            "--refresh-days",
+            type=int,
+            default=None,
+            help=(
+                "Re-ingest/refresh tournaments dated within N days before the newest tournament in the "
+                "existing database (to capture updated/late-arriving league decks), while skipping "
+                "older already-ingested tournaments."
+            ),
         )
         parser.add_argument(
             "--limit",
@@ -63,6 +78,10 @@ class Command(BaseCommand):
         force = options["force"]
         show_unmatched = options["show_unmatched"]
         since_str = options["since"]
+        refresh_days = options.get("refresh_days")
+
+        if refresh_days is not None and refresh_days < 0:
+            raise CommandError("--refresh-days must be a non-negative integer.")
 
         if fmt_filter:
             fmt_filter = fmt_filter.lower().strip()
@@ -97,10 +116,54 @@ class Command(BaseCommand):
         self.stdout.write(f"Found {len(files)} tournament files.")
 
         replace_existing = bool(since_date or force)
+        files_to_process = files
+
+        if refresh_days is not None and not force and not since_date:
+            tourn_qs = Tournament.objects.all()
+            if fmt_filter:
+                tourn_qs = tourn_qs.filter(format=fmt_filter)
+
+            latest_db_date = tourn_qs.aggregate(max_date=Max("date"))["max_date"]
+
+            if latest_db_date is not None:
+                cutoff_date = latest_db_date - timedelta(days=refresh_days)
+                self.stdout.write(
+                    f"Latest tournament date in database: {latest_db_date}. "
+                    f"Refreshing tournaments since {cutoff_date} ({refresh_days} days before latest DB record)..."
+                )
+            else:
+                cutoff_date = None
+                self.stdout.write(
+                    "No existing tournaments in database. Ingesting all tournament files..."
+                )
+
+            file_date_map: dict[Path, datetime.date] = {}
+            for f in files:
+                m = re.search(r"(\d{4}-\d{2}-\d{2})", f.name)
+                if m:
+                    try:
+                        d = datetime.strptime(m.group(1), "%Y-%m-%d").date()
+                        file_date_map[f] = d
+                    except ValueError:
+                        pass
+
+            existing_ids = set(Tournament.objects.values_list("id", flat=True))
+            files_to_process = []
+            for f in files:
+                f_date = file_date_map.get(f)
+                if cutoff_date and f_date and f_date >= cutoff_date:
+                    # Recent tournament on or after cutoff: re-ingest and replace
+                    files_to_process.append(f)
+                elif f.stem not in existing_ids:
+                    # Older tournament not yet in database: ingest
+                    files_to_process.append(f)
+
+            replace_existing = True
+
         tourn_count, deck_count = pipeline.ingest_files(
-            files,
+            files_to_process,
             limit=limit,
-            force=force or bool(since_date),
+            force=force or bool(since_date) or bool(refresh_days is not None),
             show_unmatched=show_unmatched,
             replace_existing=replace_existing,
             since_date=since_date,
@@ -112,7 +175,13 @@ class Command(BaseCommand):
                     f"Rejected {pipeline.rejected_unsupported_count} tournaments in unsupported formats."
                 )
             )
-        if tourn_count == 0 and deck_count == 0 and not force and not since_date:
+        if (
+            tourn_count == 0
+            and deck_count == 0
+            and not force
+            and not since_date
+            and refresh_days is None
+        ):
             self.stdout.write(
                 self.style.SUCCESS(
                     "Database is up to date! All tournament files are already ingested."

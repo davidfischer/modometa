@@ -9,6 +9,8 @@ A high-performance Magic the Gathering Online ([MTGO](https://www.mtgo.com)) met
 - **Premodern** (WIP)
 - **Pauper** (WIP)
 
+The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/fbettega/MTG_decklistcache). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db
+
 ---
 
 ## Key Features
@@ -30,14 +32,14 @@ A high-performance Magic the Gathering Online ([MTGO](https://www.mtgo.com)) met
      uv run modometa discover_archetypes --format modern --min-cluster 5
      ```
 4. **k-Nearest Neighbors (kNN) Similarity**:
-   - Within-format and cross-format deck retrieval powered by TF-IDF (penalizing format staples) and a 1-year half-life exponential recency decay.
+   - Within-format and cross-format deck similarity powered by TF-IDF (format staples count less toward similarity) and a 1-year half-life exponential recency decay.
 5. **Legality & Banlist Engine**:
    - Uses [Scryfall bulk data](https://scryfall.com/docs/api/bulk-data) for legality.
    - Highlights whether historical decks remain legal under current format banlists.
 
 ---
 
-## Quick Start
+## Running locally
 
 ### 1. Requirements
 - Python >= 3.14
@@ -94,6 +96,7 @@ After changing any `archetypes/*.yaml` files:
 ```bash
 # Reclassify all formats in-place
 # Changes archetype and deck color combination
+# Takes ~30s/yr of data
 uv run modometa reclassify_decks
 
 # Or target a single format
@@ -120,3 +123,14 @@ make lint           # uv run pre-commit run --all-files
 make format         # Auto-format and fix with ruff
 make help           # List all available Makefile commands
 ```
+
+---
+
+## Deployment & Update Schedule
+
+MODOMeta is designed to run statelessly.
+It pulls its database from [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/). It updates tournament results and deck similarity index daily with a [GitHub Action](.github/workflows/daily-sync.yml):
+
+---
+
+MODOMeta is unofficial Fan Content permitted under the [Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy). Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

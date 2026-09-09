@@ -272,6 +272,25 @@
     - "Unclaimed Territory"
   min_signatures: 4
 
+- name: "Mono-Black Aggro"
+  category: "Aggro"
+  priority: 50
+  mandatory:
+    - "ancient tomb"
+  signatures:
+    - "Sheoldred, the Apocalypse"
+    - "barrowgoyf"
+    - "the one ring"
+    - "Chalice of the Void"
+    - "City of Traitors"
+    - "Rotting Regisaur"
+    - "dark ritual"
+  min_signatures: 4
+  anti_signatures:
+    - "Helm of Obedience"
+    - "Tendrils of Agony"
+    - "Doomsday"
+
 #####################################################################
 # Midrange Archetypes
 #####################################################################
@@ -282,13 +301,10 @@
   mandatory:
     - "swords to plowshares"
   signatures:
-    - "brainstorm"
-    - "flooded strand"
-    - "ponder"
     - "force of will"
     - "phelia, exuberant shepherd"
     - "quantum riddler"
-  min_signatures: 3
+  min_signatures: 2
   anti_signatures:
     # UW Tempo
     - "daze"
@@ -699,6 +715,30 @@
     - "Shark Typhoon"
   min_signatures: 2
 
+- name: "UW / Jeskai Control"
+  category: "Control"
+  # Higher priority than UW Midrange
+  priority: 75
+  mandatory:
+    - "Force of Will"
+    - "Swords to Plowshares"
+  signatures:
+    - "Forth Eorlingas!"
+    - "Back to Basics"
+    - "Jace the Mind Sculptor"
+    - "Teferi, Time Raveler"
+    - "Prismatic Ending"
+    - "Narset, Parter of Veils"
+  min_signatures: 3
+  anti_signatures:
+    - "Daze"
+    - "nadu, winged wisdom"
+    - "tropical island"
+    - "standstill"
+    - "up the beanstalk"
+    - "stoneforge mystic"
+    - "underground sea"
+
 #####################################################################
 # Combo Archetypes
 #####################################################################
@@ -802,18 +842,23 @@
     - "violent outburst"
   min_signatures: 3
 
-- name: "GW / Naya Depths"
+- name: "GW Depths"
   category: "Combo"
-  priority: 85
+  # Needs to be higher priority than Maverick
+  priority: 90
   mandatory:
     - "dark depths"
     - "knight of the reliquary"
+    - "crop rotation"
   signatures:
     - "thespian's stage"
-    - "crop rotation"
     - "elvish reclaimer"
     - "mox diamond"
-  min_signatures: 2
+    - "sejiri steppe"
+    - "Sylvan Safekeeper"
+    - "Yavimaya, Cradle of Growth"
+    - "Flagstones of Trokair"
+  min_signatures: 3
   anti_signatures:
     - "exploration"
     - "vampire hexmage"
@@ -1302,3 +1347,25 @@
     - "paradoxical outcome"
     # Tron
     - "planar nexus"
+
+- name: "Helm Combo"
+  category: "Combo"
+  priority: 100
+  mandatory:
+    - card: "Helm of Obedience"
+      min: 2
+  signatures:
+    - "Sheoldred, the Apocalypse"
+    - "Leyline of the Void"
+    - "Dauthi Voidwalker"
+    - "Beseech the Mirror"
+    - "Karn, the Great Creator"
+    # UW Version
+    - "Rest in Peace"
+    - "Energy Field"
+    - "Enlightened Tutor"
+    - "Narset, Parter of Veils"
+  min_signatures: 2
+  anti_signatures:
+    - "Argothian Enchantress"
+    - "Tendrils of Agony"

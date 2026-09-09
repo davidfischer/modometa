@@ -1,6 +1,7 @@
 """Views for Modometa metagame analyzer."""
 
 from collections import Counter
+from collections.abc import Iterable
 from datetime import date
 from datetime import timedelta
 
@@ -24,6 +25,42 @@ from core.models.card import get_scryfall_url
 from core.models.card import normalize_card_name
 from core.models.deck import Deck
 from core.models.tournament import Tournament
+
+
+def get_cards_map(card_names: Iterable[str]) -> dict[str, Card]:
+    """Resolve a collection of card names to Card model instances.
+
+    Tries exact name match first, then falls back to CardLookup (for DFCs,
+    split cards, aliases), and finally to Card.normalized_name.
+    Returns a dict mapping original card names to Card instances.
+    """
+    names_set = set(card_names)
+    cards_map = {c.name: c for c in Card.objects.filter(name__in=names_set)}
+    missing = [n for n in names_set if n not in cards_map]
+    if missing:
+        lookups = CardLookup.objects.filter(
+            lookup_name__in=[normalize_card_name(n) for n in missing]
+        ).select_related("card")
+        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
+        for n in missing:
+            norm = normalize_card_name(n)
+            if norm in lookup_dict:
+                cards_map[n] = lookup_dict[norm]
+
+    still_missing = [n for n in names_set if n not in cards_map]
+    if still_missing:
+        norm_to_card = {
+            c.normalized_name: c
+            for c in Card.objects.filter(
+                normalized_name__in=[normalize_card_name(n) for n in still_missing]
+            )
+        }
+        for n in still_missing:
+            norm = normalize_card_name(n)
+            if norm in norm_to_card:
+                cards_map[n] = norm_to_card[norm]
+
+    return cards_map
 
 
 def get_reference_date() -> date:
@@ -182,17 +219,7 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
 
     sorted_cards = any_counts.most_common()
     card_names = [c[0] for c in sorted_cards]
-    cards_map = {c.name: c for c in Card.objects.filter(name__in=card_names)}
-    missing_names = [n for n in card_names if n not in cards_map]
-    if missing_names:
-        lookups = CardLookup.objects.filter(
-            lookup_name__in=[normalize_card_name(n) for n in missing_names]
-        ).select_related("card")
-        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
-        for n in missing_names:
-            norm = normalize_card_name(n)
-            if norm in lookup_dict:
-                cards_map[n] = lookup_dict[norm]
+    cards_map = get_cards_map(card_names)
 
     card_rows = []
     for name, cnt in sorted_cards:
@@ -473,7 +500,7 @@ def deck_detail(request, player, event, deck_index=1):
     card_names = {item["card"] for item in deck.mainboard} | {
         item["card"] for item in deck.sideboard
     }
-    cards_map = {c.name: c for c in Card.objects.filter(name__in=card_names)}
+    cards_map = get_cards_map(card_names)
     illegal_set = set(deck.illegal_cards or [])
 
     annotated_mainboard = []
@@ -703,19 +730,7 @@ def archetype_detail(request, format, archetype):
 
     core_cards = []
     top_cards = card_counts.most_common(12)
-    cards_map = {
-        c.name: c for c in Card.objects.filter(name__in=[c[0] for c in top_cards])
-    }
-    missing_top_cards = [c[0] for c in top_cards if c[0] not in cards_map]
-    if missing_top_cards:
-        lookups = CardLookup.objects.filter(
-            lookup_name__in=[normalize_card_name(n) for n in missing_top_cards]
-        ).select_related("card")
-        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
-        for n in missing_top_cards:
-            norm = normalize_card_name(n)
-            if norm in lookup_dict:
-                cards_map[n] = lookup_dict[norm]
+    cards_map = get_cards_map([c[0] for c in top_cards])
 
     for name, cnt in top_cards:
         card = cards_map.get(name)

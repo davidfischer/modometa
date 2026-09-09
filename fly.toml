@@ -24,6 +24,7 @@ primary_region = 'lax'
   SEARCH_INDEX_PATH = '/app/data/search_index.json'
 
 [deploy]
+  strategy = "bluegreen"
   wait_timeout = "300s"
 
 [http_service]

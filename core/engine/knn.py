@@ -425,8 +425,25 @@ def get_global_knn_index(force_reload: bool = False) -> DeckKNNIndex | None:
         settings, "KNN_INDEX_PATH", Path(settings.BASE_DIR) / "data" / "knn_index.npz"
     )
     p = Path(index_path)
+
+    # If an in-memory index is already loaded and we are not forcing a reload,
+    # return it unless the file on disk has been updated.
+    if _GLOBAL_INDEX_LOADED and not force_reload:
+        if _GLOBAL_INDEX is not None:
+            try:
+                if p.exists() and p.stat().st_mtime > _GLOBAL_INDEX_MTIME:
+                    pass  # file on disk is newer, proceed to reload below
+                else:
+                    return _GLOBAL_INDEX
+            except OSError:
+                return _GLOBAL_INDEX
+        else:
+            # Index was previously checked and not found; return None unless file now exists
+            if not p.exists():
+                return None
+
     if not p.exists():
-        if not _GLOBAL_INDEX_LOADED:
+        if not _GLOBAL_INDEX_LOADED or force_reload:
             msg = (
                 f"kNN index file not found at '{p}'. Deck similarity neighbors will not be available. "
                 "Run 'uv run modometa build_knn' to generate it."
@@ -442,13 +459,6 @@ def get_global_knn_index(force_reload: bool = False) -> DeckKNNIndex | None:
         current_mtime = p.stat().st_mtime
     except OSError:
         current_mtime = 0.0
-
-    if (
-        _GLOBAL_INDEX_LOADED
-        and not force_reload
-        and current_mtime <= _GLOBAL_INDEX_MTIME
-    ):
-        return _GLOBAL_INDEX
 
     try:
         logger.info("Loading kNN index from %s...", p)

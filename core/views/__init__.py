@@ -13,12 +13,14 @@ from django.db.models import Count
 from django.db.models import Max
 from django.db.models import Q
 from django.http import Http404
+from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
 from django.utils.cache import patch_cache_control
 
 from core.engine.knn import get_global_knn_index
+from core.engine.search_index import build_search_index_data
 from core.formats import FORMATS
 from core.models.card import Card
 from core.models.card import CardLookup
@@ -483,33 +485,38 @@ def player_detail(request, player):
     decks_qs = (
         Deck.objects.filter(player_lower=player_lower)
         .select_related("tournament")
+        .defer("mainboard", "sideboard", "illegal_cards")
         .order_by("-tournament__date")
     )
-    total_decks = decks_qs.count()
+    all_decks = list(decks_qs)
+    total_decks = len(all_decks)
     if total_decks == 0:
         raise Http404(f"No records found for player '{player}'")
 
-    total_top8s = decks_qs.filter(is_top8=True).count()
-    total_5_0s = decks_qs.filter(tournament__event_type="league", is_5_0=True).count()
-    chall_appearances = decks_qs.filter(tournament__event_type="challenge").count()
+    total_top8s = sum(1 for d in all_decks if d.is_top8)
+    total_5_0s = sum(
+        1
+        for d in all_decks
+        if d.is_5_0 and getattr(d.tournament, "event_type", "") == "league"
+    )
+    chall_appearances = sum(
+        1 for d in all_decks if getattr(d.tournament, "event_type", "") == "challenge"
+    )
     conversion_rate = (
         round((total_top8s / chall_appearances) * 100, 1)
         if chall_appearances > 0
         else 0.0
     )
 
-    formats_played = sorted(list(set(decks_qs.values_list("format", flat=True))))
+    formats_played = sorted(list({d.format for d in all_decks}))
 
-    # Add disambiguator index for player decks
-    decks = []
-    # Count duplicates per tournament
+    # Add disambiguator index for player decks (chronological numbering per event)
     event_counts = Counter()
-    for d in reversed(list(decks_qs)):
+    for d in reversed(all_decks):
         event_counts[d.tournament_id] += 1
         d.deck_index = event_counts[d.tournament_id]
-        decks.insert(0, d)
 
-    paginator = Paginator(decks, 100)
+    paginator = Paginator(all_decks, 100)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
@@ -517,7 +524,7 @@ def player_detail(request, player):
         request,
         "player_detail.html",
         {
-            "player_name": decks[0].player,
+            "player_name": all_decks[0].player,
             "total_decks": total_decks,
             "total_top8s": total_top8s,
             "total_5_0s": total_5_0s,
@@ -757,20 +764,32 @@ def archetype_detail(request, format, archetype):
     else:
         sample_deck = decks_qs.first()
 
-    # Format-wide totals for share calculations
-    fmt_decks = Deck.objects.filter(
-        format=fmt_slug, tournament__date__gte=cutoff, tournament__date__lte=ref_date
-    )
-    total_chall_decks = max(
-        1, fmt_decks.filter(tournament__event_type="challenge").count()
-    )
-    chall_count = Tournament.objects.filter(
-        format=fmt_slug, event_type="challenge", date__gte=cutoff, date__lte=ref_date
-    ).count()
-    total_top8_slots = max(1, chall_count * 8)
-    total_5_0s = max(
-        1, fmt_decks.filter(tournament__event_type="league", is_5_0=True).count()
-    )
+    # Format-wide totals for share calculations (cached per format/timeframe to avoid repeated full-table queries)
+    fmt_totals_key = f"format_totals_v1:{fmt_slug}:{days}"
+    fmt_totals = cache.get(fmt_totals_key)
+    if fmt_totals is None:
+        fmt_decks = Deck.objects.filter(
+            format=fmt_slug,
+            tournament__date__gte=cutoff,
+            tournament__date__lte=ref_date,
+        )
+        total_chall_decks = max(
+            1, fmt_decks.filter(tournament__event_type="challenge").count()
+        )
+        chall_count = Tournament.objects.filter(
+            format=fmt_slug,
+            event_type="challenge",
+            date__gte=cutoff,
+            date__lte=ref_date,
+        ).count()
+        total_top8_slots = max(1, chall_count * 8)
+        total_5_0s = max(
+            1, fmt_decks.filter(tournament__event_type="league", is_5_0=True).count()
+        )
+        fmt_totals = (total_chall_decks, total_top8_slots, total_5_0s)
+        cache.set(fmt_totals_key, fmt_totals, timeout=3600)
+    else:
+        total_chall_decks, total_top8_slots, total_5_0s = fmt_totals
     stats_agg = decks_qs.aggregate(
         top8_count=Count("id", filter=Q(is_top8=True)),
         chall_appearances=Count("id", filter=Q(tournament__event_type="challenge")),
@@ -944,7 +963,7 @@ def leaderboard(request, format):
         tournament__date__lte=ref_date,
     )
 
-    player_stats = (
+    player_stats = list(
         decks_qs.values("player", "player_lower")
         .annotate(
             total_finishes=Count("id"),
@@ -957,20 +976,30 @@ def leaderboard(request, format):
         .order_by("-top8_count", "-league_count", "-total_finishes")[:100]
     )
 
+    # Batch query top archetypes for all top players to eliminate N+1 queries
+    top_lowers = [p["player_lower"] for p in player_stats]
+    fav_arch_map = {}
+    if top_lowers:
+        arch_counts_qs = (
+            decks_qs.filter(player_lower__in=top_lowers)
+            .values("player_lower", "archetype", "archetype_slug")
+            .annotate(cnt=Count("id"))
+            .order_by("player_lower", "-cnt")
+        )
+        for row in arch_counts_qs:
+            pl = row["player_lower"]
+            if pl not in fav_arch_map:
+                fav_arch_map[pl] = (row["archetype"], row["archetype_slug"])
+
     players = []
     for p in player_stats:
         top8s = p["top8_count"]
         challs = p["chall_appearances"]
         conv_rate = round((top8s / challs) * 100, 1) if challs > 0 else 0.0
 
-        # Most played archetype
-        fav_arch = (
-            decks_qs.filter(player_lower=p["player_lower"])
-            .values("archetype", "archetype_slug")
-            .annotate(cnt=Count("id"))
-            .order_by("-cnt")
-            .first()
-        )
+        fav_arch_tuple = fav_arch_map.get(p["player_lower"])
+        fav_arch_name = fav_arch_tuple[0] if fav_arch_tuple else None
+        fav_arch_slug = fav_arch_tuple[1] if fav_arch_tuple else None
 
         players.append(
             {
@@ -979,8 +1008,8 @@ def leaderboard(request, format):
                 "challenge_appearances": challs,
                 "conversion_rate": conv_rate,
                 "league_count": p["league_count"],
-                "top_archetype": fav_arch["archetype"] if fav_arch else None,
-                "top_archetype_slug": fav_arch["archetype_slug"] if fav_arch else None,
+                "top_archetype": fav_arch_name,
+                "top_archetype_slug": fav_arch_slug,
             }
         )
 
@@ -1003,43 +1032,26 @@ def faq(request):
 
 @public_cache(cdn_seconds=86400, browser_seconds=3600)
 def search_index(request):
-    """Return cached JSON search index containing all archetypes and unique players."""
+    """Return cached JSON search index from disk, in-memory cache, or database fallback."""
+    is_testing = getattr(settings, "IS_TESTING", False)
+    search_index_path = getattr(
+        settings,
+        "SEARCH_INDEX_PATH",
+        settings.BASE_DIR / "data" / "search_index.json",
+    )
+
+    if not is_testing and search_index_path.is_file():
+        return HttpResponse(
+            search_index_path.read_bytes(), content_type="application/json"
+        )
+
     cache_key = "search_index_v1"
     data = cache.get(cache_key)
     if data is None:
-        arch_qs = (
-            Deck.objects.order_by()
-            .values("format", "archetype", "archetype_slug")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+        active_slugs = getattr(
+            settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS
         )
-        archetypes = [
-            {
-                "name": a["archetype"],
-                "slug": a["archetype_slug"],
-                "format": a["format"],
-                "count": a["count"],
-            }
-            for a in arch_qs
-            if a["archetype"] and a["archetype_slug"]
-        ]
+        data = build_search_index_data(formats=active_slugs)
+        cache.set(cache_key, data, timeout=86400)
 
-        player_qs = (
-            Deck.objects.order_by()
-            .values("player")
-            .annotate(count=Count("id"))
-            .order_by("-count")
-        )
-        players = [
-            {"name": p["player"], "count": p["count"]} for p in player_qs if p["player"]
-        ]
-
-        data = {
-            "archetypes": archetypes,
-            "players": players,
-        }
-        cache.set(cache_key, data, timeout=3600 * 24)
-
-    response = JsonResponse(data)
-    response["Cache-Control"] = "public, max-age=3600"
-    return response
+    return JsonResponse(data)

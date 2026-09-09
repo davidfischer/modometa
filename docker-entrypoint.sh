@@ -3,6 +3,7 @@ set -e
 
 DATABASE_PATH="${DATABASE_PATH:-/app/modometa.db}"
 KNN_INDEX_PATH="${KNN_INDEX_PATH:-/app/data/knn_index.npz}"
+SEARCH_INDEX_PATH="${SEARCH_INDEX_PATH:-/app/data/search_index.json}"
 DOWNLOAD_URL="${R2_PUBLIC_URL:-${DATA_DOWNLOAD_URL:-https://data.modometa.com}}"
 
 # If arguments were passed to docker run (e.g. bash, custom command), execute them directly
@@ -13,6 +14,7 @@ fi
 # Ensure directories exist
 mkdir -p "$(dirname "$DATABASE_PATH")"
 mkdir -p "$(dirname "$KNN_INDEX_PATH")"
+mkdir -p "$(dirname "$SEARCH_INDEX_PATH")"
 
 if [ -n "$DOWNLOAD_URL" ]; then
     # Strip trailing slash if present
@@ -72,6 +74,12 @@ fi
 if [ ! -f "$DATABASE_PATH" ]; then
     echo "[entrypoint] Warning: No database found at $DATABASE_PATH. Running migrations to initialize an empty database..."
     modometa migrate --no-input
+fi
+
+# Precompute static search index if missing and database exists
+if [ ! -f "$SEARCH_INDEX_PATH" ] && [ -f "$DATABASE_PATH" ]; then
+    echo "[entrypoint] Building precomputed search index..."
+    modometa build_search_index || echo "[entrypoint] Warning: Failed to precompute search index; will compute on-demand."
 fi
 
 PORT="${PORT:-8000}"

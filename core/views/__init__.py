@@ -810,10 +810,11 @@ def archetype_detail(request, format, archetype):
     )
     league_share = round((league_5_0_count / total_5_0s) * 100, 1)
 
-    # Core cards calculation
+    # Core cards & archetype colors calculation
     card_counts = Counter()
     card_total_copies = Counter()
-    for d in decks_qs.values("mainboard"):
+    color_counts = Counter()
+    for d in decks_qs.values("mainboard", "colors", "color_name"):
         d_cards = set()
         for item in d.get("mainboard", []):
             name = item.get("card", "")
@@ -823,6 +824,15 @@ def archetype_detail(request, format, archetype):
                 card_total_copies[name] += cnt
         for c in d_cards:
             card_counts[c] += 1
+        if d.get("colors") or d.get("color_name"):
+            color_counts[(d.get("colors", ""), d.get("color_name", ""))] += 1
+
+    most_common_color = color_counts.most_common(1)
+    if most_common_color:
+        colors, color_name = most_common_color[0][0]
+    else:
+        colors = sample_deck.colors if sample_deck else ""
+        color_name = sample_deck.color_name if sample_deck else ""
 
     core_cards = []
     top_cards = card_counts.most_common(12)
@@ -855,6 +865,7 @@ def archetype_detail(request, format, archetype):
             archetype_slug=arch_slug,
         )
         .select_related("tournament")
+        .defer("mainboard", "sideboard", "illegal_cards")
         .order_by("-tournament__date", "rank", "id")
     )
     paginator = Paginator(all_finishes_qs, 25)
@@ -864,23 +875,6 @@ def archetype_detail(request, format, archetype):
     for f in page_obj.object_list:
         parts = f.id.rsplit("_", 1)
         f.deck_index = int(parts[-1]) if len(parts) == 2 and parts[-1].isdigit() else 1
-
-    most_common_color = (
-        decks_qs.values("colors", "color_name")
-        .annotate(cnt=Count("id"))
-        .order_by("-cnt")
-        .first()
-    )
-    colors = (
-        most_common_color["colors"]
-        if most_common_color
-        else (sample_deck.colors if sample_deck else "")
-    )
-    color_name = (
-        most_common_color["color_name"]
-        if most_common_color
-        else (sample_deck.color_name if sample_deck else "")
-    )
 
     return render(
         request,

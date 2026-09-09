@@ -118,6 +118,51 @@ class DeckKNNIndex:
         self.transformer = TfidfTransformer(norm="l2", sublinear_tf=True)
         self.tfidf_matrix = self.transformer.fit_transform(term_matrix)
 
+        self.deck_ids = np.array(self.deck_ids)
+        self.deck_formats = np.array(self.deck_formats)
+        self.deck_players = np.array(self.deck_players)
+        self.deck_archetypes = np.array(self.deck_archetypes)
+        self.deck_colors = np.array(self.deck_colors)
+        self.deck_color_names = np.array(self.deck_color_names)
+        self.deck_dates = np.array(self.deck_dates)
+        self._deck_dates_d = self._compute_dates_d(self.deck_dates)
+
+    @staticmethod
+    def _compute_dates_d(raw_dates: Any) -> np.ndarray:
+        if hasattr(raw_dates, "astype"):
+            try:
+                return raw_dates.astype("datetime64[D]")
+            except (ValueError, TypeError) as exc:
+                logger.debug("Failed to cast dates directly to datetime64[D]: %s", exc)
+        return np.array(
+            [
+                d.isoformat() if hasattr(d, "isoformat") else str(d)[:10]
+                for d in raw_dates
+            ],
+            dtype="datetime64[D]",
+        )
+
+    def _ensure_arrays(self) -> None:
+        if not isinstance(self.deck_ids, np.ndarray):
+            self.deck_ids = np.array(self.deck_ids)
+        if not isinstance(self.deck_formats, np.ndarray):
+            self.deck_formats = np.array(self.deck_formats)
+        if not isinstance(self.deck_players, np.ndarray):
+            self.deck_players = np.array(self.deck_players)
+        if not isinstance(self.deck_archetypes, np.ndarray):
+            self.deck_archetypes = np.array(self.deck_archetypes)
+        if not isinstance(self.deck_colors, np.ndarray):
+            self.deck_colors = np.array(self.deck_colors)
+        if not isinstance(self.deck_color_names, np.ndarray):
+            self.deck_color_names = np.array(self.deck_color_names)
+        if not isinstance(self.deck_dates, np.ndarray):
+            self.deck_dates = np.array(self.deck_dates)
+
+    def _get_dates_d(self) -> np.ndarray:
+        if getattr(self, "_deck_dates_d", None) is None:
+            self._deck_dates_d = self._compute_dates_d(self.deck_dates)
+        return self._deck_dates_d
+
     def save(self, file_path: Path | str) -> Path:
         """Save the fitted index to a native NumPy/SciPy compressed .npz archive."""
         if self.tfidf_matrix is None or self.transformer is None:
@@ -177,6 +222,7 @@ class DeckKNNIndex:
                 else np.array([""] * len(instance.deck_ids))
             )
             instance.deck_dates = f["deck_dates"]
+            instance._deck_dates_d = instance._compute_dates_d(instance.deck_dates)
             instance.inv_vocab = f["vocab"]
             instance.vocab = {card: idx for idx, card in enumerate(instance.inv_vocab)}
 
@@ -230,63 +276,75 @@ class DeckKNNIndex:
         if self.tfidf_matrix is None or self.tfidf_matrix.shape[0] == 0:
             return []
 
+        self._ensure_arrays()
+
         # Cosine similarity is dot product because rows are L2-normalized
         similarities = (self.tfidf_matrix @ query_vec.T).toarray().ravel()
 
-        # Fast vector filtering for candidate matches (sim > 0.01)
-        candidate_indices = np.where(similarities > 0.01)[0]
+        mask = similarities > 0.01
+        if format_filter:
+            mask &= self.deck_formats == format_filter
+        if exclude_format:
+            mask &= self.deck_formats != exclude_format
+        if exclude_deck_id:
+            mask &= self.deck_ids != exclude_deck_id
+
+        candidate_indices = np.where(mask)[0]
         if len(candidate_indices) == 0:
             return []
 
+        cand_sims = similarities[candidate_indices]
         ref_d = reference_date or date.today()
+        ref_np = np.datetime64(ref_d, "D")
+
+        cand_dates = self._get_dates_d()[candidate_indices]
+        days_diff = np.abs((cand_dates - ref_np).astype(np.float32))
+        recency_weights = np.power(0.5, days_diff / self.half_life_days)
+        scores = cand_sims * recency_weights
+
+        if len(scores) > top_k:
+            top_part = np.argpartition(scores, -top_k)[-top_k:]
+            top_indices = top_part[np.argsort(-scores[top_part])]
+        else:
+            top_indices = np.argsort(-scores)
+
+        best_orig_indices = candidate_indices[top_indices]
+
         results = []
-
-        for i in candidate_indices:
-            deck_id = self.deck_ids[i]
-            if exclude_deck_id and deck_id == exclude_deck_id:
-                continue
-
-            deck_fmt = self.deck_formats[i]
-            if format_filter and deck_fmt != format_filter:
-                continue
-            if exclude_format and deck_fmt == exclude_format:
-                continue
-
-            base_sim = float(similarities[i])
-
-            raw_d = self.deck_dates[i]
+        for idx_in_cands, orig_idx in zip(top_indices, best_orig_indices):
+            raw_d = self.deck_dates[orig_idx]
             if isinstance(raw_d, date):
                 d_date = raw_d
             else:
-                d_date = date.fromisoformat(str(raw_d))
+                d_date = date.fromisoformat(str(raw_d)[:10])
 
-            days_diff = abs((ref_d - d_date).days)
-            recency_weight = 0.5 ** (days_diff / self.half_life_days)
-            final_score = base_sim * recency_weight
-
-            deck_colors = str(self.deck_colors[i]) if len(self.deck_colors) > i else ""
+            deck_colors = (
+                str(self.deck_colors[orig_idx])
+                if len(self.deck_colors) > orig_idx
+                else ""
+            )
             deck_color_name = (
-                str(self.deck_color_names[i]) if len(self.deck_color_names) > i else ""
+                str(self.deck_color_names[orig_idx])
+                if len(self.deck_color_names) > orig_idx
+                else ""
             )
 
             results.append(
                 {
-                    "deck_id": deck_id,
-                    "player": self.deck_players[i],
-                    "archetype": self.deck_archetypes[i],
+                    "deck_id": str(self.deck_ids[orig_idx]),
+                    "player": str(self.deck_players[orig_idx]),
+                    "archetype": str(self.deck_archetypes[orig_idx]),
                     "colors": deck_colors,
                     "color_name": deck_color_name,
-                    "format": deck_fmt,
+                    "format": str(self.deck_formats[orig_idx]),
                     "date": d_date,
-                    "raw_similarity": base_sim,
-                    "recency_weight": recency_weight,
-                    "score": final_score,
+                    "raw_similarity": float(cand_sims[idx_in_cands]),
+                    "recency_weight": float(recency_weights[idx_in_cands]),
+                    "score": float(scores[idx_in_cands]),
                 }
             )
 
-        # Sort by final score descending
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:top_k]
+        return results
 
 
 def build_knn_index(

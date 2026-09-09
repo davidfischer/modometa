@@ -1,5 +1,6 @@
 """Views for Modometa metagame analyzer."""
 
+import functools
 from collections import Counter
 from collections.abc import Iterable
 from datetime import date
@@ -15,6 +16,7 @@ from django.http import Http404
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
+from django.utils.cache import patch_cache_control
 
 from core.engine.knn import get_global_knn_index
 from core.formats import FORMATS
@@ -25,6 +27,49 @@ from core.models.card import get_scryfall_url
 from core.models.card import normalize_card_name
 from core.models.deck import Deck
 from core.models.tournament import Tournament
+
+
+def public_cache(cdn_seconds: int = 3600, browser_seconds: int = 300):
+    """Cache view output in LocMemCache and emit Cloudflare & browser caching headers.
+
+    - Server: Caches full rendered response in LocMemCache (unless IS_TESTING is True).
+    - Browser: Cache-Control: max-age=<browser_seconds>
+    - CDN (Cloudflare): Cache-Control: s-maxage=<cdn_seconds> and Cloudflare-CDN-Cache-Control.
+    """
+
+    def decorator(view_func):
+        @functools.wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            if request.method != "GET":
+                return view_func(request, *args, **kwargs)
+
+            is_testing = getattr(settings, "IS_TESTING", False)
+            cache_key = f"page_cache_v2:{request.get_full_path()}"
+
+            if not is_testing:
+                cached_response = cache.get(cache_key)
+                if cached_response is not None:
+                    return cached_response
+
+            response = view_func(request, *args, **kwargs)
+
+            if response.status_code == 200:
+                patch_cache_control(
+                    response,
+                    public=True,
+                    max_age=browser_seconds,
+                    s_maxage=cdn_seconds,
+                )
+                response["Cloudflare-CDN-Cache-Control"] = f"max-age={cdn_seconds}"
+
+                if not is_testing:
+                    cache.set(cache_key, response, timeout=cdn_seconds)
+
+            return response
+
+        return _wrapped_view
+
+    return decorator
 
 
 def get_cards_map(card_names: Iterable[str]) -> dict[str, Card]:
@@ -76,6 +121,7 @@ def get_timeframe_cutoff(days: int = 90) -> tuple[date, date]:
     return cutoff, ref
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def home(request):
     """Home view: Overview of active formats with top 3-5 archetypes each."""
     days = 30 if request.GET.get("days") == "30" else 90
@@ -250,6 +296,7 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
     return result
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def format_overview(request, format):
     """Format overview view: Top archetypes, cards, recent leagues and challenges."""
     fmt_slug = format.lower().strip()
@@ -371,6 +418,7 @@ def format_overview(request, format):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def tournament_list(request, format):
     """Tournament list view: Filterable by challenge or league."""
     fmt_slug = format.lower().strip()
@@ -400,6 +448,7 @@ def tournament_list(request, format):
     )
 
 
+@public_cache(cdn_seconds=86400, browser_seconds=300)
 def tournament_detail(request, format, event):
     """Tournament detail view: Displays standings and decklinks for an event."""
     tournament = get_object_or_404(Tournament, id=event)
@@ -425,6 +474,7 @@ def tournament_detail(request, format, event):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def player_detail(request, player):
     """Player detail view: Lifetime tournament history across formats."""
     player_clean = player.strip()
@@ -480,6 +530,7 @@ def player_detail(request, player):
     )
 
 
+@public_cache(cdn_seconds=86400, browser_seconds=300)
 def deck_detail(request, player, event, deck_index=1):
     """Deck detail view: Displays mainboard, sideboard, Scryfall previews, and kNN similarities."""
     player_lower = player.strip().lower()
@@ -549,93 +600,118 @@ def deck_detail(request, player, event, deck_index=1):
     # Generate text for copy to clipboard
     deck_text = deck.decklist_text
 
-    # Format & Cross-Format kNN neighbors
+    # Format & Cross-Format kNN neighbors (cached per deck to avoid recomputing 300k matrix ops)
     format_neighbors = []
     cross_format_neighbors = []
     global_index = get_global_knn_index()
     if global_index is not None:
-        query_vec = global_index.vector_from_decklist(deck.mainboard, deck.sideboard)
-        format_raw_neighbors = global_index.query(
-            query_vec,
-            reference_date=tournament.date,
-            top_k=5,
-            exclude_deck_id=deck.id,
-            format_filter=deck.format,
-        )
-        cross_raw_neighbors = global_index.query(
-            query_vec,
-            reference_date=tournament.date,
-            top_k=5,
-            exclude_deck_id=deck.id,
-            exclude_format=deck.format,
-        )
+        knn_cache_key = f"deck_knn_v2_{deck.id}"
+        cached_neighbors = cache.get(knn_cache_key)
+        if cached_neighbors is not None:
+            format_neighbors, cross_format_neighbors = cached_neighbors
+        else:
+            query_vec = global_index.vector_from_decklist(
+                deck.mainboard, deck.sideboard
+            )
+            format_raw_neighbors = global_index.query(
+                query_vec,
+                reference_date=tournament.date,
+                top_k=5,
+                exclude_deck_id=deck.id,
+                format_filter=deck.format,
+            )
+            cross_raw_neighbors = global_index.query(
+                query_vec,
+                reference_date=tournament.date,
+                top_k=5,
+                exclude_deck_id=deck.id,
+                exclude_format=deck.format,
+            )
 
-        all_raw_neighbors = list(format_raw_neighbors) + list(cross_raw_neighbors)
-        neighbor_ids = [str(n["deck_id"]) for n in all_raw_neighbors]
-        deck_map = {}
-        if neighbor_ids:
-            deck_map = {
-                d["id"]: d
-                for d in Deck.objects.filter(id__in=neighbor_ids).values(
-                    "id", "player", "archetype", "colors", "color_name", "tournament_id"
+            all_raw_neighbors = list(format_raw_neighbors) + list(cross_raw_neighbors)
+            neighbor_ids = [str(n["deck_id"]) for n in all_raw_neighbors]
+            deck_map = {}
+            if neighbor_ids:
+                deck_map = {
+                    d["id"]: d
+                    for d in Deck.objects.filter(id__in=neighbor_ids).values(
+                        "id",
+                        "player",
+                        "archetype",
+                        "colors",
+                        "color_name",
+                        "tournament_id",
+                    )
+                }
+
+            for n in format_raw_neighbors:
+                parts = str(n["deck_id"]).rsplit("_", 1)
+                d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
+                db_deck = deck_map.get(str(n["deck_id"]))
+                tourn_id = (
+                    db_deck["tournament_id"]
+                    if db_deck
+                    else str(n["deck_id"]).split("_")[0]
                 )
-            }
+                player = db_deck["player"] if db_deck else n["player"]
+                archetype = db_deck["archetype"] if db_deck else n["archetype"]
+                colors = (
+                    (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
+                )
+                color_name = (
+                    (db_deck["color_name"] if db_deck else None)
+                    or n.get("color_name")
+                    or ""
+                )
+                format_neighbors.append(
+                    {
+                        "player": player,
+                        "archetype": archetype,
+                        "colors": colors,
+                        "color_name": color_name,
+                        "similarity_pct": round(n["raw_similarity"] * 100, 1),
+                        "date": n["date"],
+                        "tournament_id": tourn_id,
+                        "deck_index": d_idx,
+                    }
+                )
 
-        for n in format_raw_neighbors:
-            parts = str(n["deck_id"]).rsplit("_", 1)
-            d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
-            db_deck = deck_map.get(str(n["deck_id"]))
-            tourn_id = (
-                db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
-            )
-            player = db_deck["player"] if db_deck else n["player"]
-            archetype = db_deck["archetype"] if db_deck else n["archetype"]
-            colors = (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
-            color_name = (
-                (db_deck["color_name"] if db_deck else None)
-                or n.get("color_name")
-                or ""
-            )
-            format_neighbors.append(
-                {
-                    "player": player,
-                    "archetype": archetype,
-                    "colors": colors,
-                    "color_name": color_name,
-                    "similarity_pct": round(n["raw_similarity"] * 100, 1),
-                    "date": n["date"],
-                    "tournament_id": tourn_id,
-                    "deck_index": d_idx,
-                }
-            )
-
-        for n in cross_raw_neighbors:
-            parts = str(n["deck_id"]).rsplit("_", 1)
-            d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
-            db_deck = deck_map.get(str(n["deck_id"]))
-            tourn_id = (
-                db_deck["tournament_id"] if db_deck else str(n["deck_id"]).split("_")[0]
-            )
-            player = db_deck["player"] if db_deck else n["player"]
-            archetype = db_deck["archetype"] if db_deck else n["archetype"]
-            colors = (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
-            color_name = (
-                (db_deck["color_name"] if db_deck else None)
-                or n.get("color_name")
-                or ""
-            )
-            cross_format_neighbors.append(
-                {
-                    "player": player,
-                    "archetype": archetype,
-                    "format": n["format"].capitalize(),
-                    "colors": colors,
-                    "color_name": color_name,
-                    "similarity_pct": round(n["raw_similarity"] * 100, 1),
-                    "date": n["date"],
-                    "tournament_id": tourn_id,
-                    "deck_index": d_idx,
-                }
+            for n in cross_raw_neighbors:
+                parts = str(n["deck_id"]).rsplit("_", 1)
+                d_idx = parts[-1] if len(parts) == 2 and parts[-1].isdigit() else 1
+                db_deck = deck_map.get(str(n["deck_id"]))
+                tourn_id = (
+                    db_deck["tournament_id"]
+                    if db_deck
+                    else str(n["deck_id"]).split("_")[0]
+                )
+                player = db_deck["player"] if db_deck else n["player"]
+                archetype = db_deck["archetype"] if db_deck else n["archetype"]
+                colors = (
+                    (db_deck["colors"] if db_deck else None) or n.get("colors") or ""
+                )
+                color_name = (
+                    (db_deck["color_name"] if db_deck else None)
+                    or n.get("color_name")
+                    or ""
+                )
+                cross_format_neighbors.append(
+                    {
+                        "player": player,
+                        "archetype": archetype,
+                        "format": n["format"].capitalize(),
+                        "colors": colors,
+                        "color_name": color_name,
+                        "similarity_pct": round(n["raw_similarity"] * 100, 1),
+                        "date": n["date"],
+                        "tournament_id": tourn_id,
+                        "deck_index": d_idx,
+                    }
+                )
+            cache.set(
+                knn_cache_key,
+                (format_neighbors, cross_format_neighbors),
+                timeout=86400,
             )
 
     return render(
@@ -651,6 +727,7 @@ def deck_detail(request, player, event, deck_index=1):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def archetype_detail(request, format, archetype):
     """Archetype detail view: 30d/90d stats, core cards, recent event finishes."""
     fmt_slug = format.lower().strip()
@@ -817,6 +894,7 @@ def archetype_detail(request, format, archetype):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def cards_list(request, format):
     """Cards view: Paginated list of most commonly played cards in format."""
     fmt_slug = format.lower().strip()
@@ -850,6 +928,7 @@ def cards_list(request, format):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=180)
 def leaderboard(request, format):
     """Leaderboard view: Top 100 competitors in format over timeframe."""
     fmt_slug = format.lower().strip()
@@ -916,11 +995,13 @@ def leaderboard(request, format):
     )
 
 
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
 def faq(request):
     """FAQ view explaining data sources, tournament coverage, and acknowledgments."""
     return render(request, "faq.html")
 
 
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
 def search_index(request):
     """Return cached JSON search index containing all archetypes and unique players."""
     cache_key = "search_index_v1"

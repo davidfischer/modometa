@@ -1,14 +1,18 @@
 """Integration tests for Modometa routes and views."""
 
+import re
 from datetime import date
 
 import pytest
+from django.http import HttpResponse
 from django.test import Client
+from django.test import RequestFactory
 
 from core.models import Card
 from core.models import CardLookup
 from core.models import Deck
 from core.models import Tournament
+from core.views import public_cache
 
 
 @pytest.fixture
@@ -721,6 +725,59 @@ def test_healthz_endpoint(client):
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.content == b"OK"
+
+
+def test_robots_txt_endpoint(client):
+    """Robots.txt endpoint should return 200 OK with plain text from template."""
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+    assert b"User-agent: *" in response.content
+    assert b"Crawl-delay: 2" in response.content
+
+
+def test_public_cache_decorator():
+    """public_cache decorator should emit public, browser max-age, and matching CDN max-age."""
+    rf = RequestFactory()
+
+    @public_cache(cdn_seconds=7200, browser_seconds=120)
+    def dummy_view(request):
+        return HttpResponse("ok")
+
+    response = dummy_view(rf.get("/test-dummy/"))
+    assert response.status_code == 200
+    assert "public" in response.headers["Cache-Control"]
+    assert "max-age=120" in response.headers["Cache-Control"]
+    assert "s-maxage=7200" in response.headers["Cache-Control"]
+    assert response.headers["Cloudflare-CDN-Cache-Control"] == "max-age=7200"
+
+
+@pytest.mark.django_db
+def test_cache_headers_emitted(client):
+    """Production views should emit valid Cache-Control and Cloudflare-CDN-Cache-Control headers."""
+    for path in ["/", "/faq/"]:
+        resp = client.get(path)
+        assert resp.status_code == 200
+
+        cache_control = resp.headers.get("Cache-Control", "")
+        cf_cache = resp.headers.get("Cloudflare-CDN-Cache-Control", "")
+
+        assert "public" in cache_control
+
+        s_max = re.search(r"s-maxage=(\d+)", cache_control)
+        max_age = re.search(r"max-age=(\d+)", cache_control)
+        cf_max = re.search(r"max-age=(\d+)", cf_cache)
+
+        assert s_max is not None, f"s-maxage missing in Cache-Control for {path}"
+        assert max_age is not None, f"max-age missing in Cache-Control for {path}"
+        assert cf_max is not None, (
+            f"max-age missing in Cloudflare-CDN-Cache-Control for {path}"
+        )
+
+        # Cloudflare CDN TTL should mirror origin s-maxage directive
+        assert s_max.group(1) == cf_max.group(1)
+        assert int(s_max.group(1)) > 0
+        assert int(max_age.group(1)) > 0
 
 
 @pytest.mark.django_db

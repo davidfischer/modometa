@@ -75,18 +75,21 @@ if [ ! -f "$DATABASE_PATH" ]; then
 fi
 
 PORT="${PORT:-8000}"
-GUNICORN_WORKERS="${GUNICORN_WORKERS:-2}"
-GUNICORN_THREADS="${GUNICORN_THREADS:-2}"
+GUNICORN_WORKERS="${GUNICORN_WORKERS:-1}"
+GUNICORN_THREADS="${GUNICORN_THREADS:-4}"
 GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-60}"
+GUNICORN_MAX_REQUESTS="${GUNICORN_MAX_REQUESTS:-1000}"
+GUNICORN_MAX_REQUESTS_JITTER="${GUNICORN_MAX_REQUESTS_JITTER:-100}"
 
-echo "[entrypoint] Starting Gunicorn on port $PORT (workers=$GUNICORN_WORKERS, threads=$GUNICORN_THREADS, preload=enabled)..."
+echo "[entrypoint] Starting Gunicorn on port $PORT (workers=$GUNICORN_WORKERS, threads=$GUNICORN_THREADS, max_requests=$GUNICORN_MAX_REQUESTS)..."
 
 exec gunicorn config.wsgi:application \
     --bind "0.0.0.0:${PORT}" \
     --workers "${GUNICORN_WORKERS}" \
     --threads "${GUNICORN_THREADS}" \
     --timeout "${GUNICORN_TIMEOUT}" \
-    --preload \
+    --max-requests "${GUNICORN_MAX_REQUESTS}" \
+    --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER}" \
     --access-logfile - \
     --error-logfile - \
     --log-level info

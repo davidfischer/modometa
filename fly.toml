@@ -21,8 +21,10 @@ primary_region = 'lax'
   KNN_INDEX_PATH = '/app/data/knn_index.npz'
   PORT = '8000'
   R2_PUBLIC_URL = 'https://data.modometa.com'
+  SEARCH_INDEX_PATH = '/app/data/search_index.json'
 
 [deploy]
+  strategy = "bluegreen"
   wait_timeout = "300s"
 
 [http_service]

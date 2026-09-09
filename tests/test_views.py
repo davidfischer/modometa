@@ -1,9 +1,12 @@
 """Integration tests for Modometa routes and views."""
 
+import json
 import re
 from datetime import date
+from io import StringIO
 
 import pytest
+from django.core.management import call_command
 from django.http import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
@@ -649,6 +652,47 @@ def test_search_index_api(client):
 
     player_names = [p["name"] for p in data["players"]]
     assert "SearchHero" in player_names
+
+
+@pytest.mark.django_db
+def test_build_search_index_command(tmp_path):
+    """build_search_index command generates a valid JSON file."""
+    from core.models.tournament import Tournament
+
+    t = Tournament.objects.create(
+        id="tourn-cmd-test",
+        name="Vintage Challenge",
+        format="vintage",
+        date=date(2024, 1, 1),
+    )
+    Deck.objects.create(
+        id="deck-cmd-test",
+        tournament=t,
+        format="vintage",
+        player="CmdHero",
+        player_lower="cmdhero",
+        archetype="Oath of Druids",
+        archetype_slug="oath-of-druids",
+        result="1st",
+    )
+    dest = tmp_path / "search_index.json"
+    out = StringIO()
+    call_command("build_search_index", output=str(dest), stdout=out)
+    assert dest.is_file()
+    data = json.loads(dest.read_text())
+    assert any(a["name"] == "Oath of Druids" for a in data["archetypes"])
+    assert any(p["name"] == "CmdHero" for p in data["players"])
+
+
+def test_search_index_serves_static_file(client, tmp_path, settings):
+    """search_index view serves static file directly when available outside tests."""
+    dest = tmp_path / "search_index.json"
+    dest.write_text('{"archetypes":[{"name":"StaticArch"}],"players":[]}')
+    settings.SEARCH_INDEX_PATH = dest
+    settings.IS_TESTING = False
+    response = client.get("/api/search-index/")
+    assert response.status_code == 200
+    assert response.json()["archetypes"][0]["name"] == "StaticArch"
 
 
 @pytest.mark.django_db

@@ -10,6 +10,7 @@ primary_region = 'lax'
   dockerfile = 'Dockerfile'
 
 [env]
+  CSRF_TRUSTED_ORIGINS = 'https://*.fly.dev,https://modometa.com,https://www.modometa.com'
   DATABASE_PATH = '/app/modometa.db'
   DJANGO_SETTINGS_MODULE = 'config.settings.prod'
   GUNICORN_THREADS = '2'
@@ -19,21 +20,24 @@ primary_region = 'lax'
   PORT = '8000'
   R2_PUBLIC_URL = 'https://data.modometa.com'
 
+[deploy]
+  wait_timeout = "300s"
+
 [http_service]
   internal_port = 8000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ['app']
 
   [[http_service.checks]]
-    interval = '30s'
+    interval = '15s'
     timeout = '5s'
-    grace_period = '30s'
+    grace_period = '180s'
     method = 'GET'
     path = '/healthz'
 
+# https://fly.io/docs/machines/guides-examples/machine-sizing/
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '1024mb'

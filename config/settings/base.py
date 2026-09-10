@@ -90,7 +90,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MODOMETA_FORMATS = FORMAT_SLUGS
 
 # Formats actively displayed in navigation and homepage (MVP: Vintage & Legacy)
-ACTIVE_FORMAT_SLUGS = ["vintage", "legacy"]
+ACTIVE_FORMAT_SLUGS = ["vintage", "legacy", "premodern"]
 
 ARCHETYPES_DIR = BASE_DIR / "archetypes"
 DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "MTG_decklistcache" / "Tournaments" / "MTGO"

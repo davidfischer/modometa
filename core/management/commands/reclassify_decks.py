@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.db import transaction
+from django.db.models import Count
 from tqdm import tqdm
 
 from core.formats import FORMAT_NAMES
@@ -46,6 +47,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Simulate reclassification and display stats without modifying the database.",
         )
+        parser.add_argument(
+            "--show-archetype-counts",
+            action="store_true",
+            help="Display deck counts for each archetype defined in the format's YAML rules (requires --format).",
+        )
 
     def handle(self, *args, **options):
         fmt_arg = options["format"]
@@ -53,6 +59,12 @@ class Command(BaseCommand):
         batch_size = options["batch_size"]
         skip_knn = options["skip_knn"]
         dry_run = options["dry_run"]
+        show_archetype_counts = options["show_archetype_counts"]
+
+        if show_archetype_counts and not fmt_arg:
+            raise CommandError(
+                "--show-archetype-counts requires --format to be specified (e.g. --format legacy)."
+            )
 
         if fmt_arg:
             fmt_arg = fmt_arg.lower().strip()
@@ -95,6 +107,8 @@ class Command(BaseCommand):
         promoted_from_fallback = 0
         demoted_to_fallback = 0
         transitions = Counter()
+        archetype_counts: Counter[str] = Counter()
+        fallback_decks_count = 0
         pending_updates: list[Deck] = []
 
         pbar = tqdm(
@@ -119,6 +133,10 @@ class Command(BaseCommand):
                 card_colors_map=card_colors,
                 sideboard_cards=deck.sideboard,
             )
+
+            archetype_counts[arch_name] += 1
+            if is_fallback:
+                fallback_decks_count += 1
 
             has_changed = (
                 deck.archetype != arch_name
@@ -205,6 +223,72 @@ class Command(BaseCommand):
             self.stdout.write("\nTop Archetype Transitions:")
             for trans, count in transitions.most_common(10):
                 self.stdout.write(f"  {count:,}x: {trans}")
+
+        if show_archetype_counts:
+            if unclassified_only and not dry_run:
+                counts_dict = dict(
+                    Deck.objects.filter(format=fmt_arg)
+                    .values_list("archetype")
+                    .annotate(c=Count("id"))
+                )
+                fallback_count = Deck.objects.filter(
+                    format=fmt_arg, is_auto_classified=True
+                ).count()
+                total_in_fmt = Deck.objects.filter(format=fmt_arg).count()
+            elif unclassified_only and dry_run:
+                base_counts = dict(
+                    Deck.objects.filter(format=fmt_arg, is_auto_classified=False)
+                    .values_list("archetype")
+                    .annotate(c=Count("id"))
+                )
+                combined = Counter(base_counts) + archetype_counts
+                counts_dict = dict(combined)
+                fallback_count = fallback_decks_count
+                total_in_fmt = Deck.objects.filter(format=fmt_arg).count()
+            else:
+                counts_dict = dict(archetype_counts)
+                fallback_count = fallback_decks_count
+                total_in_fmt = total_decks
+
+            yaml_rules = engine.get_rules(fmt_arg)
+            yaml_archetype_names = list(dict.fromkeys(r["name"] for r in yaml_rules))
+            sorted_archetypes = sorted(
+                yaml_archetype_names,
+                key=lambda name: (-counts_dict.get(name, 0), name.lower()),
+            )
+
+            col_width = max(
+                max((len(name) for name in yaml_archetype_names), default=30), 30
+            )
+            sep = "-" * (col_width + 20)
+            self.stdout.write(f"\nArchetype Breakdown ({fmt_display}):")
+            self.stdout.write("=" * (col_width + 20))
+            self.stdout.write(f"  {'Archetype':<{col_width}} {'Count':>8} {'Pct':>7}")
+            self.stdout.write(sep)
+
+            yaml_total = 0
+            for name in sorted_archetypes:
+                count = counts_dict.get(name, 0)
+                yaml_total += count
+                pct = (count / total_in_fmt * 100) if total_in_fmt else 0.0
+                self.stdout.write(f"  {name:<{col_width}} {count:>8,d} {pct:>6.1f}%")
+
+            self.stdout.write(sep)
+            yaml_pct = (yaml_total / total_in_fmt * 100) if total_in_fmt else 0.0
+            fallback_pct = (
+                (fallback_count / total_in_fmt * 100) if total_in_fmt else 0.0
+            )
+            yaml_label = f"YAML Archetypes ({len(sorted_archetypes)} total)"
+            self.stdout.write(
+                f"  {yaml_label:<{col_width}} {yaml_total:>8,d} {yaml_pct:>6.1f}%"
+            )
+            self.stdout.write(
+                f"  {'Fallback (Auto-classified)':<{col_width}} {fallback_count:>8,d} {fallback_pct:>6.1f}%"
+            )
+            self.stdout.write(
+                f"  {'Total Decks':<{col_width}} {total_in_fmt:>8,d} {100.0:>6.1f}%"
+            )
+            self.stdout.write("=" * (col_width + 20))
 
         if dry_run:
             self.stdout.write(

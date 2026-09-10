@@ -6,6 +6,7 @@ from datetime import date
 from io import StringIO
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.http import HttpResponse
 from django.test import Client
@@ -724,44 +725,57 @@ def test_search_box_in_header_replaces_window_switcher(client):
 
 @pytest.mark.django_db
 def test_active_formats_hidden_from_navigation_and_homepage(client):
-    """Only Vintage and Legacy should appear in the left navigation and homepage format cards."""
+    """Only active formats should appear in the left navigation and homepage format cards."""
+    active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
+    hidden_slugs = [
+        slug for slug in settings.MODOMETA_FORMATS if slug not in active_slugs
+    ]
+
     response = client.get("/")
     assert response.status_code == 200
 
     # Homepage format cards
     format_slugs = [item["format_slug"] for item in response.context["format_metas"]]
-    assert format_slugs == ["vintage", "legacy"]
+    assert format_slugs == active_slugs
 
     # Navigation sidebar items
     nav_formats = [fmt["slug"] for fmt in response.context["MODOMETA_FORMATS"]]
-    assert nav_formats == ["vintage", "legacy"]
+    assert nav_formats == active_slugs
 
-    # Verify HTML sidebar only lists Vintage and Legacy
+    # Verify HTML sidebar lists active formats and excludes hidden formats
     content = response.content.decode("utf-8")
     aside_start = content.find("<aside")
     aside_end = content.find("</aside>")
     sidebar_html = content[aside_start:aside_end]
 
-    assert 'href="/vintage/?days=90"' in sidebar_html
-    assert 'href="/legacy/?days=90"' in sidebar_html
-    assert 'href="/modern/?days=90"' not in sidebar_html
-    assert 'href="/pioneer/?days=90"' not in sidebar_html
-    assert 'href="/standard/?days=90"' not in sidebar_html
-    assert 'href="/pauper/?days=90"' not in sidebar_html
-    assert 'href="/premodern/?days=90"' not in sidebar_html
+    for slug in active_slugs:
+        assert f'href="/{slug}/?days=90"' in sidebar_html
+
+    for slug in hidden_slugs:
+        assert f'href="/{slug}/?days=90"' not in sidebar_html
 
 
 @pytest.mark.django_db
 def test_hidden_formats_still_accessible_via_direct_url_for_search(client):
-    """Formats outside Vintage and Legacy are accessible directly (e.g. from search results)."""
-    # Modern format overview should return 200 OK (not 404)
-    response = client.get("/modern/")
-    assert response.status_code == 200
-    assert b"Modern Metagame" in response.content
+    """Formats outside active formats are accessible directly (e.g. from search results)."""
+    active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
+    hidden_slugs = [
+        slug for slug in settings.MODOMETA_FORMATS if slug not in active_slugs
+    ]
+    test_slug = (
+        "modern"
+        if "modern" in hidden_slugs
+        else (hidden_slugs[0] if hidden_slugs else "modern")
+    )
 
-    # The sidebar navigation on the Modern page still only displays Vintage and Legacy
+    # Inactive/hidden format overview should return 200 OK (not 404)
+    response = client.get(f"/{test_slug}/")
+    assert response.status_code == 200
+    assert f"{test_slug.capitalize()} Metagame".encode() in response.content
+
+    # The sidebar navigation on the page still only displays active formats
     nav_formats = [fmt["slug"] for fmt in response.context["MODOMETA_FORMATS"]]
-    assert nav_formats == ["vintage", "legacy"]
+    assert nav_formats == active_slugs
 
 
 def test_healthz_endpoint(client):

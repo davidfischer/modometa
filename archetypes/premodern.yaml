@@ -1,88 +1,40 @@
 # Premodern Archetype Signatures for Modometa
 
+
+#####################################################################
+# Aggro Archetypes
+#####################################################################
+
 - name: "Terrageddon"
-  category: "Aggro-Control"
+  category: "Aggro"
   priority: 95
-  signatures:
+  mandatory:
     - "terravore"
     - "armageddon"
-    - "knight of the reliquary"
-    - "swords to plowshares"
-    - "crop rotation"
-  min_signatures: 2
+  signatures:
+    - "mox diamond"
+    - "Weathered Wayfarer"
+    - "Sylvan Library"
+  min_signatures: 1
 
 - name: "Sligh / Burn"
   category: "Aggro"
-  priority: 90
+  priority: 95
+  mandatory:
+    - "lightning bolt"
   signatures:
+    - "mogg fanatic"
     - "jackal pup"
-    - "goblin guide"
-    - "ball lightning"
-    - "fireblast"
-    - "price of progress"
+    - "grim lavamancer"
+    - "incinerate"
     - "cursed scroll"
+    - "fireblast"
+    - "ball lightning"
+    - "price of progress"
   min_signatures: 3
-
-- name: "Deadguy Ale"
-  category: "Midrange"
-  priority: 90
-  signatures:
-    - "hypnotic specter"
-    - "sinkhole"
-    - "hymn to tourach"
-    - "vindicate"
-    - "gerrard's verdict"
-    - "swords to plowshares"
-  min_signatures: 3
-
-- name: "Psychatog"
-  category: "Control"
-  priority: 95
-  mandatory:
-    - "psychatog"
-  signatures:
-    - "fact or fiction"
-    - "counterspell"
-    - "accumulated knowledge"
-    - "deep analysis"
-    - "chainer's edict"
-  min_signatures: 2
-
-- name: "Landstill"
-  category: "Control"
-  priority: 95
-  mandatory:
-    - "standstill"
-  signatures:
-    - "mishra's factory"
-    - "faerie conclave"
-    - "wrath of god"
-    - "swords to plowshares"
-    - "counterspell"
-  min_signatures: 2
-
-- name: "The Rock"
-  category: "Midrange"
-  priority: 90
-  signatures:
-    - "spiritmonger"
-    - "pernicious deed"
-    - "deranged hermit"
-    - "birds of paradise"
-    - "cabal therapy"
-    - "duress"
-  min_signatures: 3
-
-- name: "Elves"
-  category: "Combo"
-  priority: 90
-  signatures:
-    - "priest of titania"
-    - "wirewood symbiote"
-    - "llanowar elves"
-    - "quirion ranger"
-    - "natural order"
-  min_signatures: 3
+  anti_signatures:
+    # RG Aggro
+    - "Karplusan Forest"
 
 - name: "Goblins"
   category: "Aggro"
@@ -91,6 +43,401 @@
     - "goblin lackey"
     - "goblin ringleader"
     - "goblin piledriver"
-    - "siege-gang commander"
     - "goblin matron"
+    - "mogg fanatic"
+    - "goblin warchief"
+    - "gempalm incinerator"
+    - "siege-gang commander"
+  min_signatures: 3
+
+- name: "Mono-Black Aggro"
+  category: "Aggro"
+  priority: 80
+  signatures:
+    - "hypnotic specter"
+    - "sinkhole"
+    - "hymn to tourach"
+    - "dark ritual"
+    - "Graveborn Muse"
+    - "Mishra's Factory"
+  min_signatures: 3
+  anti_signatures:
+    - "lightning bolt"
+    - "swords to plowshares"
+    - "caves of koilos"
+
+- name: "RG Aggro"
+  category: "Aggro"
+  priority: 85
+  mandatory:
+    - "Karplusan Forest"
+  signatures:
+    - "lightning bolt"
+    - "mogg fanatic"
+    - "jackal pup"
+    - "grim lavamancer"
+    - "cursed scroll"
+    - "Call of the Herd"
+    - "sylvan library"
+    - "treetop village"
+  min_signatures: 4
+
+- name: "Madness"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Arrogant Wurm"
+  signatures:
+    - "Basking Rootwalla"
+    - "Tireless Tribe"
+    - "Wild Mongrel"
+    - "Patrol Hound"
+    - "Glory"
+  min_signatures: 2
+
+- name: "White Weenie"
+  category: "Aggro"
+  priority: 80
+  signatures:
+    - "exalted angel"
+    - "savannah lions"
+    - "whipcorder"
+    - "mother of runes"
+    - "silver knight"
+    - "ramosian sergeant"
+    - "Soltari Priest"
+  min_signatures: 4
+
+
+#####################################################################
+# Midrange Archetypes
+#####################################################################
+
+- name: "Deadguy Ale"
+  category: "Midrange"
+  priority: 90
+  signatures:
+    - "hypnotic specter"
+    - "hymn to tourach"
+    - "vindicate"
+    - "gerrard's verdict"
+    - "swords to plowshares"
+    - "caves of koilos"
+  min_signatures: 3
+
+- name: "Oath"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Oath of Druids"
+  signatures:
+    - "terravore"
+    - "mox diamond"
+    - "thermokarst"
+    - "Sylvan Library"
+    - "treetop village"
+    - "sphere of resistance"
+  min_signatures: 3
+  anti_signatures:
+    # Not terrageddon
+    - "armageddon"
+
+- name: "Survival"
+  category: "Midrange"
+  priority: 95
+  mandatory:
+    - card: "survival of the fittest"
+      min: 3
+  signatures:
+    - "Squee, Goblin Nabob"
+    - "Recurring Nightmare"
+    - "Deranged Hermit"
+    - "Gaea's Cradle"
+    - "Wall of Blossoms"
+    - "Wall of Roots"
+    - "Birds of Paradise"
+  min_signatures: 2
+
+- name: "The Rock"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "pernicious deed"
+  signatures:
+    - "spiritmonger"
+    - "deranged hermit"
+    - "cabal therapy"
+    - "Krosan Tusker"
+    - "yavimaya elder"
+    - "genesis"
+  min_signatures: 2
+
+
+#####################################################################
+# Control Archetypes
+#####################################################################
+
+- name: "Landstill"
+  category: "Control"
+  priority: 100
+  mandatory:
+    - "standstill"
+  signatures:
+    - "mishra's factory"
+    - "Kjeldoran Outpost"
+    - "Eternal Dragon"
+    - "Humility"
+    - "Decree of Justice"
+    - "Faerie Conclave"
+  min_signatures: 3
+
+- name: "Psychatog"
+  category: "Control"
+  priority: 95
+  mandatory:
+    # Rare to see a tog deck with less than 4
+    # but don't want to catch some "splash tog" nonsense
+    - card: "psychatog"
+      min: 2
+  signatures:
+    - "fact or fiction"
+    - "accumulated knowledge"
+    - "deep analysis"
+    - "gush"
+    - "Sickening Dreams"
+    - "Quirion Dryad"
+    - "peek"
+  min_signatures: 2
+
+- name: "Zombie Infestation"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "zombie infestation"
+  signatures:
+    - "nether spirit"
+    - "contamination"
+    - "innocent blood"
+    - "rishadan port"
+    - "skeletal scrying"
+    - "powder keg"
+    - "duress"
+  min_signatures: 3
+
+- name: "Welder Tinker"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "tinker"
+    - "goblin welder"
+  signatures:
+    - "Triskelion"
+    - "Sphere of Resistance"
+    - "Tangle Wire"
+    - "Winter Orb"
+    - "Thran Dynamo"
+    - "Masticore"
+  min_signatures: 2
+
+- name: "UW Control"
+  category: "Control"
+  priority: 70
+  mandatory:
+    - "counterspell"
+    - "swords to plowshares"
+  signatures:
+    - "mana leak"
+    - "wrath of god"
+    - "powder keg"
+    - "Decree of Justice"
+    - "Accumulated Knowledge"
+    - "Exalted Angel"
+  min_signatures: 3
+  anti_signatures:
+    - "standstill"
+    - "psychatog"
+
+
+#####################################################################
+# Combo Archetypes
+#####################################################################
+
+- name: "Replenish"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Replenish"
+      min: 2
+  signatures:
+    - "intuition"
+    - "parallax wave"
+    - "seal of cleansing"
+    - "Opalescence"
+    - "Parallax Tide"
+    - "Frantic Search"
+    - "Attunement"
+    - "Decree of Silence"
+  min_signatures: 3
+  anti_signatures:
+    - "argothian enchantress"
+
+- name: "Enchantress"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "argothian enchantress"
+      min: 2
+  signatures:
+    - "serra's sanctum"
+    - "Solitary Confinement"
+    - "wild growth"
+    - "enchantresss presence"
+    - "Mirri's Guile"
+    - "Sterling Grove"
+    - "parallax wave"
+  min_signatures: 3
+
+- name: "Stasis"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "stasis"
+      min: 2
+  signatures:
+    - "black vise"
+    - "root maze"
+    - "forsaken city"
+    - "enchantresss presence"
+    - "daze"
+    - "gush"
+  min_signatures: 2
+
+- name: "Cephalid Breakfast"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "cephalid illusionist"
+    - "nomads en-kor"
+  signatures:
+    - "hermit druid"
+    - "worldly tutor"
+    - "eladamris call"
+  min_signatures: 2
+
+- name: "Blue Storm"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "sapphire medallion"
+  signatures:
+    - "helm of awakening"
+    - "snap"
+    - "cloud of faeries"
+    - "cunning wish"
+    - "teferis isle"
+    - "Meditate"
+    - "Brain Freeze"
+  min_signatures: 3
+
+- name: "Tinker Fling"
+  category: "Combo"
+  # Higher than welder tinker
+  priority: 100
+  mandatory:
+    - "tinker"
+    - "fling"
+  signatures:
+    - "ancient tomb"
+    - "altar of dementia"
+    - "phyrexian devourer"
+    - "gaea's blessing"
+    - "defense grid"
+  min_signatures: 2
+
+- name: "Ill-Gotten Gains"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "ill-gotten gains"
+      min: 2
+  signatures:
+    - "cabal ritual"
+    - "brain freeze"
+    - "cephalid coliseum"
+    - "deep analysis"
+    - "lion's eye diamond"
+    - "Infernal Contract"
+  min_signatures: 3
+
+- name: "Reanimator"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "reanimate"
+  signatures:
+    - "animate dead"
+    - "exhume"
+    - "life // death"
+    - "putrid imp"
+    - "Careful Study"
+    - "Akroma, Angel of Wrath"
+    - "Phantom Nishoba"
+  min_signatures: 3
+
+- name: "Hermit Ghoul"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "Hermit Druid"
+    - "Sutured Ghoul"
+  signatures:
+    - "phyrexian dreadnought"
+    - "stifle"
+    - "Shallow Grave"
+    - "vision charm"
+  min_signatures: 2
+
+- name: "Stiflenought"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "phyrexian dreadnought"
+    - "stifle"
+  signatures:
+    - "foil"
+    - "thwart"
+    - "vision charm"
+  min_signatures: 1
+  anti_signatures:
+    - "Sutured Ghoul"
+
+- name: "Dream Halls"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "Dream Halls"
+      min: 3
+  signatures:
+    - "concentrate"
+    - "opportunity"
+    - "meditate"
+    - "time stretch"
+    - "rush of knowledge"
+    - "svyelunite temple"
+  min_signatures: 2
+
+- name: "Aluren"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "aluren"
+      min: 3
+  signatures:
+    - "cavern harpy"
+    - "havenwood battleground"
+    - "hickory woodlot"
+    - "soul warden"
+    - "Raven Familiar"
+    - "Man-o'-War"
+    - "Mesmeric Fiend"
   min_signatures: 3

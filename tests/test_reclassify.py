@@ -197,3 +197,116 @@ def test_reclassify_matches_sideboard_companion(sample_tournament):
     assert deck.archetype == "Yorion Death & Taxes"
     assert deck.archetype_slug == "yorion-death-taxes"
     assert deck.colors == "W"
+
+
+@pytest.mark.django_db
+def test_show_archetype_counts_requires_format():
+    """--show-archetype-counts without --format raises CommandError."""
+    with pytest.raises(
+        CommandError, match="--show-archetype-counts requires --format to be specified"
+    ):
+        call_command("reclassify_decks", show_archetype_counts=True)
+
+
+@pytest.mark.django_db
+def test_show_archetype_counts_output(sample_tournament):
+    """--show-archetype-counts prints the archetype breakdown table with counts and totals."""
+    Deck.objects.create(
+        id="deck_izzet_delver",
+        tournament=sample_tournament,
+        format="legacy",
+        player="Player1",
+        player_lower="player1",
+        result="5-0",
+        archetype="Mono-Blue Midrange",
+        archetype_slug="mono-blue-midrange",
+        is_auto_classified=True,
+        colors="UR",
+        color_name="Izzet",
+        mainboard=[
+            {"card": "Delver of Secrets", "count": 4},
+            {"card": "Daze", "count": 4},
+            {"card": "Lightning Bolt", "count": 4},
+            {"card": "Force of Will", "count": 4},
+            {"card": "Volcanic Island", "count": 4},
+            {"card": "Brainstorm", "count": 4},
+        ],
+        sideboard=[],
+    )
+    # A deck that falls back to heuristic posture
+    Deck.objects.create(
+        id="deck_fallback",
+        tournament=sample_tournament,
+        format="legacy",
+        player="Player2",
+        player_lower="player2",
+        result="3-2",
+        archetype="Unknown Midrange",
+        archetype_slug="unknown-midrange",
+        is_auto_classified=True,
+        colors="C",
+        color_name="Colorless",
+        mainboard=[
+            {"card": "Wastes", "count": 20},
+            {"card": "Hedron Crawler", "count": 4},
+        ],
+        sideboard=[],
+    )
+
+    out = StringIO()
+    call_command(
+        "reclassify_decks",
+        format="legacy",
+        show_archetype_counts=True,
+        skip_knn=True,
+        stdout=out,
+    )
+
+    output = out.getvalue()
+    assert "Archetype Breakdown (Legacy):" in output
+    assert "Izzet Delver" in output
+    assert "YAML Archetypes" in output
+    assert "Fallback (Auto-classified)" in output
+    assert "Total Decks" in output
+
+
+@pytest.mark.django_db
+def test_show_archetype_counts_dry_run(sample_tournament):
+    """--show-archetype-counts works during dry run mode without modifying database."""
+    Deck.objects.create(
+        id="deck_dry_delver",
+        tournament=sample_tournament,
+        format="legacy",
+        player="Player1",
+        player_lower="player1",
+        result="5-0",
+        archetype="Mono-Blue Midrange",
+        archetype_slug="mono-blue-midrange",
+        is_auto_classified=True,
+        colors="UR",
+        color_name="Izzet",
+        mainboard=[
+            {"card": "Delver of Secrets", "count": 4},
+            {"card": "Daze", "count": 4},
+            {"card": "Lightning Bolt", "count": 4},
+            {"card": "Force of Will", "count": 4},
+            {"card": "Volcanic Island", "count": 4},
+            {"card": "Brainstorm", "count": 4},
+        ],
+        sideboard=[],
+    )
+
+    out = StringIO()
+    call_command(
+        "reclassify_decks",
+        format="legacy",
+        dry_run=True,
+        show_archetype_counts=True,
+        skip_knn=True,
+        stdout=out,
+    )
+
+    output = out.getvalue()
+    assert "Archetype Breakdown (Legacy):" in output
+    assert "Izzet Delver" in output
+    assert "Dry run completed. No database changes were saved." in output

@@ -170,12 +170,16 @@
     - "goblin bombardment"
   min_signatures: 2
   anti_signatures:
+    # Make sure this isn't Mardu
     - "orcish bowmasters"
     - "cabal therapy"
+    - "badlands"
+    - "thoughtseize"
 
 - name: "Mardu Energy"
   category: "Aggro"
-  priority: 92
+  # Lower than RW Energy
+  priority: 88
   mandatory:
     - "guide of souls"
   signatures:
@@ -197,7 +201,7 @@
     - "muxus, goblin grandee"
     - "rundvelt hordemaster"
     - "goblin matron"
-  min_signatures: 2
+  min_signatures: 3
 
 - name: "Merfolk"
   category: "Aggro"

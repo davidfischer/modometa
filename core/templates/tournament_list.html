@@ -4,9 +4,9 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="/" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="/{{ format_slug }}/?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <a href="{% url 'core:format_overview' format_slug %}?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white">Tournaments</span>
 </div>
@@ -36,34 +36,36 @@
 
   <!-- Tournaments Table -->
   <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
-    <table class="w-full text-left text-xs text-zinc-300">
-      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
-        <tr>
-          <th class="py-3 px-4">Date</th>
-          <th class="py-3 px-4">Tournament Name</th>
-          <th class="py-3 px-4">Type</th>
-          <th class="py-3 px-4 text-right">Decks</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-zinc-800/60 font-mono">
-        {% for t in tournaments %}
-          <tr class="hover:bg-zinc-800/30 transition-colors">
-            <td class="py-3 px-4 text-zinc-400">{{ t.date|date:"Y-m-d" }}</td>
-            <td class="py-3 px-4 font-sans">
-              <a href="/{{ format_slug }}/tournaments/{{ t.id }}/" class="text-white hover:text-emerald-400 font-medium">
-                {{ t.name }}
-              </a>
-            </td>
-            <td class="py-3 px-4 uppercase text-2xs text-zinc-400">{{ t.event_type }}</td>
-            <td class="py-3 px-4 text-right text-emerald-400 font-semibold">{{ t.deck_count }}</td>
-          </tr>
-        {% empty %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-zinc-300">
+        <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap">
           <tr>
-            <td colspan="4" class="py-8 text-center text-zinc-500 italic">No tournaments found matching this filter.</td>
+            <th class="py-3 px-4">Date</th>
+            <th class="py-3 px-4">Tournament Name</th>
+            <th class="py-3 px-4">Type</th>
+            <th class="py-3 px-4 text-right">Decks</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-zinc-800/60 font-mono">
+          {% for t in tournaments %}
+            <tr class="hover:bg-zinc-800/30 transition-colors whitespace-nowrap">
+              <td class="py-3 px-4 text-zinc-400">{{ t.date|date:"Y-m-d" }}</td>
+              <td class="py-3 px-4 font-sans min-w-[200px] whitespace-normal">
+                <a href="{% url 'core:tournament_detail' format_slug t.id %}" class="text-white hover:text-emerald-400 font-medium">
+                  {{ t.name }}
+                </a>
+              </td>
+              <td class="py-3 px-4 uppercase text-2xs text-zinc-400">{{ t.event_type }}</td>
+              <td class="py-3 px-4 text-right text-emerald-400 font-semibold">{{ t.deck_count }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="py-8 text-center text-zinc-500 italic">No tournaments found matching this filter.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Pagination -->

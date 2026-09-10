@@ -5,9 +5,9 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="/" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="/{{ format_slug }}/?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <a href="{% url 'core:format_overview' format_slug %}?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-zinc-500">Archetypes</span>
   <span class="mx-2 text-zinc-600">/</span>
@@ -69,61 +69,63 @@
       <span class="text-2xs text-zinc-500 font-mono">{{ total_decks }} finish{{ total_decks|pluralize:"es" }} last {{ days }} days</span>
     </div>
 
-    <table class="w-full text-left text-xs text-zinc-300">
-      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40">
-        <tr>
-          <th class="py-3 px-4">Date</th>
-          <th class="py-3 px-4">Deck</th>
-          <th class="py-3 px-4">Player</th>
-          <th class="py-3 px-4">Event</th>
-          <th class="py-3 px-4">Result</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-zinc-800/60 font-mono">
-        {% for d in finishes %}
-          <tr class="hover:bg-zinc-800/30 transition-colors">
-            <td class="py-3 px-4 text-zinc-400">
-              {{ d.tournament.date|date:"Y-m-d" }}
-            </td>
-            <td class="py-3 px-4 font-sans font-medium text-white">
-              <a href="/player/{{ d.player }}/deck/{{ d.tournament_id }}/{{ d.deck_index }}/" class="hover:text-emerald-400">
-                {{ d.archetype }}
-              </a>
-              {% if d.colors %}
-                <span class="ml-1.5 align-middle">{{ d.colors|mana_symbols:d.color_name }}</span>
-              {% endif %}
-            </td>
-            <td class="py-3 px-4 font-sans font-medium text-white">
-              <a href="/player/{{ d.player }}/" class="hover:text-emerald-400">
-                {{ d.player }}
-              </a>
-            </td>
-            <td class="py-3 px-4 font-sans">
-              <a href="/{{ format_slug }}/tournaments/{{ d.tournament_id }}/" class="text-zinc-200 hover:text-emerald-400">
-                {{ d.tournament.name }}
-              </a>
-            </td>
-            <td class="py-3 px-4">
-              {% if d.is_top8 %}
-                <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30">
-                  ★ {{ d.result }}
-                </span>
-              {% elif d.is_5_0 %}
-                <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30">
-                  🏆 5-0
-                </span>
-              {% else %}
-                <span class="text-zinc-400">{{ d.result }}</span>
-              {% endif %}
-            </td>
-          </tr>
-        {% empty %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-zinc-300">
+        <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap">
           <tr>
-            <td colspan="5" class="py-8 text-center text-zinc-500 italic">No finishes found for this archetype.</td>
+            <th class="py-3 px-4">Date</th>
+            <th class="py-3 px-4">Deck</th>
+            <th class="py-3 px-4">Player</th>
+            <th class="py-3 px-4">Event</th>
+            <th class="py-3 px-4">Result</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-zinc-800/60 font-mono whitespace-nowrap">
+          {% for d in finishes %}
+            <tr class="hover:bg-zinc-800/30 transition-colors">
+              <td class="py-3 px-4 text-zinc-400">
+                {{ d.tournament.date|date:"Y-m-d" }}
+              </td>
+              <td class="py-3 px-4 font-sans font-medium text-white">
+                <a href="{% url 'core:deck_detail_disambiguated' d.player d.tournament_id d.deck_index %}" class="hover:text-emerald-400">
+                  {{ d.archetype }}
+                </a>
+                {% if d.colors %}
+                  <span class="ml-1.5 align-middle">{{ d.colors|mana_symbols:d.color_name }}</span>
+                {% endif %}
+              </td>
+              <td class="py-3 px-4 font-sans font-medium text-white">
+                <a href="{% url 'core:player_detail' d.player %}" class="hover:text-emerald-400">
+                  {{ d.player }}
+                </a>
+              </td>
+              <td class="py-3 px-4 font-sans">
+                <a href="{% url 'core:tournament_detail' format_slug d.tournament_id %}" class="text-zinc-200 hover:text-emerald-400">
+                  {{ d.tournament.name }}
+                </a>
+              </td>
+              <td class="py-3 px-4">
+                {% if d.is_top8 %}
+                  <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30">
+                    ★ {{ d.result }}
+                  </span>
+                {% elif d.is_5_0 %}
+                  <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30">
+                    🏆 5-0
+                  </span>
+                {% else %}
+                  <span class="text-zinc-400">{{ d.result }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="py-8 text-center text-zinc-500 italic">No finishes found for this archetype.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
     <!-- Pagination -->
     {% if page_obj.has_other_pages %}

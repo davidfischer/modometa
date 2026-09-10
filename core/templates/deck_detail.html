@@ -5,11 +5,11 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="/" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="/{{ deck.format }}/" class="hover:text-white capitalize">{{ deck.format }}</a>
+  <a href="{% url 'core:format_overview' deck.format %}" class="hover:text-white capitalize">{{ deck.format }}</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="/{{ deck.format }}/tournaments/{{ tournament.id }}/" class="hover:text-white">{{ tournament.name }}</a>
+  <a href="{% url 'core:tournament_detail' deck.format tournament.id %}" class="hover:text-white">{{ tournament.name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white">{{ deck.player }}</span>
 </div>
@@ -32,8 +32,8 @@
         {{ deck.archetype }}
       </h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Played by <a href="/player/{{ deck.player }}/" class="text-emerald-400 hover:underline font-semibold">{{ deck.player }}</a> in
-        <a href="/{{ deck.format }}/tournaments/{{ tournament.id }}/" class="text-zinc-200 hover:text-emerald-400">{{ tournament.name }}</a>
+        Played by <a href="{% url 'core:player_detail' deck.player %}" class="text-emerald-400 hover:underline font-semibold">{{ deck.player }}</a> in
+        <a href="{% url 'core:tournament_detail' deck.format tournament.id %}" class="text-zinc-200 hover:text-emerald-400">{{ tournament.name }}</a>
         ({{ tournament.date|date:"Y-m-d" }})
       </p>
     </div>
@@ -154,7 +154,7 @@
             <div class="rounded-lg bg-zinc-950/60 p-2.5 border border-zinc-800/80 text-xs">
               <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <a href="/player/{{ n.player }}/deck/{{ n.tournament_id }}/{{ n.deck_index }}/" class="text-white hover:text-emerald-400 font-semibold truncate">
+                  <a href="{% url 'core:deck_detail_disambiguated' n.player n.tournament_id n.deck_index %}" class="text-white hover:text-emerald-400 font-semibold truncate">
                     {{ n.archetype }}
                   </a>
                   {% if n.colors %}
@@ -166,7 +166,7 @@
                 </span>
               </div>
               <div class="flex items-center justify-between mt-1 text-2xs text-zinc-400">
-                <a href="/player/{{ n.player }}/" class="hover:text-zinc-200 truncate">{{ n.player }}</a>
+                <a href="{% url 'core:player_detail' n.player %}" class="hover:text-zinc-200 truncate">{{ n.player }}</a>
                 <span class="shrink-0">{{ n.date|date:"Y-m-d" }}</span>
               </div>
             </div>
@@ -192,7 +192,7 @@
                   <span class="rounded bg-zinc-800 px-1 py-0.5 text-2xs font-mono font-bold uppercase text-zinc-300 shrink-0">
                     {{ n.format }}
                   </span>
-                  <a href="/player/{{ n.player }}/deck/{{ n.tournament_id }}/{{ n.deck_index }}/" class="text-white hover:text-emerald-400 font-semibold truncate">
+                  <a href="{% url 'core:deck_detail_disambiguated' n.player n.tournament_id n.deck_index %}" class="text-white hover:text-emerald-400 font-semibold truncate">
                     {{ n.archetype }}
                   </a>
                   {% if n.colors %}
@@ -204,7 +204,7 @@
                 </span>
               </div>
               <div class="flex items-center justify-between mt-1 text-2xs text-zinc-400">
-                <a href="/player/{{ n.player }}/" class="hover:text-zinc-200 truncate">{{ n.player }}</a>
+                <a href="{% url 'core:player_detail' n.player %}" class="hover:text-zinc-200 truncate">{{ n.player }}</a>
                 <span class="shrink-0">{{ n.date|date:"Y-m-d" }}</span>
               </div>
             </div>
@@ -223,14 +223,53 @@
 
 {% block extra_js %}
 <script>
-  document.getElementById('copy-deck-btn')?.addEventListener('click', () => {
+  document.getElementById('copy-deck-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('copy-deck-btn');
     const text = document.getElementById('deck-text-content')?.value;
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = document.getElementById('copy-deck-btn');
-        btn.textContent = '✓ Copied!';
-        setTimeout(() => { btn.textContent = '📋 Copy List'; }, 2000);
-      });
+    if (!text) return;
+
+    let copied = false;
+
+    // 1. Try modern Clipboard API if supported and in a secure context (HTTPS / localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (e) {
+        // Fall back if permission denied or focus lost
+      }
+    }
+
+    // 2. Fallback for insecure contexts (e.g. testing over HTTP via LAN IP on mobile) or unsupported browsers
+    if (!copied) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '-9999px';
+        textarea.style.opacity = '0';
+        textarea.style.fontSize = '16px'; // Prevent auto-zoom on iOS Safari
+        document.body.appendChild(textarea);
+
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, text.length);
+
+        copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch (err) {
+        copied = false;
+      }
+    }
+
+    if (btn) {
+      const originalText = '📋 Copy List';
+      btn.textContent = copied ? '✓ Copied!' : '⚠️ Copy failed';
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 2000);
     }
   });
 </script>

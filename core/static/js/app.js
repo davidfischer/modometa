@@ -132,6 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (mobileToggle && sidebar) {
     mobileToggle.addEventListener('click', () => {
+      const activeSearch = document.getElementById('global-search-container');
+      const sBackdrop = document.getElementById('search-backdrop');
+      const mOpen = document.getElementById('mobile-search-open');
+      if (window.innerWidth < 640 && activeSearch && activeSearch.classList.contains('flex')) {
+        activeSearch.classList.add('hidden');
+        activeSearch.classList.remove('flex');
+        if (sBackdrop) sBackdrop.classList.add('hidden');
+        if (mOpen) mOpen.classList.remove('hidden');
+      }
       sidebar.classList.toggle('-translate-x-full');
       if (backdrop) backdrop.classList.toggle('hidden');
     });
@@ -205,12 +214,72 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchContainer = document.getElementById('global-search-container');
   const searchInput = document.getElementById('global-search-input');
   const searchDropdown = document.getElementById('global-search-dropdown');
+  const mobileSearchOpen = document.getElementById('mobile-search-open');
+  const mobileSearchClose = document.getElementById('mobile-search-close');
+  const searchBackdrop = document.getElementById('search-backdrop');
 
   if (searchContainer && searchInput && searchDropdown) {
     let searchData = null;
     let isFetching = false;
     let selectedIndex = -1;
     const activeFormat = (searchContainer.getAttribute('data-active-format') || '').toLowerCase();
+
+    function openMobileSearch() {
+      if (window.innerWidth < 640) {
+        if (mobileSearchOpen) mobileSearchOpen.classList.add('hidden');
+        searchContainer.classList.remove('hidden');
+        searchContainer.classList.add('flex');
+        if (searchBackdrop) searchBackdrop.classList.remove('hidden');
+        searchInput.focus();
+        setTimeout(() => {
+          searchInput.focus();
+        }, 30);
+        if (searchInput.value.trim()) {
+          ensureSearchData(() => {
+            renderResults(searchInput.value.trim());
+          });
+        }
+      }
+    }
+
+    function closeMobileSearch() {
+      if (window.innerWidth < 640) {
+        if (mobileSearchOpen) mobileSearchOpen.classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        searchContainer.classList.remove('flex');
+        if (searchBackdrop) searchBackdrop.classList.add('hidden');
+        searchDropdown.classList.add('hidden');
+        selectedIndex = -1;
+        searchInput.blur();
+      }
+    }
+
+    if (mobileSearchOpen) {
+      mobileSearchOpen.addEventListener('click', () => {
+        openMobileSearch();
+      });
+    }
+
+    if (mobileSearchClose) {
+      mobileSearchClose.addEventListener('click', () => {
+        closeMobileSearch();
+      });
+    }
+
+    if (searchBackdrop) {
+      searchBackdrop.addEventListener('click', () => {
+        closeMobileSearch();
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 640) {
+        if (mobileSearchOpen) mobileSearchOpen.classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        searchContainer.classList.remove('flex');
+        if (searchBackdrop) searchBackdrop.classList.add('hidden');
+      }
+    });
 
     function ensureSearchData(callback) {
       if (searchData) {
@@ -246,10 +315,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const isInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable);
       if (!isInput && e.key === '/') {
         e.preventDefault();
+        openMobileSearch();
         searchInput.focus();
         searchInput.select();
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
+        openMobileSearch();
         searchInput.focus();
         searchInput.select();
       }
@@ -437,14 +508,20 @@ document.addEventListener('DOMContentLoaded', () => {
         searchDropdown.classList.add('hidden');
         selectedIndex = -1;
         searchInput.blur();
+        closeMobileSearch();
       }
     });
 
     // Close dropdown on click outside
     document.addEventListener('click', (e) => {
-      if (!searchContainer.contains(e.target)) {
+      const isInsideSearch = searchContainer.contains(e.target);
+      const isSearchOpenBtn = mobileSearchOpen && mobileSearchOpen.contains(e.target);
+      if (!isInsideSearch && !isSearchOpenBtn) {
         searchDropdown.classList.add('hidden');
         selectedIndex = -1;
+        if (window.innerWidth < 640 && searchContainer.classList.contains('flex')) {
+          closeMobileSearch();
+        }
       }
     });
   }

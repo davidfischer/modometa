@@ -5,7 +5,7 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="/" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white capitalize">{{ format_name }} Metagame</span>
 </div>
@@ -22,10 +22,10 @@
       </p>
     </div>
     <div class="flex items-center gap-2">
-      <a href="/{{ format_slug }}/tournaments/?days={{ TIMEFRAME }}" class="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors">
+      <a href="{% url 'core:tournament_list' format_slug %}?days={{ TIMEFRAME }}" class="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors">
         View All Tournaments →
       </a>
-      <a href="/{{ format_slug }}/leaderboard/?days={{ TIMEFRAME }}" class="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
+      <a href="{% url 'core:leaderboard' format_slug %}?days={{ TIMEFRAME }}" class="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
         Leaderboard 🏆
       </a>
     </div>
@@ -76,7 +76,7 @@
           {% for a in archetypes %}
             <tr class="hover:bg-zinc-800/40 transition-colors">
               <td class="py-3 px-3 font-sans font-medium text-white">
-                <a href="/{{ format_slug }}/archetype/{{ a.slug }}/?days={{ TIMEFRAME }}" class="hover:text-emerald-400">
+                <a href="{% url 'core:archetype_detail' format_slug a.slug %}?days={{ TIMEFRAME }}" class="hover:text-emerald-400">
                   {{ a.name }}
                 </a>
                 {% if a.colors %}
@@ -130,7 +130,7 @@
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-bold text-white">Most Played Cards</h2>
-        <a href="/{{ format_slug }}/cards/?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+        <a href="{% url 'core:cards_list' format_slug %}?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
           View All Cards →
         </a>
       </div>
@@ -162,7 +162,7 @@
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-bold text-white">Recent {{ format_name }} Events</h2>
-        <a href="/{{ format_slug }}/tournaments/?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+        <a href="{% url 'core:tournament_list' format_slug %}?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
           All Events →
         </a>
       </div>
@@ -171,7 +171,7 @@
         {% for t in recent_tournaments %}
           <div class="flex items-center justify-between text-xs py-2 border-b border-zinc-800/60 last:border-0">
             <div>
-              <a href="/{{ format_slug }}/tournaments/{{ t.id }}/" class="text-white hover:text-emerald-400 font-medium">
+              <a href="{% url 'core:tournament_detail' format_slug t.id %}" class="text-white hover:text-emerald-400 font-medium">
                 {{ t.name }}
               </a>
               <div class="mt-0.5 text-2xs text-zinc-500 font-mono">{{ t.date|date:"Y-m-d" }} • {{ t.event_type|upper }}</div>

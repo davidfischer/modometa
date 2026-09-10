@@ -33,13 +33,16 @@
 <body class="flex min-h-full flex-col bg-zinc-950 text-zinc-300 selection:bg-emerald-500 selection:text-white">
 
   <!-- Mobile Nav Backdrop -->
-  <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-zinc-950/80 backdrop-blur-sm hidden lg:hidden"></div>
+  <div id="sidebar-backdrop" class="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-sm hidden lg:hidden"></div>
+
+  <!-- Mobile Search Backdrop -->
+  <div id="search-backdrop" class="fixed inset-x-0 top-16 bottom-0 z-30 bg-zinc-950/80 backdrop-blur-sm hidden sm:hidden"></div>
 
   <!-- Sidebar -->
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-zinc-800 bg-zinc-900/95 px-6 pb-8 pt-6 backdrop-blur transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 xl:w-80">
     <!-- Brand Logo -->
     <div class="flex items-center gap-3">
-      <a href="/" class="flex items-center gap-2 text-xl font-bold tracking-tight text-white hover:text-emerald-400 transition-colors">
+      <a href="{% url 'core:home' %}" class="flex items-center gap-2 text-xl font-bold tracking-tight text-white hover:text-emerald-400 transition-colors">
         <span>MODOMETA</span>
       </a>
     </div>
@@ -63,7 +66,7 @@
         <ul class="mt-2 space-y-1">
           {% for fmt in MODOMETA_FORMATS %}
             <li>
-              <a href="/{{ fmt.slug }}/?days={{ TIMEFRAME }}" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if ACTIVE_FORMAT == fmt.slug %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
+              <a href="{% url 'core:format_overview' fmt.slug %}?days={{ TIMEFRAME }}" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if ACTIVE_FORMAT == fmt.slug %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
                 <span>{{ fmt.name }}</span>
                 {% if ACTIVE_FORMAT == fmt.slug %}
                   <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
@@ -74,22 +77,22 @@
                 <!-- Sub-navigation for active format -->
                 <ul class="ml-4 mt-1 space-y-1 border-l border-zinc-800 pl-3">
                   <li>
-                    <a href="/{{ fmt.slug }}/?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-300 hover:text-emerald-400">
+                    <a href="{% url 'core:format_overview' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-300 hover:text-emerald-400">
                       Overview
                     </a>
                   </li>
                   <li>
-                    <a href="/{{ fmt.slug }}/tournaments/?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:tournament_list' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Recent Tournaments
                     </a>
                   </li>
                   <li>
-                    <a href="/{{ fmt.slug }}/cards/?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:cards_list' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Most Played Cards
                     </a>
                   </li>
                   <li>
-                    <a href="/{{ fmt.slug }}/leaderboard/?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:leaderboard' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Leaderboard
                     </a>
                   </li>
@@ -103,7 +106,7 @@
       <div class="pt-4 border-t border-zinc-800/80">
         <ul class="space-y-1 text-xs">
           <li>
-            <a href="/faq/" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if request.path == '/faq/' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
+            <a href="{% url 'core:faq' %}" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if request.path == '/faq/' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
               <span class="flex items-center gap-2">
                 <svg class="h-4 w-4 text-zinc-400 group-hover:text-zinc-200 transition-colors {% if request.path == '/faq/' %}text-emerald-400{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -144,17 +147,17 @@
   <!-- Main Content Wrapper -->
   <div class="flex flex-1 flex-col lg:ml-72 xl:ml-80">
     <!-- Top Header -->
-    <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <div class="flex items-center gap-4">
-        <button id="mobile-menu-button" type="button" class="lg:hidden -m-2.5 p-2.5 text-zinc-400 hover:text-white" aria-label="Open sidebar">
+    <header class="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <div class="flex items-center gap-4 min-w-0">
+        <button id="mobile-menu-button" type="button" class="lg:hidden -m-2.5 p-2.5 text-zinc-400 hover:text-white shrink-0" aria-label="Open sidebar">
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         {% block breadcrumbs %}
-          <div class="text-sm font-medium text-zinc-400">
+          <div class="text-sm font-medium text-zinc-400 truncate">
             {% if ACTIVE_FORMAT %}
-              <a href="/" class="hover:text-white">Home</a>
+              <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
               <span class="mx-2 text-zinc-600">/</span>
               <span class="text-white capitalize">{{ ACTIVE_FORMAT }}</span>
             {% else %}
@@ -164,9 +167,26 @@
         {% endblock %}
       </div>
 
-      <!-- Search Autocomplete -->
-      <div class="relative flex-1 max-w-xs sm:max-w-sm md:max-w-md ml-4" id="global-search-container" data-active-format="{{ ACTIVE_FORMAT|default:'' }}">
-        <div class="relative">
+      <!-- Mobile Search Open Button -->
+      <button
+        id="mobile-search-open"
+        type="button"
+        class="sm:hidden flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/90 py-1.5 px-3 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors shrink-0"
+        aria-label="Open search"
+      >
+        <svg class="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-zinc-500">Search...</span>
+      </button>
+
+      <!-- Search Autocomplete (Inline on desktop, expandable overlay on mobile) -->
+      <div
+        id="global-search-container"
+        class="hidden absolute inset-x-0 top-0 h-16 z-50 bg-zinc-950 px-4 items-center border-b border-zinc-800 sm:relative sm:inset-auto sm:top-auto sm:h-auto sm:z-auto sm:bg-transparent sm:px-0 sm:border-b-0 sm:flex sm:flex-1 sm:max-w-xs md:max-w-md sm:ml-4"
+        data-active-format="{{ ACTIVE_FORMAT|default:'' }}"
+      >
+        <div class="relative w-full flex items-center">
           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <svg class="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
@@ -188,10 +208,19 @@
           </div>
         </div>
 
+        <!-- Mobile Cancel Button -->
+        <button
+          id="mobile-search-close"
+          type="button"
+          class="sm:hidden ml-3 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-colors"
+        >
+          Cancel
+        </button>
+
         <!-- Autocomplete Dropdown Results -->
         <div
           id="global-search-dropdown"
-          class="absolute right-0 left-0 mt-2 z-50 hidden rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-2xl backdrop-blur-md overflow-hidden max-h-96 overflow-y-auto"
+          class="absolute left-3 right-3 top-full mt-2 sm:left-0 sm:right-0 z-50 hidden rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-2xl backdrop-blur-md overflow-hidden max-h-[70vh] sm:max-h-96 overflow-y-auto"
           role="listbox"
         ></div>
       </div>

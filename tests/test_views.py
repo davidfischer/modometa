@@ -4,6 +4,7 @@ import json
 import re
 from datetime import date
 from io import StringIO
+from pathlib import Path
 
 import pytest
 from django.conf import settings
@@ -906,3 +907,20 @@ def test_site_name_context_processor_and_title(client):
 
     # Ensure footer uses SITE_NAME
     assert "MODOMeta is unofficial Fan Content" in response.content.decode("utf-8")
+
+
+def test_no_hardcoded_internal_links_in_templates():
+    """Verify that templates use Django's {% url %} rather than hardcoded root paths in hrefs."""
+    template_dir = Path(__file__).resolve().parent.parent / "core" / "templates"
+    pattern = re.compile(r'href="/(?!/|\s)')
+
+    violations = []
+    for html_file in template_dir.glob("*.html"):
+        with open(html_file, "r", encoding="utf-8") as f:
+            for idx, line in enumerate(f, 1):
+                if pattern.search(line):
+                    violations.append(f"{html_file.name}:{idx}: {line.strip()}")
+
+    assert not violations, "Found hardcoded internal links in templates:\n" + "\n".join(
+        violations
+    )

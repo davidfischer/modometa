@@ -42,7 +42,7 @@ def public_cache(cdn_seconds: int = 3600, browser_seconds: int = 300):
     def decorator(view_func):
         @functools.wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            if request.method != "GET":
+            if request.method != "GET" or settings.DEBUG:
                 return view_func(request, *args, **kwargs)
 
             is_testing = getattr(settings, "IS_TESTING", False)

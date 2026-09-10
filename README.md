@@ -1,6 +1,6 @@
 # MODOMeta — MTGO Metagame Analyzer 🎴
 
-A high-performance Magic the Gathering Online ([MTGO](https://www.mtgo.com)) metagame analyzer focused on tracking archetype appearance rates, Challenge Top 8 shares, League 5-0 shares, and conversion rates across all major MTGO formats:
+[MODOMeta](https://modometa.com) is a Magic the Gathering Online ([MTGO](https://www.mtgo.com)) metagame analyzer focused on tracking archetype play rates, Challenge Top 8 shares, League 5-0 shares, and conversion rates across all major MTGO formats:
 - **Vintage**
 - **Legacy**
 - **Modern** (WIP)
@@ -71,7 +71,7 @@ uv run modometa ingest_tournaments
 ```bash
 uv run modometa runserver
 ```
-Navigate to `http://localhost:8000` to view the metagame analyzer or `http://localhost:8000/admin/` for the backoffice.
+Navigate to `http://localhost:8000` to view the metagame analyzer or `http://localhost:8000/admin/` for the backoffice (run `uv run ./manage.py createuseruser` to create a local admin account).
 
 ---
 

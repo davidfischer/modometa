@@ -86,6 +86,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Site branding
+SITE_NAME = "MODOMeta"
+
 # Modometa domain configuration
 MODOMETA_FORMATS = FORMAT_SLUGS
 

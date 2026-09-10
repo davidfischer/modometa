@@ -24,4 +24,5 @@ def modometa_globals(request):
         "MODOMETA_FORMATS": formats,
         "ACTIVE_FORMAT": active_format,
         "TIMEFRAME": timeframe,
+        "SITE_NAME": getattr(settings, "SITE_NAME", "MODOMeta"),
     }

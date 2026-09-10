@@ -890,3 +890,19 @@ def test_deck_detail_resolves_mdfc_image_uri(client):
         b'data-card-image="https://cards.scryfall.io/test-outland-liberator.jpg"'
         in response.content
     )
+
+
+@pytest.mark.django_db
+def test_site_name_context_processor_and_title(client):
+    """SITE_NAME is provided by modometa_globals and rendered in title tags."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.context["SITE_NAME"] == "MODOMeta"
+    # Ensure title contains the page title and SITE_NAME
+    assert (
+        "<title>MTGO Metagame Overview — MODOMeta</title>"
+        in response.content.decode("utf-8")
+    )
+
+    # Ensure footer uses SITE_NAME
+    assert "MODOMeta is unofficial Fan Content" in response.content.decode("utf-8")

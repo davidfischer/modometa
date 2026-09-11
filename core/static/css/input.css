@@ -148,3 +148,119 @@ html:not(.dark) .bg-rose-950\/40 {
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
   transition: opacity 0.15s ease;
 }
+
+/* Archetype Activity Heatmap (GitHub contributions style) */
+.activity-cell {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, opacity 0.15s ease;
+}
+
+.activity-cell:not(.activity-future):hover,
+.activity-cell:not(.activity-future):focus-visible {
+  outline: none;
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+  stroke-opacity: 0.95;
+}
+
+html:not(.dark) .activity-cell:not(.activity-future):hover,
+html:not(.dark) .activity-cell:not(.activity-future):focus-visible {
+  stroke: #0f172a;
+  stroke-width: 1.5px;
+  stroke-opacity: 0.95;
+}
+
+a > .activity-cell,
+a:has(> .activity-cell) {
+  cursor: pointer;
+}
+
+/* Inactive / No finishes */
+.activity-cell.activity-level-0 {
+  cursor: default;
+  fill: #27272a; /* zinc-800 */
+}
+html:not(.dark) .activity-cell.activity-level-0 {
+  fill: #e2e8f0; /* zinc-200 */
+}
+
+/* Future day in current week */
+.activity-cell.activity-future {
+  fill: transparent;
+  pointer-events: none;
+}
+
+/* Leagues (Blue / Sky) */
+.activity-cell.activity-league-1 {
+  fill: #0369a1; /* sky-700 */
+}
+html:not(.dark) .activity-cell.activity-league-1 {
+  fill: #bae6fd; /* sky-200 */
+}
+
+.activity-cell.activity-league-2 {
+  fill: #0284c7; /* sky-600 */
+}
+html:not(.dark) .activity-cell.activity-league-2 {
+  fill: #38bdf8; /* sky-400 */
+}
+
+.activity-cell.activity-league-3 {
+  fill: #38bdf8; /* sky-400 */
+}
+html:not(.dark) .activity-cell.activity-league-3 {
+  fill: #0284c7; /* sky-600 */
+}
+
+/* Challenges (Green / Emerald) */
+.activity-cell.activity-challenge-entry {
+  fill: #047857; /* emerald-700 */
+}
+html:not(.dark) .activity-cell.activity-challenge-entry {
+  fill: #6ee7b7; /* emerald-300 */
+}
+
+.activity-cell.activity-challenge-top8 {
+  fill: #10b981; /* emerald-500 */
+}
+html:not(.dark) .activity-cell.activity-challenge-top8 {
+  fill: #10b981; /* emerald-500 */
+}
+
+.activity-cell.activity-challenge-winner {
+  fill: #34d399; /* emerald-400 */
+}
+html:not(.dark) .activity-cell.activity-challenge-winner {
+  fill: #059669; /* emerald-600 */
+}
+
+/* Format Bump Chart */
+.bump-track {
+  opacity: 0.75;
+  transition: opacity 0.15s ease, stroke-width 0.15s ease;
+}
+
+.bump-group:hover .bump-track {
+  opacity: 1;
+  stroke-width: 3.5px;
+}
+
+.bump-node {
+  stroke: #18181b;
+  transition: r 0.15s ease, stroke 0.15s ease;
+}
+
+html:not(.dark) .bump-node {
+  stroke: #ffffff;
+}
+
+.bump-group:hover .bump-node {
+  r: 5px;
+}
+
+.bump-guideline {
+  stroke: #27272a;
+}
+
+html:not(.dark) .bump-guideline {
+  stroke: #e2e8f0;
+}

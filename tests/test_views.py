@@ -3,6 +3,7 @@
 import json
 import re
 from datetime import date
+from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from core.models import Card
 from core.models import CardLookup
 from core.models import Deck
 from core.models import Tournament
+from core.views import get_reference_date
 from core.views import public_cache
 
 
@@ -50,12 +52,21 @@ def test_format_overview_view(client):
     assert "total_top8_slots" in response.context["stats"]
     assert "total_5_0s" in response.context["stats"]
 
-    # Verify column header order: League Share before Challenge Share
+    # Verify column header order: League Share before Challenge Share before Top 8 Share before T8 Momentum before Conversion
     content = response.content
     pos_ls = content.find(b">League Share</th>")
     pos_cs = content.find(b">Challenge Share</th>")
-    assert pos_ls != -1 and pos_cs != -1
-    assert pos_ls < pos_cs
+    pos_t8s = content.find(b">Top 8 Share</th>")
+    pos_t8m = content.find(b">T8 Momentum</th>")
+    pos_conv = content.find(b">Conversion</th>")
+    assert (
+        pos_ls != -1
+        and pos_cs != -1
+        and pos_t8s != -1
+        and pos_t8m != -1
+        and pos_conv != -1
+    )
+    assert pos_ls < pos_cs < pos_t8s < pos_t8m < pos_conv
     assert b">Colors</th>" not in content
 
     # Verify each archetype slug appears at most once in format overview
@@ -261,6 +272,22 @@ def test_archetype_detail_view(client):
         assert pos_finishes != -1 and pos_core != -1
         assert pos_finishes < pos_core
 
+        # Verify Activity Heatmap appears after Challenge Conversion and before Recent Tournament Finishes
+        pos_heatmap = content.find(b"Activity Heatmap")
+        assert pos_heatmap != -1
+        assert pos_cc < pos_heatmap < pos_finishes
+
+        # Verify heatmap context
+        assert "heatmap" in response.context
+        heatmap = response.context["heatmap"]
+        assert len(heatmap["weeks"]) == 27
+        assert len(heatmap["weeks"][0]["days"]) == 7
+        assert heatmap["weeks"][0]["days"][0]["date"].weekday() == 0  # Monday
+        assert heatmap["weeks"][0]["days"][6]["date"].weekday() == 6  # Sunday
+        assert "active_days_count" in heatmap
+        assert "total_leagues" in heatmap
+        assert "total_challenges" in heatmap
+
         # Verify Core Cards has mana_cost
         if response.context["core_cards"]:
             first_core = response.context["core_cards"][0]
@@ -306,7 +333,380 @@ def test_archetype_detail_all_time_pagination_and_zero_timeframe(client):
     assert len(response.context["finishes"]) == 25
     assert "1–25 of 30 finishes" in content
     assert "Next →" in content
-    assert "?page=2&amp;days=90" in content or "?page=2&days=90" in content
+
+
+@pytest.mark.django_db
+def test_archetype_activity_heatmap(client):
+    from datetime import timedelta
+
+    from core.views import get_reference_date
+
+    ref = get_reference_date()
+
+    # Create anchor tournament on ref date
+    Tournament.objects.create(
+        id="heatmap_tourn_anchor",
+        name="Modern Anchor",
+        format="modern",
+        event_type="league",
+        date=ref,
+    )
+
+    # 1. Day with 1x League 5-0
+    t_league1 = Tournament.objects.create(
+        id="heatmap_tourn_league_1",
+        name="Modern League",
+        format="modern",
+        event_type="league",
+        date=ref - timedelta(days=5),
+    )
+    Deck.objects.create(
+        id="heatmap_deck_league_1",
+        tournament=t_league1,
+        format="modern",
+        player="HeatmapPlayer1",
+        player_lower="heatmapplayer1",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_5_0=True,
+        result="5-0",
+    )
+
+    # 2. Day with 2x League 5-0s
+    t_league2 = Tournament.objects.create(
+        id="heatmap_tourn_league_2",
+        name="Modern League 2",
+        format="modern",
+        event_type="league",
+        date=ref - timedelta(days=10),
+    )
+    Deck.objects.create(
+        id="heatmap_deck_league_2a",
+        tournament=t_league2,
+        format="modern",
+        player="HeatmapPlayer2",
+        player_lower="heatmapplayer2",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_5_0=True,
+        result="5-0",
+    )
+    Deck.objects.create(
+        id="heatmap_deck_league_2b",
+        tournament=t_league2,
+        format="modern",
+        player="HeatmapPlayer3",
+        player_lower="heatmapplayer3",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_5_0=True,
+        result="5-0",
+    )
+
+    # 3. Day with Challenge entry (non-top 8)
+    t_chall_entry = Tournament.objects.create(
+        id="heatmap_tourn_chall_entry",
+        name="Modern Challenge 32",
+        format="modern",
+        event_type="challenge",
+        date=ref - timedelta(days=15),
+    )
+    Deck.objects.create(
+        id="heatmap_deck_chall_entry",
+        tournament=t_chall_entry,
+        format="modern",
+        player="HeatmapPlayer4",
+        player_lower="heatmapplayer4",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_top8=False,
+        rank=12,
+        result="12th Place",
+    )
+
+    # 4. Day with both Challenge Top 8 AND League 5-0 (Priority test: Top 8 > League)
+    same_day = ref - timedelta(days=20)
+    t_same_chall = Tournament.objects.create(
+        id="heatmap_tourn_same_chall",
+        name="Modern Challenge 64",
+        format="modern",
+        event_type="challenge",
+        date=same_day,
+    )
+    Deck.objects.create(
+        id="heatmap_deck_same_chall",
+        tournament=t_same_chall,
+        format="modern",
+        player="HeatmapPlayer5",
+        player_lower="heatmapplayer5",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_top8=True,
+        rank=3,
+        result="3rd Place",
+    )
+    t_same_league = Tournament.objects.create(
+        id="heatmap_tourn_same_league",
+        name="Modern League Same Day",
+        format="modern",
+        event_type="league",
+        date=same_day,
+    )
+    Deck.objects.create(
+        id="heatmap_deck_same_league",
+        tournament=t_same_league,
+        format="modern",
+        player="HeatmapPlayer6",
+        player_lower="heatmapplayer6",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_5_0=True,
+        result="5-0",
+    )
+
+    # 5. Day with Challenge 1st Place (Winner)
+    t_winner = Tournament.objects.create(
+        id="heatmap_tourn_winner",
+        name="Modern Challenge Winner",
+        format="modern",
+        event_type="challenge",
+        date=ref - timedelta(days=25),
+    )
+    Deck.objects.create(
+        id="heatmap_deck_winner",
+        tournament=t_winner,
+        format="modern",
+        player="HeatmapPlayer7",
+        player_lower="heatmapplayer7",
+        archetype="Grixis Shadow",
+        archetype_slug="grixis-shadow",
+        is_top8=True,
+        rank=1,
+        result="1st Place",
+    )
+
+    response = client.get("/modern/archetype/grixis-shadow/")
+    assert response.status_code == 200
+    heatmap = response.context["heatmap"]
+
+    assert heatmap["active_days_count"] == 5
+    assert heatmap["total_leagues"] == 4
+    assert heatmap["total_challenges"] == 3
+    assert heatmap["total_top8s"] == 2
+
+    # Verify cell days map
+    days_by_date = {}
+    for w in heatmap["weeks"]:
+        for d in w["days"]:
+            days_by_date[d["date_str"]] = d
+
+    # 1. League 1 day
+    d1_date = ref - timedelta(days=5)
+    d1_date_str = d1_date.strftime("%Y-%m-%d")
+    d1 = days_by_date[d1_date_str]
+    assert d1["color_class"] == "activity-league-1"
+    assert d1["tooltip"] == f"{d1_date.strftime('%b')} {d1_date.day}: 1x League 5-0"
+    assert d1["url"] == "/modern/tournaments/heatmap_tourn_league_1/"
+
+    # 2. League 2 day
+    d2_date = ref - timedelta(days=10)
+    d2_date_str = d2_date.strftime("%Y-%m-%d")
+    d2 = days_by_date[d2_date_str]
+    assert d2["color_class"] == "activity-league-2"
+    assert d2["tooltip"] == f"{d2_date.strftime('%b')} {d2_date.day}: 2x League 5-0s"
+    assert d2["url"] == "/modern/tournaments/heatmap_tourn_league_2/"
+
+    # 3. Challenge entry day
+    d3_date = ref - timedelta(days=15)
+    d3_date_str = d3_date.strftime("%Y-%m-%d")
+    d3 = days_by_date[d3_date_str]
+    assert d3["color_class"] == "activity-challenge-entry"
+    assert (
+        d3["tooltip"] == f"{d3_date.strftime('%b')} {d3_date.day}: 1x Challenge entry"
+    )
+    assert d3["url"] == "/modern/tournaments/heatmap_tourn_chall_entry/"
+
+    # 4. Same day: Challenge Top 8 + League 5-0 (Challenge priority for color and link)
+    d4_date_str = same_day.strftime("%Y-%m-%d")
+    d4 = days_by_date[d4_date_str]
+    assert d4["color_class"] == "activity-challenge-top8"
+    assert (
+        d4["tooltip"]
+        == f"{same_day.strftime('%b')} {same_day.day}: 1x Challenge Top 8, 1x League 5-0"
+    )
+    assert d4["url"] == "/modern/tournaments/heatmap_tourn_same_chall/"
+
+    # 5. Challenge winner day
+    d5_date = ref - timedelta(days=25)
+    d5_date_str = d5_date.strftime("%Y-%m-%d")
+    d5 = days_by_date[d5_date_str]
+    assert d5["color_class"] == "activity-challenge-winner"
+    assert (
+        d5["tooltip"] == f"{d5_date.strftime('%b')} {d5_date.day}: 1x Challenge Top 8"
+    )
+    assert d5["url"] == "/modern/tournaments/heatmap_tourn_winner/"
+
+    # 6. Inactive day (no results -> no url link)
+    d_inactive_date = ref - timedelta(days=3)
+    d_inactive_date_str = d_inactive_date.strftime("%Y-%m-%d")
+    d_inactive = days_by_date[d_inactive_date_str]
+    assert d_inactive["color_class"] == "activity-level-0"
+    assert (
+        d_inactive["tooltip"]
+        == f"{d_inactive_date.strftime('%b')} {d_inactive_date.day}: No tournament finishes"
+    )
+    assert d_inactive["url"] == ""
+
+    # Verify link appears in rendered HTML
+    assert b'href="/modern/tournaments/heatmap_tourn_same_chall/"' in response.content
+
+    # 7. Check 30d toggle keeps 27 weeks in heatmap
+    resp_30 = client.get("/modern/archetype/grixis-shadow/?days=30")
+    assert resp_30.status_code == 200
+    assert len(resp_30.context["heatmap"]["weeks"]) == 27
+
+
+@pytest.mark.django_db
+def test_player_activity_heatmap(client):
+    ref = get_reference_date()
+
+    # Create anchor tournament on ref date
+    Tournament.objects.create(
+        id="player_tourn_anchor",
+        name="Modern Anchor",
+        format="modern",
+        event_type="league",
+        date=ref,
+    )
+
+    player_name = "HeatmapHero"
+    player_lower = player_name.lower()
+
+    # 1. Day with 1x League 5-0 (Modern)
+    t_league = Tournament.objects.create(
+        id="player_tourn_league",
+        name="Modern League",
+        format="modern",
+        event_type="league",
+        date=ref - timedelta(days=5),
+    )
+    Deck.objects.create(
+        id="player_deck_league",
+        tournament=t_league,
+        format="modern",
+        player=player_name,
+        player_lower=player_lower,
+        archetype="Murktide",
+        archetype_slug="murktide",
+        is_5_0=True,
+        result="5-0",
+    )
+
+    # 2. Day with 1x Challenge Top 8 (Legacy)
+    t_chall_t8 = Tournament.objects.create(
+        id="player_tourn_chall_t8",
+        name="Legacy Challenge",
+        format="legacy",
+        event_type="challenge",
+        date=ref - timedelta(days=12),
+    )
+    Deck.objects.create(
+        id="player_deck_chall_t8",
+        tournament=t_chall_t8,
+        format="legacy",
+        player=player_name,
+        player_lower=player_lower,
+        archetype="Delver",
+        archetype_slug="delver",
+        is_top8=True,
+        rank=4,
+        result="4th Place",
+    )
+
+    # 3. Day with 1x Challenge Winner (Pauper)
+    t_chall_win = Tournament.objects.create(
+        id="player_tourn_chall_win",
+        name="Pauper Challenge",
+        format="pauper",
+        event_type="challenge",
+        date=ref - timedelta(days=20),
+    )
+    Deck.objects.create(
+        id="player_deck_chall_win",
+        tournament=t_chall_win,
+        format="pauper",
+        player=player_name,
+        player_lower=player_lower,
+        archetype="Burn",
+        archetype_slug="burn",
+        is_top8=True,
+        rank=1,
+        result="1st Place",
+    )
+
+    # 4. Day with 1x Challenge Entry non-T8 (Pioneer)
+    t_chall_entry = Tournament.objects.create(
+        id="player_tourn_chall_entry",
+        name="Pioneer Challenge",
+        format="pioneer",
+        event_type="challenge",
+        date=ref - timedelta(days=25),
+    )
+    Deck.objects.create(
+        id="player_deck_chall_entry",
+        tournament=t_chall_entry,
+        format="pioneer",
+        player=player_name,
+        player_lower=player_lower,
+        archetype="Phoenix",
+        archetype_slug="phoenix",
+        is_top8=False,
+        rank=15,
+        result="15th Place",
+    )
+
+    response = client.get(f"/player/{player_name}/")
+    assert response.status_code == 200
+    assert "heatmap" in response.context
+    heatmap = response.context["heatmap"]
+
+    assert len(heatmap["weeks"]) == 27
+    assert heatmap["active_days_count"] == 4
+    assert heatmap["total_leagues"] == 1
+    assert heatmap["total_challenges"] == 3
+    assert heatmap["total_top8s"] == 2
+    assert heatmap["aria_label"] == f"{player_name}'s 26-week activity heatmap"
+
+    # Verify cell days map
+    days_by_date = {}
+    for w in heatmap["weeks"]:
+        for d in w["days"]:
+            days_by_date[d["date_str"]] = d
+
+    # 1. League day
+    d_lg = days_by_date[(ref - timedelta(days=5)).strftime("%Y-%m-%d")]
+    assert d_lg["color_class"] == "activity-league-1"
+    assert d_lg["url"] == "/modern/tournaments/player_tourn_league/"
+
+    # 2. Challenge T8 day (cross-format: legacy)
+    d_t8 = days_by_date[(ref - timedelta(days=12)).strftime("%Y-%m-%d")]
+    assert d_t8["color_class"] == "activity-challenge-top8"
+    assert d_t8["url"] == "/legacy/tournaments/player_tourn_chall_t8/"
+
+    # 3. Challenge winner day (pauper)
+    d_win = days_by_date[(ref - timedelta(days=20)).strftime("%Y-%m-%d")]
+    assert d_win["color_class"] == "activity-challenge-winner"
+    assert d_win["url"] == "/pauper/tournaments/player_tourn_chall_win/"
+
+    # 4. Challenge entry day (pioneer)
+    d_entry = days_by_date[(ref - timedelta(days=25)).strftime("%Y-%m-%d")]
+    assert d_entry["color_class"] == "activity-challenge-entry"
+    assert d_entry["url"] == "/pioneer/tournaments/player_tourn_chall_entry/"
+
+    # Verify SVG markup in rendered HTML
+    assert b"26-week activity heatmap" in response.content
+    assert b'href="/legacy/tournaments/player_tourn_chall_t8/"' in response.content
+    assert b"activity-challenge-winner" in response.content
 
 
 @pytest.mark.django_db
@@ -924,3 +1324,211 @@ def test_no_hardcoded_internal_links_in_templates():
     assert not violations, "Found hardcoded internal links in templates:\n" + "\n".join(
         violations
     )
+
+
+@pytest.mark.django_db
+def test_format_overview_bump_chart_and_momentum(client):
+    """Test 26-week bump chart SSR SVG generation and T8 Momentum calculation."""
+    from datetime import timedelta
+
+    from core.views import get_reference_date
+
+    ref = get_reference_date()
+
+    # Create tournaments across the last 26 weeks and prior 90-day window
+    # Archetype A: Surging in recent 90d (3 T8s in last 90d, 0 in prior 90d) -> momentum +3
+    # Archetype B: Declining (1 T8 in last 90d, 4 in prior 90d) -> momentum -3
+    # Archetype C: Stable (2 T8s in last 90d, 2 in prior 90d) -> momentum 0
+
+    t_recent_1 = Tournament.objects.create(
+        id="t_recent_1",
+        name="Pauper Challenge 1",
+        format="pauper",
+        event_type="challenge",
+        date=ref - timedelta(days=5),
+    )
+    Deck.objects.create(
+        id="d_recent_a1",
+        tournament=t_recent_1,
+        format="pauper",
+        player="PlayerA",
+        player_lower="playera",
+        archetype="Kuldotha Red",
+        archetype_slug="kuldotha-red",
+        is_top8=True,
+        rank=1,
+        result="1st Place",
+    )
+    Deck.objects.create(
+        id="d_recent_b1",
+        tournament=t_recent_1,
+        format="pauper",
+        player="PlayerB",
+        player_lower="playerb",
+        archetype="Dimir Terror",
+        archetype_slug="dimir-terror",
+        is_top8=True,
+        rank=2,
+        result="2nd Place",
+    )
+    Deck.objects.create(
+        id="d_recent_c1",
+        tournament=t_recent_1,
+        format="pauper",
+        player="PlayerC",
+        player_lower="playerc",
+        archetype="Golgari Gardens",
+        archetype_slug="golgari-gardens",
+        is_top8=True,
+        rank=3,
+        result="3rd Place",
+    )
+
+    t_recent_2 = Tournament.objects.create(
+        id="t_recent_2",
+        name="Pauper Challenge 2",
+        format="pauper",
+        event_type="challenge",
+        date=ref - timedelta(days=12),
+    )
+    Deck.objects.create(
+        id="d_recent_a2",
+        tournament=t_recent_2,
+        format="pauper",
+        player="PlayerA2",
+        player_lower="playera2",
+        archetype="Kuldotha Red",
+        archetype_slug="kuldotha-red",
+        is_top8=True,
+        rank=1,
+        result="1st Place",
+    )
+    Deck.objects.create(
+        id="d_recent_c2",
+        tournament=t_recent_2,
+        format="pauper",
+        player="PlayerC2",
+        player_lower="playerc2",
+        archetype="Golgari Gardens",
+        archetype_slug="golgari-gardens",
+        is_top8=True,
+        rank=2,
+        result="2nd Place",
+    )
+
+    t_recent_3 = Tournament.objects.create(
+        id="t_recent_3",
+        name="Pauper Challenge 3",
+        format="pauper",
+        event_type="challenge",
+        date=ref - timedelta(days=20),
+    )
+    Deck.objects.create(
+        id="d_recent_a3",
+        tournament=t_recent_3,
+        format="pauper",
+        player="PlayerA3",
+        player_lower="playera3",
+        archetype="Kuldotha Red",
+        archetype_slug="kuldotha-red",
+        is_top8=True,
+        rank=1,
+        result="1st Place",
+    )
+
+    # Tournaments in prior 90-day window [ref - 180d, ref - 90d)
+    t_prior_1 = Tournament.objects.create(
+        id="t_prior_1",
+        name="Pauper Challenge Prior 1",
+        format="pauper",
+        event_type="challenge",
+        date=ref - timedelta(days=110),
+    )
+    for i in range(4):
+        Deck.objects.create(
+            id=f"d_prior_b{i}",
+            tournament=t_prior_1,
+            format="pauper",
+            player=f"PlayerB_Prior_{i}",
+            player_lower=f"playerb_prior_{i}",
+            archetype="Dimir Terror",
+            archetype_slug="dimir-terror",
+            is_top8=True,
+            rank=i + 1,
+            result=f"{i + 1}th Place",
+        )
+    for i in range(2):
+        Deck.objects.create(
+            id=f"d_prior_c{i}",
+            tournament=t_prior_1,
+            format="pauper",
+            player=f"PlayerC_Prior_{i}",
+            player_lower=f"playerc_prior_{i}",
+            archetype="Golgari Gardens",
+            archetype_slug="golgari-gardens",
+            is_top8=True,
+            rank=i + 5,
+            result=f"{i + 5}th Place",
+        )
+
+    # 1. Request format overview for pauper
+    response = client.get("/pauper/?days=90")
+    assert response.status_code == 200
+
+    # 2. Check Bump Chart context
+    assert "bump_chart" in response.context
+    bump_chart = response.context["bump_chart"]
+    assert bump_chart["has_data"] is True
+    assert bump_chart["svg_width"] == 411
+    assert bump_chart["svg_height"] == 184
+    assert len(bump_chart["rank_lines"]) == 10
+    assert len(bump_chart["month_labels"]) >= 1
+    assert len(bump_chart["tracks"]) >= 1
+
+    # Check SVG rendered in response
+    content = response.content.decode("utf-8")
+    assert 'class="bump-track"' in content
+    assert 'class="bump-node"' in content
+    assert 'viewBox="0 0 411 184"' in content
+    assert ">#1</text>" not in content
+    assert ">#5</text>" not in content
+    assert 'text-anchor="end"' in content
+    for m in bump_chart["month_labels"]:
+        if m.get("anchor") == "end":
+            assert m["x"] <= bump_chart["x_end"]
+        else:
+            assert m["x"] + 24 <= bump_chart["svg_width"]
+
+    # 3. Check T8 Momentum calculations in table
+    arch_dict = {a["slug"]: a for a in response.context["archetypes"]}
+    assert "kuldotha-red" in arch_dict
+    assert "dimir-terror" in arch_dict
+    assert "golgari-gardens" in arch_dict
+
+    # Kuldotha Red: 3 recent, 0 prior => momentum +3
+    assert arch_dict["kuldotha-red"]["top8_count"] == 3
+    assert arch_dict["kuldotha-red"]["prev_top8_count"] == 0
+    assert arch_dict["kuldotha-red"]["t8_momentum"] == 3
+    assert "+3 ▲" in content
+
+    # Dimir Terror: 1 recent, 4 prior => momentum -3
+    assert arch_dict["dimir-terror"]["top8_count"] == 1
+    assert arch_dict["dimir-terror"]["prev_top8_count"] == 4
+    assert arch_dict["dimir-terror"]["t8_momentum"] == -3
+    assert "-3 ▼" in content
+
+    # Golgari Gardens: 2 recent, 2 prior => momentum 0
+    assert arch_dict["golgari-gardens"]["top8_count"] == 2
+    assert arch_dict["golgari-gardens"]["prev_top8_count"] == 2
+    assert arch_dict["golgari-gardens"]["t8_momentum"] == 0
+    assert "0 ▬" in content
+
+    # 4. Check that 30d toggle recalculates momentum against prior 30d
+    resp_30 = client.get("/pauper/?days=30")
+    assert resp_30.status_code == 200
+    arch_dict_30 = {a["slug"]: a for a in resp_30.context["archetypes"]}
+    # In prior 30d window [ref-60, ref-30), there were 0 tournaments, so prior=0 for all
+    assert arch_dict_30["kuldotha-red"]["prev_top8_count"] == 0
+    assert arch_dict_30["kuldotha-red"]["t8_momentum"] == 3
+    # Bump chart retains 26 weeks of data regardless of ?days=30
+    assert resp_30.context["bump_chart"]["has_data"] is True

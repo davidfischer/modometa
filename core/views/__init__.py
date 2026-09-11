@@ -17,6 +17,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.cache import patch_cache_control
 
 from core.engine.knn import get_global_knn_index
@@ -356,6 +357,20 @@ def format_overview(request, format):
         if slug not in colors_map:
             colors_map[slug] = (ac["colors"], ac["color_name"])
 
+    # Calculate previous period for T8 Momentum (e.g. recent 90d vs previous 90d)
+    prev_cutoff = cutoff - timedelta(days=days)
+    prev_t8_qs = (
+        Deck.objects.filter(
+            format=fmt_slug,
+            tournament__date__gte=prev_cutoff,
+            tournament__date__lt=cutoff,
+            is_top8=True,
+        )
+        .values("archetype_slug")
+        .annotate(prev_t8_count=Count("id"))
+    )
+    prev_t8_map = {row["archetype_slug"]: row["prev_t8_count"] for row in prev_t8_qs}
+
     archetypes = []
     for a in arch_aggregates:
         chall_share = round((a["chall_appearances"] / total_chall_decks) * 100, 1)
@@ -367,6 +382,8 @@ def format_overview(request, format):
         )
         league_share = round((a["league_5_0_count"] / total_5_0s) * 100, 1)
         colors, color_name = colors_map.get(a["archetype_slug"], ("", ""))
+        prev_top8 = prev_t8_map.get(a["archetype_slug"], 0)
+        t8_momentum = a["top8_count"] - prev_top8
 
         archetypes.append(
             {
@@ -376,6 +393,8 @@ def format_overview(request, format):
                 "color_name": color_name,
                 "total_count": a["total_count"],
                 "top8_count": a["top8_count"],
+                "prev_top8_count": prev_top8,
+                "t8_momentum": t8_momentum,
                 "chall_appearances": a["chall_appearances"],
                 "league_5_0_count": a["league_5_0_count"],
                 "challenge_share": chall_share,
@@ -391,6 +410,8 @@ def format_overview(request, format):
     recent_tournaments = Tournament.objects.filter(format=fmt_slug).order_by(
         "-date", "-id"
     )[:6]
+
+    bump_chart = build_format_bump_chart(fmt_slug, ref_date)
 
     paginator = Paginator(archetypes, 25)
     page_number = request.GET.get("page")
@@ -416,6 +437,7 @@ def format_overview(request, format):
             "page_obj": page_obj,
             "common_cards": common_cards,
             "recent_tournaments": recent_tournaments,
+            "bump_chart": bump_chart,
         },
     )
 
@@ -520,11 +542,19 @@ def player_detail(request, player):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    ref_date = get_reference_date()
+    player_name = all_decks[0].player
+    heatmap = build_player_heatmap(
+        player_lower=player_lower,
+        ref_date=ref_date,
+        player_name=player_name,
+    )
+
     return render(
         request,
         "player_detail.html",
         {
-            "player_name": all_decks[0].player,
+            "player_name": player_name,
             "total_decks": total_decks,
             "total_top8s": total_top8s,
             "total_5_0s": total_5_0s,
@@ -533,6 +563,7 @@ def player_detail(request, player):
             "formats_played": [f.capitalize() for f in formats_played],
             "decks": page_obj.object_list,
             "page_obj": page_obj,
+            "heatmap": heatmap,
         },
     )
 
@@ -734,6 +765,802 @@ def deck_detail(request, player, event, deck_index=1):
     )
 
 
+ARCHETYPE_COLOR_AFFINITIES: dict[frozenset[str], list[str]] = {
+    # Mono colors
+    frozenset(["R"]): ["#ef4444", "#dc2626", "#f87171", "#ea580c"],  # Red
+    frozenset(["U"]): ["#0284c7", "#0ea5e9", "#2563eb", "#38bdf8"],  # Blue
+    frozenset(["G"]): ["#10b981", "#16a34a", "#22c55e", "#059669"],  # Green
+    frozenset(["B"]): [
+        "#8b5cf6",
+        "#7c3aed",
+        "#a855f7",
+        "#6366f1",
+    ],  # Black (purple/violet)
+    frozenset(["W"]): [
+        "#f59e0b",
+        "#eab308",
+        "#d97706",
+        "#fbbf24",
+    ],  # White (amber/gold)
+    frozenset(["C"]): ["#a1a1aa", "#94a3b8", "#71717a", "#64748b"],  # Colorless (slate)
+    frozenset([]): ["#a1a1aa", "#94a3b8", "#71717a"],
+    # Guilds (2-color)
+    frozenset(["R", "W"]): [
+        "#f97316",
+        "#fb923c",
+        "#ea580c",
+        "#f43f5e",
+    ],  # Boros: Orange / Coral
+    frozenset(["U", "R"]): [
+        "#06b6d4",
+        "#0891b2",
+        "#d946ef",
+        "#0284c7",
+    ],  # Izzet: Cyan / Magenta
+    frozenset(["U", "B"]): [
+        "#6366f1",
+        "#4f46e5",
+        "#818cf8",
+        "#3b82f6",
+    ],  # Dimir: Indigo / Deep Blue
+    frozenset(["B", "G"]): [
+        "#15803d",
+        "#166534",
+        "#4d7c0f",
+        "#84cc16",
+    ],  # Golgari: Olive / Forest
+    frozenset(["R", "G"]): [
+        "#ea580c",
+        "#d97706",
+        "#c2410c",
+        "#f97316",
+    ],  # Gruul: Rust / Red-Orange
+    frozenset(["W", "U"]): [
+        "#0ea5e9",
+        "#38bdf8",
+        "#0284c7",
+        "#60a5fa",
+    ],  # Azorius: Sky Blue
+    frozenset(["W", "B"]): [
+        "#a855f7",
+        "#94a3b8",
+        "#7c3aed",
+        "#c084fc",
+    ],  # Orzhov: Lavender / Plum
+    frozenset(["B", "R"]): [
+        "#e11d48",
+        "#be123c",
+        "#9f1239",
+        "#f43f5e",
+    ],  # Rakdos: Crimson
+    frozenset(["G", "W"]): [
+        "#84cc16",
+        "#65a30d",
+        "#4ade80",
+        "#22c55e",
+    ],  # Selesnya: Lime
+    frozenset(["G", "U"]): ["#14b8a6", "#0d9488", "#06b6d4", "#2dd4bf"],  # Simic: Teal
+    # Shards & Clans (3-color)
+    frozenset(["W", "U", "R"]): [
+        "#f43f5e",
+        "#fb7185",
+        "#0ea5e9",
+        "#f97316",
+    ],  # Jeskai: Rose / Coral
+    frozenset(["W", "U", "B"]): [
+        "#818cf8",
+        "#6366f1",
+        "#0ea5e9",
+        "#8b5cf6",
+    ],  # Esper: Periwinkle
+    frozenset(["U", "B", "R"]): [
+        "#d946ef",
+        "#c026d3",
+        "#7c3aed",
+        "#be123c",
+    ],  # Grixis: Magenta
+    frozenset(["B", "R", "G"]): [
+        "#c2410c",
+        "#b45309",
+        "#ea580c",
+        "#15803d",
+    ],  # Jund: Burnt Orange
+    frozenset(["G", "W", "U"]): [
+        "#34d399",
+        "#10b981",
+        "#14b8a6",
+        "#84cc16",
+    ],  # Bant: Seafoam
+    frozenset(["W", "B", "G"]): [
+        "#65a30d",
+        "#84cc16",
+        "#15803d",
+        "#a855f7",
+    ],  # Abzan: Olive Drab
+    frozenset(["U", "R", "G"]): [
+        "#06b6d4",
+        "#0891b2",
+        "#14b8a6",
+        "#10b981",
+    ],  # Temur: Cyan / Teal
+    frozenset(["W", "B", "R"]): [
+        "#e11d48",
+        "#be123c",
+        "#f97316",
+        "#8b5cf6",
+    ],  # Mardu: Crimson / Orange
+    frozenset(["U", "B", "G"]): [
+        "#0d9488",
+        "#14b8a6",
+        "#10b981",
+        "#6366f1",
+    ],  # Sultai: Dark Teal
+    frozenset(["R", "G", "W"]): [
+        "#f97316",
+        "#ea580c",
+        "#84cc16",
+        "#f59e0b",
+    ],  # Naya: Warm Orange
+    # 4 & 5 color
+    frozenset(["W", "U", "B", "R", "G"]): [
+        "#f59e0b",
+        "#eab308",
+        "#d97706",
+        "#a855f7",
+    ],  # 5-Color: Gold
+}
+
+FALLBACK_PALETTE: list[str] = [
+    "#10b981",
+    "#0ea5e9",
+    "#f59e0b",
+    "#f43f5e",
+    "#8b5cf6",
+    "#06b6d4",
+    "#f97316",
+    "#84cc16",
+    "#d946ef",
+    "#6366f1",
+    "#ec4899",
+    "#14b8a6",
+    "#e11d48",
+    "#ea580c",
+    "#a855f7",
+    "#94a3b8",
+    "#0284c7",
+    "#16a34a",
+    "#fb923c",
+    "#818cf8",
+    "#eab308",
+    "#7c3aed",
+]
+
+
+def assign_archetype_colors(
+    top_slugs: list[str], slug_colors: dict[str, str]
+) -> dict[str, str]:
+    """Assign visually distinct chart colors correlated to deck MTG color identities."""
+    used_colors: set[str] = set()
+    color_map: dict[str, str] = {}
+
+    for slug in top_slugs:
+        raw_colors = slug_colors.get(slug, "")
+        colors_set = frozenset(c.upper() for c in raw_colors if c.upper() in "WUBRGC")
+        candidates = ARCHETYPE_COLOR_AFFINITIES.get(colors_set, [])
+        chosen = None
+
+        # 1. Try exact color combination candidates
+        for cand in candidates:
+            if cand not in used_colors:
+                chosen = cand
+                break
+
+        # 2. Try component colors if exact combo candidates are all taken
+        if not chosen and colors_set:
+            for single_c in sorted(colors_set):
+                for cand in ARCHETYPE_COLOR_AFFINITIES.get(frozenset([single_c]), []):
+                    if cand not in used_colors:
+                        chosen = cand
+                        break
+                if chosen:
+                    break
+
+        # 3. Fall back to unused colors from general palette
+        if not chosen:
+            for cand in FALLBACK_PALETTE:
+                if cand not in used_colors:
+                    chosen = cand
+                    break
+
+        chosen = chosen or "#71717a"
+        used_colors.add(chosen)
+        color_map[slug] = chosen
+
+    return color_map
+
+
+def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
+    """Build a 26-week Top 10 rank evolution bump chart for a format by T8 share."""
+    monday_offset = ref_date.weekday()
+    current_week_monday = ref_date - timedelta(days=monday_offset)
+    total_weeks = 26
+    start_monday = current_week_monday - timedelta(weeks=total_weeks - 1)
+
+    t8_decks = list(
+        Deck.objects.filter(
+            format=fmt_slug,
+            tournament__date__gte=start_monday,
+            tournament__date__lte=ref_date,
+            is_top8=True,
+        ).values("archetype", "archetype_slug", "tournament__date", "colors")
+    )
+
+    X_OFFSET = 18
+    STEP_X = 15
+    Y_OFFSET = 24
+    STEP_Y = 16
+    x_start = X_OFFSET - 8
+    x_end = X_OFFSET + (total_weeks - 1) * STEP_X + 8
+    SVG_WIDTH = X_OFFSET + (total_weeks - 1) * STEP_X + 18  # 411
+    SVG_HEIGHT = Y_OFFSET + 9 * STEP_Y + 16  # 184
+
+    month_labels = []
+    last_labeled_month = None
+    last_labeled_col = -99
+
+    weeks = []
+    weekly_counts: list[Counter] = [Counter() for _ in range(total_weeks)]
+    weekly_totals = [0] * total_weeks
+    slug_to_name: dict[str, str] = {}
+
+    for i in range(total_weeks):
+        col_monday = start_monday + timedelta(weeks=i)
+        col_x = X_OFFSET + i * STEP_X
+
+        # Month label logic: first column or 1st of month
+        first_of_month_in_week = None
+        for day_idx in range(7):
+            cur_d = col_monday + timedelta(days=day_idx)
+            if cur_d.day == 1:
+                first_of_month_in_week = cur_d
+                break
+
+        if i == 0:
+            month_labels.append({"name": col_monday.strftime("%b"), "x": col_x})
+            last_labeled_month = col_monday.month
+            last_labeled_col = 0
+        elif first_of_month_in_week:
+            if (
+                first_of_month_in_week.month != last_labeled_month
+                and (i - last_labeled_col) >= 2
+            ):
+                month_name = first_of_month_in_week.strftime("%b")
+                # Prevent right-edge clipping if label is near the chart boundary
+                if col_x + 24 > x_end:
+                    month_labels.append(
+                        {"name": month_name, "x": x_end, "anchor": "end"}
+                    )
+                else:
+                    month_labels.append({"name": month_name, "x": col_x})
+                last_labeled_month = first_of_month_in_week.month
+                last_labeled_col = i
+
+        col_sunday = col_monday + timedelta(days=6)
+        if col_monday.month == col_sunday.month:
+            week_label = (
+                f"{col_monday.strftime('%b')} {col_monday.day}-{col_sunday.day}"
+            )
+        else:
+            week_label = (
+                f"{col_monday.strftime('%b')} {col_monday.day}-"
+                f"{col_sunday.strftime('%b')} {col_sunday.day}"
+            )
+
+        weeks.append(
+            {
+                "index": i,
+                "monday": col_monday,
+                "label": week_label,
+                "x": col_x,
+            }
+        )
+
+    arch_colors: dict[str, Counter] = {}
+    for d in t8_decks:
+        d_date = d["tournament__date"]
+        w_idx = (d_date - start_monday).days // 7
+        if 0 <= w_idx < total_weeks:
+            slug = d["archetype_slug"]
+            weekly_counts[w_idx][slug] += 1
+            weekly_totals[w_idx] += 1
+            if slug not in slug_to_name:
+                slug_to_name[slug] = d["archetype"]
+            c_val = d.get("colors") or ""
+            if c_val:
+                if slug not in arch_colors:
+                    arch_colors[slug] = Counter()
+                arch_colors[slug][c_val] += 1
+
+    has_data = any(t > 0 for t in weekly_totals)
+
+    rank_lines = [{"rank": r, "y": Y_OFFSET + (r - 1) * STEP_Y} for r in range(1, 11)]
+
+    if not has_data:
+        return {
+            "has_data": False,
+            "svg_width": SVG_WIDTH,
+            "svg_height": SVG_HEIGHT,
+            "x_start": x_start,
+            "x_end": x_end,
+            "month_labels": month_labels,
+            "rank_lines": rank_lines,
+            "tracks": [],
+        }
+
+    # Count overall T8s across the 26 weeks
+    overall_t8 = Counter()
+    for w_idx in range(total_weeks):
+        overall_t8.update(weekly_counts[w_idx])
+
+    top_slugs = [slug for slug, _ in overall_t8.most_common(20)]
+    slug_primary_colors = {
+        slug: counter.most_common(1)[0][0]
+        for slug, counter in arch_colors.items()
+        if counter
+    }
+    color_map = assign_archetype_colors(top_slugs, slug_primary_colors)
+
+    # Determine weekly top 10 rankings by T8 count/share
+    weekly_ranks: dict[int, dict[str, tuple[int, int, float]]] = {}
+    for w_idx in range(total_weeks):
+        counts = weekly_counts[w_idx]
+        total_w = max(1, weekly_totals[w_idx])
+        sorted_archs = sorted(
+            counts.keys(),
+            key=lambda s: (-counts[s], -overall_t8[s], s),
+        )
+        ranks_dict = {}
+        for r_idx, slug in enumerate(sorted_archs[:10]):
+            cnt = counts[slug]
+            share = round((cnt / total_w) * 100, 1)
+            ranks_dict[slug] = (r_idx + 1, cnt, share)
+        weekly_ranks[w_idx] = ranks_dict
+
+    all_ranked_slugs = set()
+    for w_idx in range(total_weeks):
+        all_ranked_slugs.update(weekly_ranks[w_idx].keys())
+
+    sorted_slugs = sorted(
+        all_ranked_slugs,
+        key=lambda s: (-overall_t8[s], s),
+    )
+
+    tracks = []
+    for slug in sorted_slugs:
+        color = color_map.get(slug, "#71717a")
+        is_featured = slug in color_map
+
+        points = []
+        for w_idx in range(total_weeks):
+            if slug in weekly_ranks[w_idx]:
+                r, cnt, share = weekly_ranks[w_idx][slug]
+                pt_x = X_OFFSET + w_idx * STEP_X
+                pt_y = Y_OFFSET + (r - 1) * STEP_Y
+                points.append(
+                    {
+                        "week_idx": w_idx,
+                        "x": pt_x,
+                        "y": pt_y,
+                        "rank": r,
+                        "count": cnt,
+                        "share": share,
+                        "week_label": weeks[w_idx]["label"],
+                        "url": reverse(
+                            "core:archetype_detail",
+                            kwargs={"format": fmt_slug, "archetype": slug},
+                        ),
+                    }
+                )
+
+        if not points:
+            continue
+
+        # Group consecutive weeks into continuous path segments
+        path_segments = []
+        cur_segment = [points[0]]
+        for pt in points[1:]:
+            prev_pt = cur_segment[-1]
+            if pt["week_idx"] == prev_pt["week_idx"] + 1:
+                cur_segment.append(pt)
+            else:
+                path_segments.append(cur_segment)
+                cur_segment = [pt]
+        path_segments.append(cur_segment)
+
+        d_parts = []
+        for seg in path_segments:
+            if len(seg) == 1:
+                continue
+            d_parts.append(f"M {seg[0]['x']} {seg[0]['y']}")
+            for k in range(len(seg) - 1):
+                p1 = seg[k]
+                p2 = seg[k + 1]
+                dx = p2["x"] - p1["x"]
+                cp1_x = round(p1["x"] + dx / 2, 1)
+                cp1_y = p1["y"]
+                cp2_x = round(p2["x"] - dx / 2, 1)
+                cp2_y = p2["y"]
+                d_parts.append(
+                    f"C {cp1_x} {cp1_y}, {cp2_x} {cp2_y}, {p2['x']} {p2['y']}"
+                )
+
+        path_d = " ".join(d_parts)
+
+        tracks.append(
+            {
+                "slug": slug,
+                "name": slug_to_name.get(slug, slug),
+                "color": color,
+                "is_featured": is_featured,
+                "path_d": path_d,
+                "points": points,
+            }
+        )
+
+    # Sort so non-featured are drawn first, featured tracks on top
+    tracks.sort(key=lambda t: (1 if t["is_featured"] else 0, overall_t8[t["slug"]]))
+
+    return {
+        "has_data": has_data,
+        "svg_width": SVG_WIDTH,
+        "svg_height": SVG_HEIGHT,
+        "x_start": x_start,
+        "x_end": x_end,
+        "month_labels": month_labels,
+        "rank_lines": rank_lines,
+        "tracks": tracks,
+    }
+
+
+def get_activity_heatmap_date_range(
+    ref_date: date, weeks_prior: int = 26
+) -> tuple[date, date, int]:
+    """Calculate start date and total number of weeks (weeks_prior + partial/current week)."""
+    monday_offset = ref_date.weekday()
+    current_week_monday = ref_date - timedelta(days=monday_offset)
+    total_weeks = weeks_prior + 1
+    start_date = current_week_monday - timedelta(weeks=weeks_prior)
+    return start_date, ref_date, total_weeks
+
+
+def build_activity_heatmap_grid(
+    finishes_by_date: dict[date, list[dict]],
+    ref_date: date,
+    default_format: str | None = None,
+    aria_label: str = "26-week activity heatmap",
+) -> dict:
+    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap SVG grid."""
+    start_date, _, total_weeks = get_activity_heatmap_date_range(
+        ref_date, weeks_prior=26
+    )
+
+    CELL_SIZE = 10
+    CELL_GAP = 3
+    STEP = CELL_SIZE + CELL_GAP  # 13
+    X_OFFSET = 36
+    Y_OFFSET = 20
+    total_svg_width = X_OFFSET + total_weeks * STEP + 24
+    total_svg_height = Y_OFFSET + 7 * STEP + 6
+
+    weeks = []
+    month_labels = []
+    last_labeled_month = None
+    last_labeled_col = -99
+
+    active_days_count = 0
+    total_leagues = 0
+    total_challenges = 0
+    total_top8s = 0
+
+    for col_idx in range(total_weeks):
+        col_monday = start_date + timedelta(weeks=col_idx)
+        days = []
+        col_x = X_OFFSET + col_idx * STEP
+
+        # Month label logic: label col 0, or whenever month changes
+        first_of_month_in_week = None
+        for day_idx in range(7):
+            cur_d = col_monday + timedelta(days=day_idx)
+            if cur_d.day == 1:
+                first_of_month_in_week = cur_d
+                break
+
+        if col_idx == 0:
+            month_name = col_monday.strftime("%b")
+            month_labels.append({"name": month_name, "x": col_x})
+            last_labeled_month = col_monday.month
+            last_labeled_col = 0
+        elif first_of_month_in_week:
+            if (
+                first_of_month_in_week.month != last_labeled_month
+                and (col_idx - last_labeled_col) >= 2
+            ):
+                month_name = first_of_month_in_week.strftime("%b")
+                # Prevent right-edge clipping if label is near the chart boundary
+                if col_x + 24 > total_svg_width - 10:
+                    month_labels.append(
+                        {
+                            "name": month_name,
+                            "x": total_svg_width - 10,
+                            "anchor": "end",
+                        }
+                    )
+                else:
+                    month_labels.append({"name": month_name, "x": col_x})
+                last_labeled_month = first_of_month_in_week.month
+                last_labeled_col = col_idx
+
+        for row_idx in range(7):
+            cur_date = col_monday + timedelta(days=row_idx)
+            cur_y = Y_OFFSET + row_idx * STEP
+            is_future = cur_date > ref_date
+
+            if is_future:
+                days.append(
+                    {
+                        "date": cur_date,
+                        "date_str": cur_date.strftime("%Y-%m-%d"),
+                        "x": col_x,
+                        "y": cur_y,
+                        "is_future": True,
+                        "color_class": "activity-future",
+                        "tooltip": "",
+                        "url": "",
+                    }
+                )
+                continue
+
+            day_finishes = finishes_by_date.get(cur_date, [])
+            l_count = 0
+            c_top8_count = 0
+            c_other_count = 0
+            c_winner_count = 0
+
+            for f in day_finishes:
+                etype = (f.get("tournament__event_type") or "").lower()
+                is_t8 = bool(f.get("is_top8"))
+                is_50 = bool(f.get("is_5_0"))
+                rank = f.get("rank")
+                res = (f.get("result") or "").lower()
+
+                if etype == "league" or is_50:
+                    l_count += 1
+                elif etype == "challenge":
+                    if is_t8:
+                        c_top8_count += 1
+                        if rank == 1 or "1st" in res:
+                            c_winner_count += 1
+                    else:
+                        c_other_count += 1
+
+            total_leagues += l_count
+            total_challenges += c_top8_count + c_other_count
+            total_top8s += c_top8_count
+
+            if day_finishes:
+                active_days_count += 1
+
+            # Priority: Challenge Top 8 > Challenge Entry > League 5-0 > Inactive
+            if c_top8_count > 0:
+                if c_winner_count > 0 or c_top8_count >= 2:
+                    color_class = "activity-challenge-winner"
+                else:
+                    color_class = "activity-challenge-top8"
+            elif c_other_count > 0:
+                color_class = "activity-challenge-entry"
+            elif l_count > 0:
+                if l_count >= 3:
+                    color_class = "activity-league-3"
+                elif l_count == 2:
+                    color_class = "activity-league-2"
+                else:
+                    color_class = "activity-league-1"
+            else:
+                color_class = "activity-level-0"
+
+            # Construct tooltip: e.g. "2x Challenge Top 8s, 3x League 5-0s"
+            tooltip_parts = []
+            if c_top8_count > 0:
+                t8_str = f"{c_top8_count}x Challenge Top 8" + (
+                    "s" if c_top8_count > 1 else ""
+                )
+                tooltip_parts.append(t8_str)
+            if c_other_count > 0:
+                entry_str = (
+                    f"{c_other_count}x Challenge entry"
+                    if c_other_count == 1
+                    else f"{c_other_count}x Challenge entries"
+                )
+                tooltip_parts.append(entry_str)
+            if l_count > 0:
+                lg_str = f"{l_count}x League 5-0" + ("s" if l_count > 1 else "")
+                tooltip_parts.append(lg_str)
+
+            date_label = f"{cur_date.strftime('%b')} {cur_date.day}"
+            if tooltip_parts:
+                tooltip = f"{date_label}: {', '.join(tooltip_parts)}"
+            else:
+                tooltip = f"{date_label}: No tournament finishes"
+
+            target_tourn_id = None
+            target_format = None
+            if day_finishes:
+                challenge_finishes = [
+                    f
+                    for f in day_finishes
+                    if (f.get("tournament__event_type") or "").lower() == "challenge"
+                ]
+                if challenge_finishes:
+                    t8_challenges = [f for f in challenge_finishes if f.get("is_top8")]
+                    chosen = (
+                        t8_challenges[0] if t8_challenges else challenge_finishes[0]
+                    )
+                    target_tourn_id = chosen.get("tournament_id")
+                    target_format = (
+                        chosen.get("format") or default_format or ""
+                    ).lower()
+                else:
+                    league_finishes = [
+                        f
+                        for f in day_finishes
+                        if (f.get("tournament__event_type") or "").lower() == "league"
+                        or f.get("is_5_0")
+                    ]
+                    chosen = league_finishes[0] if league_finishes else day_finishes[0]
+                    target_tourn_id = chosen.get("tournament_id")
+                    target_format = (
+                        chosen.get("format") or default_format or ""
+                    ).lower()
+
+            day_url = ""
+            if target_tourn_id and target_format:
+                try:
+                    day_url = reverse(
+                        "core:tournament_detail",
+                        kwargs={"format": target_format, "event": target_tourn_id},
+                    )
+                except Exception:
+                    day_url = ""
+
+            days.append(
+                {
+                    "date": cur_date,
+                    "date_str": cur_date.strftime("%Y-%m-%d"),
+                    "x": col_x,
+                    "y": cur_y,
+                    "is_future": False,
+                    "color_class": color_class,
+                    "tooltip": tooltip,
+                    "url": day_url,
+                    "leagues_count": l_count,
+                    "challenges_count": c_top8_count + c_other_count,
+                    "top8_count": c_top8_count,
+                }
+            )
+
+        weeks.append(
+            {
+                "col_idx": col_idx,
+                "col_x": col_x,
+                "days": days,
+            }
+        )
+
+    day_labels = [
+        {"name": "Mon", "y": Y_OFFSET + 0 * STEP + 8},
+        {"name": "Wed", "y": Y_OFFSET + 2 * STEP + 8},
+        {"name": "Fri", "y": Y_OFFSET + 4 * STEP + 8},
+        {"name": "Sun", "y": Y_OFFSET + 6 * STEP + 8},
+    ]
+
+    return {
+        "weeks": weeks,
+        "month_labels": month_labels,
+        "day_labels": day_labels,
+        "active_days_count": active_days_count,
+        "total_leagues": total_leagues,
+        "total_challenges": total_challenges,
+        "total_top8s": total_top8s,
+        "svg_width": total_svg_width,
+        "svg_height": total_svg_height,
+        "cell_size": CELL_SIZE,
+        "aria_label": aria_label,
+    }
+
+
+def build_archetype_heatmap(
+    format_slug: str, archetype_slug: str, ref_date: date
+) -> dict:
+    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap."""
+    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=26)
+
+    # Query all appearances for archetype within [start_date, ref_date]
+    decks_qs = Deck.objects.filter(
+        format=format_slug,
+        archetype_slug=archetype_slug,
+        tournament__date__gte=start_date,
+        tournament__date__lte=ref_date,
+    ).values(
+        "tournament__date",
+        "tournament__event_type",
+        "tournament__name",
+        "tournament_id",
+        "format",
+        "is_top8",
+        "is_5_0",
+        "rank",
+        "result",
+    )
+
+    finishes_by_date: dict[date, list[dict]] = {}
+    for d in decks_qs:
+        d_date = d["tournament__date"]
+        if d_date not in finishes_by_date:
+            finishes_by_date[d_date] = []
+        finishes_by_date[d_date].append(d)
+
+    return build_activity_heatmap_grid(
+        finishes_by_date=finishes_by_date,
+        ref_date=ref_date,
+        default_format=format_slug,
+        aria_label="Archetype 26-week activity heatmap",
+    )
+
+
+def build_player_heatmap(
+    player_lower: str, ref_date: date, player_name: str | None = None
+) -> dict:
+    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap for a player across all formats."""
+    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=26)
+
+    # Query all appearances for player within [start_date, ref_date]
+    decks_qs = Deck.objects.filter(
+        player_lower=player_lower,
+        tournament__date__gte=start_date,
+        tournament__date__lte=ref_date,
+    ).values(
+        "tournament__date",
+        "tournament__event_type",
+        "tournament__name",
+        "tournament_id",
+        "format",
+        "is_top8",
+        "is_5_0",
+        "rank",
+        "result",
+    )
+
+    finishes_by_date: dict[date, list[dict]] = {}
+    for d in decks_qs:
+        d_date = d["tournament__date"]
+        if d_date not in finishes_by_date:
+            finishes_by_date[d_date] = []
+        finishes_by_date[d_date].append(d)
+
+    aria_label = (
+        f"{player_name}'s 26-week activity heatmap"
+        if player_name
+        else "Player 26-week activity heatmap"
+    )
+
+    return build_activity_heatmap_grid(
+        finishes_by_date=finishes_by_date,
+        ref_date=ref_date,
+        default_format=None,
+        aria_label=aria_label,
+    )
+
+
 @public_cache(cdn_seconds=3600, browser_seconds=180)
 def archetype_detail(request, format, archetype):
     """Archetype detail view: 30d/90d stats, core cards, recent event finishes."""
@@ -876,6 +1703,8 @@ def archetype_detail(request, format, archetype):
         parts = f.id.rsplit("_", 1)
         f.deck_index = int(parts[-1]) if len(parts) == 2 and parts[-1].isdigit() else 1
 
+    heatmap = build_archetype_heatmap(fmt_slug, arch_slug, ref_date)
+
     return render(
         request,
         "archetype_detail.html",
@@ -900,6 +1729,7 @@ def archetype_detail(request, format, archetype):
                 "league_share": league_share,
                 "total_5_0s": total_5_0s,
             },
+            "heatmap": heatmap,
             "core_cards": core_cards,
             "finishes": page_obj.object_list,
             "page_obj": page_obj,

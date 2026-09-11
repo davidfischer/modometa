@@ -1,0 +1,59 @@
+<div class="w-full max-w-[40rem] mx-auto">
+  <svg
+    viewBox="0 0 {{ bump_chart.svg_width }} {{ bump_chart.svg_height }}"
+    class="w-full h-auto block select-none"
+    aria-label="{{ format_name }} 26-week Top 8 rank evolution bump chart"
+    role="img"
+  >
+    <!-- Month labels -->
+    {% for m in bump_chart.month_labels %}
+      <text x="{{ m.x }}" y="12"{% if m.anchor %} text-anchor="{{ m.anchor }}"{% endif %} class="text-xs font-mono fill-zinc-400">{{ m.name }}</text>
+    {% endfor %}
+
+    <!-- Horizontal Rank Guidelines -->
+    {% for r in bump_chart.rank_lines %}
+      <line
+        x1="{{ bump_chart.x_start }}"
+        y1="{{ r.y }}"
+        x2="{{ bump_chart.x_end }}"
+        y2="{{ r.y }}"
+        stroke-width="1"
+        stroke-dasharray="2 3"
+        class="bump-guideline"
+      />
+    {% endfor %}
+
+    <!-- Archetype Bump Tracks -->
+    {% for track in bump_chart.tracks %}
+      <g class="bump-group">
+        {% if track.path_d %}
+          <path
+            d="{{ track.path_d }}"
+            fill="none"
+            stroke="{{ track.color }}"
+            stroke-width="1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="bump-track"
+          />
+        {% endif %}
+        {% for pt in track.points %}
+          <a href="{{ pt.url }}" class="focus:outline-none">
+            <circle
+              cx="{{ pt.x }}"
+              cy="{{ pt.y }}"
+              r="3.5"
+              fill="{{ track.color }}"
+              class="bump-node"
+              tabindex="0"
+              role="img"
+              aria-label="{{ pt.week_label }}: {{ track.name }} (Rank #{{ pt.rank }}, {{ pt.count }} Top 8{{ pt.count|pluralize }}, {{ pt.share }}% share)"
+            >
+              <title>{{ pt.week_label }}: {{ track.name }} (Rank #{{ pt.rank }}, {{ pt.count }} Top 8{{ pt.count|pluralize }}, {{ pt.share }}% share)</title>
+            </circle>
+          </a>
+        {% endfor %}
+      </g>
+    {% endfor %}
+  </svg>
+</div>

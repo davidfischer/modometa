@@ -2,22 +2,31 @@
 
 import json
 import re
+import warnings
 from datetime import date
 from datetime import timedelta
 from io import StringIO
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from django.conf import settings
+from django.core.cache import cache
 from django.core.management import call_command
 from django.http import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
+from django.test import override_settings
 
+from core.engine.knn import set_global_knn_index
 from core.models import Card
 from core.models import CardLookup
 from core.models import Deck
 from core.models import Tournament
+from core.pipeline.scryfall import _extract_mana_cost
+from core.views import classify_card_type
+from core.views import get_dataset_min_date
+from core.views import get_dataset_start_year
 from core.views import get_reference_date
 from core.views import public_cache
 
@@ -140,29 +149,129 @@ def test_tournament_detail_view(client):
 
 
 @pytest.mark.django_db
+def test_tournament_detail_sort_order(client):
+    t = Tournament.objects.create(
+        id="legacy-swiss-test",
+        name="Legacy LCQ",
+        format="legacy",
+        event_type="other",
+        date=date(2024, 1, 1),
+    )
+    decks_data = [
+        ("p_13", "1-3", None),
+        ("p_50", "5-0", None),
+        ("p_41", "4-1", None),
+        ("p_31", "3-1", None),
+        ("p_32", "3-2", None),
+        ("p_1st", "1st Place", 1),
+    ]
+    for player, res, rank in decks_data:
+        Deck.objects.create(
+            id=f"legacy-swiss-test_{player}",
+            tournament=t,
+            format="legacy",
+            player=player,
+            player_lower=player.lower(),
+            archetype="Delver",
+            archetype_slug="delver",
+            result=res,
+            rank=rank,
+        )
+    response = client.get(f"/legacy/tournaments/{t.id}/")
+    assert response.status_code == 200
+    ordered_players = [d.player for d in response.context["decks"]]
+    assert ordered_players == ["p_1st", "p_50", "p_41", "p_31", "p_32", "p_13"]
+
+
+@pytest.mark.django_db
 def test_player_detail_view(client):
     deck = Deck.objects.first()
-    if deck:
-        response = client.get(f"/player/{deck.player}/")
-        assert response.status_code == 200
-        assert deck.player.encode() in response.content
-        assert b"League 5-0 Trophies" in response.content
-        assert b"all time" in response.content
-        assert "chall_appearances" in response.context
-        assert "page_obj" in response.context
-        assert response.context["page_obj"].paginator.per_page == 100
+    if not deck:
+        t = Tournament.objects.create(
+            id="legacy-challenge-2023-05",
+            name="Legacy Challenge 32",
+            format="legacy",
+            date=date(2023, 5, 10),
+            event_type="challenge",
+        )
+        deck = Deck.objects.create(
+            tournament=t,
+            player="Ark4n",
+            player_lower="ark4n",
+            format="legacy",
+            archetype="Dimir Ninjas",
+            archetype_slug="dimir-ninjas",
+            result="1st Place",
+            is_top8=True,
+            mainboard=[{"card": "Brainstorm", "count": 4}],
+            sideboard=[],
+        )
+    response = client.get(f"/player/{deck.player}/")
+    assert response.status_code == 200
+    assert deck.player.encode() in response.content
+    assert b"League 5-0 Trophies" in response.content
+    assert b"all time" in response.content
+    assert "start_year" in response.context
+    if response.context["start_year"]:
+        assert f"(since {response.context['start_year']})".encode() in response.content
+    assert "chall_appearances" in response.context
+    assert "page_obj" in response.context
+    assert response.context["page_obj"].paginator.per_page == 100
 
-        # Verify League 5-0 Trophies stat card comes before Challenge T8 stat card
-        l50_pos = response.content.find(b"League 5-0 Trophies")
-        ct8_pos = response.content.find(b"Challenge T8")
-        assert l50_pos != -1 and ct8_pos != -1
-        assert l50_pos < ct8_pos
+    # Verify League 5-0 Trophies stat card comes before Challenge T8 stat card
+    l50_pos = response.content.find(b"League 5-0 Trophies")
+    ct8_pos = response.content.find(b"Challenge T8")
+    assert l50_pos != -1 and ct8_pos != -1
+    assert l50_pos < ct8_pos
 
-        # Verify Action column is gone and Date links to deck detail
-        assert b">Action</th>" not in response.content
-        assert b"View Deck" not in response.content
-        deck_link = f"/player/{deck.player}/deck/{deck.tournament_id}/".encode()
-        assert deck_link in response.content
+    # Verify Action column is gone and Date links to deck detail
+    assert b">Action</th>" not in response.content
+    assert b"View Deck" not in response.content
+    deck_link = f"/player/{deck.player}/deck/{deck.tournament_id}/".encode()
+    assert deck_link in response.content
+
+
+@pytest.mark.django_db
+def test_get_dataset_start_year():
+    Tournament.objects.all().delete()
+    assert get_dataset_min_date() is None
+    assert get_dataset_start_year() is None
+
+    Tournament.objects.create(
+        id="tourn-other-2021",
+        name="Other Event",
+        format="legacy",
+        date=date(2021, 6, 1),
+        event_type="other",
+    )
+    assert get_dataset_min_date() == date(2021, 6, 1)
+    assert get_dataset_start_year() == 2021
+
+    Tournament.objects.create(
+        id="tourn-league-2023",
+        name="Legacy League",
+        format="legacy",
+        date=date(2023, 1, 15),
+        event_type="league",
+    )
+    Tournament.objects.create(
+        id="tourn-challenge-2024",
+        name="Legacy Challenge",
+        format="legacy",
+        date=date(2024, 2, 20),
+        event_type="challenge",
+    )
+    assert get_dataset_min_date() == date(2023, 1, 15)
+    assert get_dataset_start_year() == 2023
+
+    # Verify 4-hour caching behavior when not in test mode
+    cache.clear()
+    with override_settings(IS_TESTING=False):
+        assert cache.get("dataset_min_date_v1") is None
+        cached_val = get_dataset_min_date()
+        assert cached_val == date(2023, 1, 15)
+        assert cache.get("dataset_min_date_v1") == date(2023, 1, 15)
+    cache.clear()
 
 
 @pytest.mark.django_db
@@ -203,12 +312,227 @@ def test_player_detail_pagination(client):
 
 @pytest.mark.django_db
 def test_deck_detail_view(client):
-    deck = Deck.objects.first()
-    if deck:
-        response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/")
-        assert response.status_code == 200
-        assert b"Mainboard" in response.content
-        assert b"Similar" in response.content
+    t = Tournament.objects.create(
+        id="tourn-deck-detail-test",
+        name="Vintage Challenge",
+        format="vintage",
+        date=date(2024, 6, 1),
+    )
+    deck = Deck.objects.create(
+        id="deck-detail-test-1",
+        tournament=t,
+        format="vintage",
+        player="DetailPlayer",
+        player_lower="detailplayer",
+        archetype="Oath of Druids",
+        archetype_slug="oath-of-druids",
+        result="1st",
+        mainboard=[{"card": "Oath of Druids", "count": 4}],
+        sideboard=[],
+    )
+
+    response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/")
+    assert response.status_code == 200
+    assert b"Mainboard" in response.content
+    assert b"Similar" in response.content
+
+    # Archetype link in title and action button
+    content = response.content.decode()
+    arch_url = f"/{deck.format}/archetype/{deck.archetype_slug}/"
+    assert arch_url in content
+    assert "Archetype Overview" in content
+
+
+@pytest.mark.django_db
+def test_classify_card_type_precedence():
+    # 1. Land creature -> land (Dryad Arbor)
+    dryad = Card(name="Dryad Arbor", type_line="Land Creature — Forest Dryad")
+    assert classify_card_type(dryad) == "land"
+
+    # 2. Enchantment creature -> creature (Overlord of the Balemurk)
+    overlord = Card(
+        name="Overlord of the Balemurk",
+        type_line="Enchantment Creature — Avatar Horror",
+    )
+    assert classify_card_type(overlord) == "creature"
+
+    # 3. Artifact creature -> creature (Walking Ballista)
+    ballista = Card(name="Walking Ballista", type_line="Artifact Creature — Construct")
+    assert classify_card_type(ballista) == "creature"
+
+    # 4. MDFC with Instant front face and Land back face -> instant (Sink into Stupor)
+    sink = Card(
+        name="Sink into Stupor // Soporific Springs",
+        type_line="Instant // Land",
+    )
+    assert classify_card_type(sink) == "instant"
+
+    # 5. MDFC with Sorcery front face and Land back face -> sorcery (Bala Ged Recovery)
+    bala = Card(
+        name="Bala Ged Recovery // Bala Ged Sanctuary",
+        type_line="Sorcery // Land",
+    )
+    assert classify_card_type(bala) == "sorcery"
+
+    # 6. Enchantment Land -> land (Urza's Saga)
+    saga = Card(name="Urza's Saga", type_line="Enchantment Land — Urza's Saga")
+    assert classify_card_type(saga) == "land"
+
+    # 7. Battle MDFC -> battle (Invasion of Ikoria)
+    ikoria = Card(
+        name="Invasion of Ikoria // Zilortha, Apex of Ikoria",
+        type_line="Battle — Siege // Legendary Creature — Dinosaur",
+    )
+    assert classify_card_type(ikoria) == "battle"
+
+    # 8. None or empty type_line -> other
+    assert classify_card_type(None) == "other"
+    assert classify_card_type(Card(name="Mystery Card", type_line="")) == "other"
+
+
+@pytest.mark.django_db
+def test_deck_detail_mainboard_sections(client):
+    t = Tournament.objects.create(
+        id="tourn-deck-sections-test",
+        name="Legacy Challenge 32",
+        format="legacy",
+        date=date(2024, 7, 1),
+    )
+    Card.objects.create(
+        id="c-tamiyo",
+        oracle_id="o-tamiyo",
+        name="Tamiyo, Inquisitive Student",
+        normalized_name="tamiyo, inquisitive student",
+        type_line="Legendary Creature — Moonfolk Wizard // Legendary Planeswalker — Tamiyo",
+        cmc=1.0,
+    )
+    Card.objects.create(
+        id="c-bilbo",
+        oracle_id="o-bilbo",
+        name="Bilbo, Thief in the Night",
+        normalized_name="bilbo, thief in the night",
+        type_line="Legendary Creature — Halfling Rogue",
+        cmc=2.0,
+    )
+    Card.objects.create(
+        id="c-bowmasters",
+        oracle_id="o-bowmasters",
+        name="Orcish Bowmasters",
+        normalized_name="orcish bowmasters",
+        type_line="Creature — Orc Archer",
+        cmc=2.0,
+    )
+    Card.objects.create(
+        id="c-force",
+        oracle_id="o-force",
+        name="Force of Will",
+        normalized_name="force of will",
+        type_line="Instant",
+        cmc=5.0,
+    )
+    Card.objects.create(
+        id="c-brainstorm",
+        oracle_id="o-brainstorm",
+        name="Brainstorm",
+        normalized_name="brainstorm",
+        type_line="Instant",
+        cmc=1.0,
+    )
+    Card.objects.create(
+        id="c-island",
+        oracle_id="o-island",
+        name="Island",
+        normalized_name="island",
+        type_line="Basic Land — Island",
+        cmc=0.0,
+    )
+    Card.objects.create(
+        id="c-ee",
+        oracle_id="o-ee",
+        name="Engineered Explosives",
+        normalized_name="engineered explosives",
+        type_line="Artifact",
+        cmc=0.0,
+    )
+    Card.objects.create(
+        id="c-hydro",
+        oracle_id="o-hydro",
+        name="Hydroblast",
+        normalized_name="hydroblast",
+        type_line="Instant",
+        cmc=1.0,
+    )
+    Card.objects.create(
+        id="c-massacre",
+        oracle_id="o-massacre",
+        name="Massacre",
+        normalized_name="massacre",
+        type_line="Sorcery",
+        cmc=4.0,
+    )
+
+    deck = Deck.objects.create(
+        id="deck-sections-test-1",
+        tournament=t,
+        format="legacy",
+        player="Ark4n",
+        player_lower="ark4n",
+        archetype="Dimir Midrange",
+        archetype_slug="dimir-midrange",
+        result="1st Place",
+        mainboard=[
+            {"card": "Force of Will", "count": 4},
+            {"card": "Brainstorm", "count": 4},
+            {"card": "Tamiyo, Inquisitive Student", "count": 4},
+            {"card": "Orcish Bowmasters", "count": 2},
+            {"card": "Bilbo, Thief in the Night", "count": 4},
+            {"card": "Island", "count": 4},
+        ],
+        sideboard=[
+            {"card": "Massacre", "count": 2},
+            {"card": "Engineered Explosives", "count": 1},
+            {"card": "Hydroblast", "count": 2},
+        ],
+    )
+
+    response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/")
+    assert response.status_code == 200
+    sections = response.context["mainboard_sections"]
+    section_names = [s["name"] for s in sections]
+    assert section_names == ["Creatures", "Instants", "Lands"]
+
+    # Verify Creatures section: count=10, sorted by cmc then name
+    creatures_sec = sections[0]
+    assert creatures_sec["count"] == 10
+    assert creatures_sec["icon"] == "creature"
+    c_names = [c["card"] for c in creatures_sec["cards"]]
+    # Tamiyo (1.0) < Bilbo (2.0) < Bowmasters (2.0)
+    assert c_names == [
+        "Tamiyo, Inquisitive Student",
+        "Bilbo, Thief in the Night",
+        "Orcish Bowmasters",
+    ]
+
+    # Verify Instants section: count=8, Brainstorm (1.0) < Force of Will (5.0)
+    instants_sec = sections[1]
+    assert instants_sec["count"] == 8
+    assert [c["card"] for c in instants_sec["cards"]] == [
+        "Brainstorm",
+        "Force of Will",
+    ]
+
+    # Verify rendered HTML header has icon and count
+    content = response.content.decode()
+    assert "Creatures (10)" in content
+    assert "ms-creature" in content
+    assert "Instants (8)" in content
+    assert "ms-instant" in content
+    assert "Lands (4)" in content
+    assert "ms-land" in content
+    # Sideboard should be sorted by CMC ascending (EE: 0.0 < Hydroblast: 1.0 < Massacre: 4.0)
+    assert "Sideboard" in content
+    sb_cards = [c["card"] for c in response.context["deck"].sideboard]
+    assert sb_cards == ["Engineered Explosives", "Hydroblast", "Massacre"]
 
 
 @pytest.mark.django_db
@@ -295,10 +619,67 @@ def test_archetype_detail_view(client):
 
 
 @pytest.mark.django_db
-def test_archetype_detail_all_time_pagination_and_zero_timeframe(client):
-    from core.models.tournament import Tournament
+def test_archetype_detail_core_cards_sorting(client):
+    """Core cards sort primarily by adoption % (desc) and secondarily by avg quantity (desc)."""
+    t = Tournament.objects.create(
+        id="tourn_core_cards_sort",
+        name="Vintage Challenge",
+        format="vintage",
+        date=date(2024, 6, 1),
+    )
 
-    # Create an archetype with finishes from 2024 (outside 90d window)
+    # 10 decks total:
+    # - "Oath of Druids": in 10 decks, 4 copies each (100%, avg 4.0)
+    # - "Black Lotus": in 10 decks, 1 copy each (100%, avg 1.0)
+    # - "Force of Will": in 9 decks, 4 copies each (90%, avg 4.0)
+    # - "Ancestral Recall": in 9 decks, 1 copy each (90%, avg 1.0)
+    for i in range(10):
+        mb = [
+            {"card": "Oath of Druids", "count": 4},
+            {"card": "Black Lotus", "count": 1},
+        ]
+        if i < 9:
+            mb.append({"card": "Force of Will", "count": 4})
+            mb.append({"card": "Ancestral Recall", "count": 1})
+
+        Deck.objects.create(
+            id=f"deck_sort_test_{i}",
+            tournament=t,
+            format="vintage",
+            player=f"Player_{i}",
+            player_lower=f"player_{i}",
+            archetype="Oath of Druids",
+            archetype_slug="oath-of-druids",
+            result=f"{i + 1}th Place",
+            mainboard=mb,
+            sideboard=[],
+        )
+
+    response = client.get("/vintage/archetype/oath-of-druids/?days=90")
+    assert response.status_code == 200
+    core_cards = response.context["core_cards"]
+    card_names = [c["name"] for c in core_cards]
+
+    # 4-of at 100% must precede 1-of at 100%, which must precede 4-of at 90%, which precedes 1-of at 90%
+    assert card_names == [
+        "Oath of Druids",
+        "Black Lotus",
+        "Force of Will",
+        "Ancestral Recall",
+    ]
+
+
+@pytest.mark.django_db
+def test_archetype_detail_all_time_pagination_and_zero_timeframe(client):
+    # Create anchor tournament so reference date is 2024-06-01 (making 2024-01-01 > 90d ago)
+    Tournament.objects.create(
+        id="tourn_anchor_arch",
+        name="Legacy Anchor",
+        format="legacy",
+        date=date(2024, 6, 1),
+    )
+
+    # Create an archetype with finishes from 2024-01-01 (outside 90d window)
     t = Tournament.objects.create(
         id="tourn_old_arch",
         name="Legacy Challenge",
@@ -334,13 +715,15 @@ def test_archetype_detail_all_time_pagination_and_zero_timeframe(client):
     assert "1–25 of 30 finishes" in content
     assert "Next →" in content
 
+    # Empty core cards section explanation
+    assert (
+        "No card statistics available for this archetype because there's no recent league or challenge decks."
+        in content
+    )
+
 
 @pytest.mark.django_db
 def test_archetype_activity_heatmap(client):
-    from datetime import timedelta
-
-    from core.views import get_reference_date
-
     ref = get_reference_date()
 
     # Create anchor tournament on ref date
@@ -711,8 +1094,6 @@ def test_player_activity_heatmap(client):
 
 @pytest.mark.django_db
 def test_cards_view(client):
-    from django.core.cache import cache
-
     cache.clear()
 
     # 1. 90d All (Leagues + Challenges)
@@ -760,10 +1141,6 @@ def test_leaderboard_view(client):
 
 @pytest.mark.django_db
 def test_deck_detail_missing_knn_index_warning(client, settings):
-    import warnings
-
-    from core.engine.knn import set_global_knn_index
-
     set_global_knn_index(None, loaded=False)
     settings.KNN_INDEX_PATH = "/tmp/non_existent_knn_index.npz"
 
@@ -791,8 +1168,6 @@ def test_deck_detail_banned_card_badge(client):
 
 @pytest.mark.django_db
 def test_deck_detail_similar_decks_mana_symbols(client):
-    from core.engine.knn import set_global_knn_index
-
     set_global_knn_index(None, loaded=False)
     deck = Deck.objects.filter(player="Rexplosion").first() or Deck.objects.first()
     if deck:
@@ -812,11 +1187,6 @@ def test_deck_detail_similar_decks_mana_symbols(client):
 
 @pytest.mark.django_db
 def test_deck_detail_similar_decks_uses_db_archetype_over_stale_knn_index(client):
-    from unittest.mock import MagicMock
-
-    from core.engine.knn import set_global_knn_index
-    from core.models.tournament import Tournament
-
     t = Tournament.objects.create(
         id="tourn_stale_test",
         name="Legacy Challenge",
@@ -923,6 +1293,7 @@ def test_cards_list_view_external_links(client):
         assert first_card["gatherer_url"] in content
         assert "Gatherer" in content
         assert "Scryfall" in content
+        assert "cursor-help" not in content
 
         # Verify mana icons render when cards have a mana cost
         cards_with_cost = [c for c in cards if c.get("mana_cost")]
@@ -932,8 +1303,6 @@ def test_cards_list_view_external_links(client):
 
 @pytest.mark.django_db
 def test_mdfc_mana_cost_display(client):
-    from core.pipeline.scryfall import _extract_mana_cost
-
     # 1. Test _extract_mana_cost on MDFC structure
     mdfc_item = {
         "name": "Sink into Stupor // Soporific Springs",
@@ -978,10 +1347,6 @@ def test_mdfc_mana_cost_display(client):
 
 @pytest.mark.django_db
 def test_format_overview_archetype_colors_and_card_mana_symbols(client):
-    from django.core.cache import cache
-
-    from core.models import Card
-
     cache.clear()
 
     Card.objects.create(name="Force of Will", mana_cost="{3}{U}{U}")
@@ -1021,9 +1386,6 @@ def test_format_overview_archetype_colors_and_card_mana_symbols(client):
 
 @pytest.mark.django_db
 def test_search_index_api(client):
-    from core.models.deck import Deck
-    from core.models.tournament import Tournament
-
     t = Tournament.objects.create(
         id="tourn-search-test",
         name="Legacy Challenge",
@@ -1059,8 +1421,6 @@ def test_search_index_api(client):
 @pytest.mark.django_db
 def test_build_search_index_command(tmp_path):
     """build_search_index command generates a valid JSON file."""
-    from core.models.tournament import Tournament
-
     t = Tournament.objects.create(
         id="tourn-cmd-test",
         name="Vintage Challenge",
@@ -1329,10 +1689,6 @@ def test_no_hardcoded_internal_links_in_templates():
 @pytest.mark.django_db
 def test_format_overview_bump_chart_and_momentum(client):
     """Test 26-week bump chart SSR SVG generation and T8 Momentum calculation."""
-    from datetime import timedelta
-
-    from core.views import get_reference_date
-
     ref = get_reference_date()
 
     # Create tournaments across the last 26 weeks and prior 90-day window
@@ -1532,3 +1888,35 @@ def test_format_overview_bump_chart_and_momentum(client):
     assert arch_dict_30["kuldotha-red"]["t8_momentum"] == 3
     # Bump chart retains 26 weeks of data regardless of ?days=30
     assert resp_30.context["bump_chart"]["has_data"] is True
+
+
+@pytest.mark.django_db
+def test_format_overview_unsupported_format_notification(client):
+    """Unsupported formats (not in ACTIVE_FORMAT_SLUGS) display a work-in-progress banner."""
+    # 1. Supported format (legacy) should NOT display notification
+    resp_supported = client.get("/legacy/")
+    assert resp_supported.status_code == 200
+    assert resp_supported.context["is_supported_format"] is True
+    assert (
+        "https://github.com/davidfischer/modometa/tree/main/archetypes"
+        not in resp_supported.content.decode()
+    )
+
+    # 2. Unsupported format (pauper) SHOULD display notification
+    resp_unsupported = client.get("/pauper/")
+    assert resp_unsupported.status_code == 200
+    assert resp_unsupported.context["is_supported_format"] is False
+    content = resp_unsupported.content.decode()
+    assert "https://github.com/davidfischer/modometa/tree/main/archetypes" in content
+    assert "Work in progress:" in content
+    assert "Archetypes for Pauper are a work in progress" in content
+
+    # 3. If settings.ACTIVE_FORMAT_SLUGS is overridden to include pauper, notification disappears
+    with override_settings(ACTIVE_FORMAT_SLUGS=["pauper"]):
+        resp_overridden = client.get("/pauper/")
+        assert resp_overridden.status_code == 200
+        assert resp_overridden.context["is_supported_format"] is True
+        assert (
+            "https://github.com/davidfischer/modometa/tree/main/archetypes"
+            not in resp_overridden.content.decode()
+        )

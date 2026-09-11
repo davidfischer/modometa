@@ -159,26 +159,28 @@
       <span class="text-2xs text-zinc-500 font-mono">Top signature cards by adoption</span>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 lg:gap-x-12 gap-y-1">
-      {% for card in core_cards %}
-        <div class="flex items-center justify-between text-xs py-2 border-b border-zinc-800/40">
-          <div class="flex items-center gap-1.5 truncate min-w-0 pr-3">
-            <a href="{{ card.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ card.image_uri }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
-              {{ card.name }}
-            </a>
-            {% if card.mana_cost %}
-              <span class="shrink-0 align-middle">{{ card.mana_cost|mana_cost }}</span>
-            {% endif %}
+    {% if core_cards %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 lg:gap-x-12 gap-y-1">
+        {% for card in core_cards %}
+          <div class="flex items-center justify-between text-xs py-2 border-b border-zinc-800/40">
+            <div class="flex items-center gap-1.5 truncate min-w-0 pr-3">
+              <a href="{{ card.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ card.image_uri }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
+                {{ card.name }}
+              </a>
+              {% if card.mana_cost %}
+                <span class="shrink-0 align-middle">{{ card.mana_cost|mana_cost }}</span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-3 shrink-0 font-mono text-zinc-400 pl-2">
+              <span class="text-emerald-400 font-semibold">{{ card.adoption_pct }}%</span>
+              <span class="text-zinc-500 text-2xs">avg {{ card.avg_copies }}x</span>
+            </div>
           </div>
-          <div class="flex items-center gap-3 shrink-0 font-mono text-zinc-400 pl-2">
-            <span class="text-emerald-400 font-semibold">{{ card.adoption_pct }}%</span>
-            <span class="text-zinc-500 text-2xs">avg {{ card.avg_copies }}x</span>
-          </div>
-        </div>
-      {% empty %}
-        <p class="text-xs text-zinc-500 italic py-2">No card statistics available for this archetype.</p>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-xs text-zinc-500 italic py-2">No card statistics available for this archetype because there's no recent league or challenge decks.</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

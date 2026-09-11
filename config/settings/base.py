@@ -12,6 +12,11 @@ SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY", "django-insecure-modometa-dev-key-change-in-prod"
 )
 
+# Admin path prefix (empty string by default -> /admin/)
+# Set DJANGO_ADMIN_PATH to e.g. "abcdefg/" for /admin/abcdefg/
+_admin_path = os.environ.get("DJANGO_ADMIN_PATH", "").strip().strip("/")
+DJANGO_ADMIN_PATH = f"{_admin_path}/" if _admin_path else ""
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

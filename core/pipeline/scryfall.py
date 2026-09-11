@@ -23,6 +23,9 @@ By using 'default_cards' (all English printings, ~110k card objects), we:
 import gzip
 import json
 import logging
+import re
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -169,6 +172,151 @@ def _extract_mana_cost(item: dict[str, Any]) -> str | None:
     return cost
 
 
+SPECIAL_FRAME_EFFECTS = {
+    "extendedart",
+    "showcase",
+    "inverted",
+    "fullart",
+    "etched",
+    "shatteredglass",
+    "thick",
+    "spellslinger",
+}
+
+NON_STANDARD_LAYOUTS = {
+    "art_series",
+    "token",
+    "double_faced_token",
+    "emblem",
+    "planar",
+    "scheme",
+    "vanguard",
+    "reversible_card",
+}
+
+WORST_PRINT_RANK = (
+    "9999-99-99",
+    1,
+    1,
+    (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 999999),
+)
+
+
+def _calculate_print_rank(item: dict[str, Any]) -> tuple:
+    """Calculate printing priority rank for card images.
+
+    Preferences:
+    - Earliest release date first.
+    - If the earliest printing is Alpha (lea), prefer Beta (leb) instead.
+    - If there are multiple printings in the earliest set, prefer the 'regular'
+      version over promos (prerelease, promo pack), full-art, showcase,
+      extended art, or borderless variants.
+    - Non-reprints over reprints.
+    - Paper over digital-only.
+    - Normal playable card layouts over tokens/art series.
+    - Lower numeric collector number over high variant numbers/suffixes.
+    """
+    set_code = item.get("set", "").lower()
+    released_at = item.get("released_at") or "9999-99-99"
+
+    # 1. Alpha vs Beta: map Alpha to right after Beta so Beta wins
+    if set_code == "lea":
+        effective_date = "1993-10-05"
+        is_reprint = 0
+    elif set_code == "leb":
+        effective_date = "1993-10-04"
+        is_reprint = 0
+    else:
+        effective_date = released_at
+        is_reprint = 1 if item.get("reprint", True) else 0
+
+    is_digital = 1 if item.get("digital", False) else 0
+
+    # 2. Promo / Prerelease penalty:
+    is_promo = (
+        1
+        if (
+            item.get("promo", False)
+            or item.get("set_type") == "promo"
+            or (set_code.startswith("p") and len(set_code) in (4, 5))
+        )
+        else 0
+    )
+
+    # Prerelease promos often have an announcement/prerelease date slightly
+    # before the main retail set (within ~60 days). Shift them so the main
+    # set printing is evaluated as earlier or on equal footing.
+    if is_promo and set_code.startswith("p") and len(set_code) in (4, 5):
+        try:
+            d = datetime.strptime(effective_date, "%Y-%m-%d") + timedelta(days=60)
+            effective_date = d.strftime("%Y-%m-%d")
+        except ValueError, TypeError:
+            pass
+
+    # 3. Layout penalty (exclude/demote art_series, tokens, etc.)
+    layout = item.get("layout", "")
+    layout_penalty = 1 if layout in NON_STANDARD_LAYOUTS else 0
+
+    # 4. Variant / full-art / borderless / boosterfun penalties
+    is_full_art = 1 if item.get("full_art", False) else 0
+    is_textless = 1 if item.get("textless", False) else 0
+    is_borderless = 1 if item.get("border_color") == "borderless" else 0
+
+    promo_types = item.get("promo_types") or []
+    has_boosterfun = (
+        1
+        if any(
+            pt
+            in (
+                "boosterfun",
+                "bundle",
+                "prerelease",
+                "promopack",
+                "textured",
+                "serialized",
+                "concept",
+                "poster",
+            )
+            for pt in promo_types
+        )
+        else 0
+    )
+
+    frame_effects = item.get("frame_effects") or []
+    has_special_frame = (
+        1 if any(fe in SPECIAL_FRAME_EFFECTS for fe in frame_effects) else 0
+    )
+
+    not_booster = 0 if item.get("booster", True) else 1
+    is_variation = 1 if item.get("variation", False) else 0
+
+    # 5. Collector number: regular versions have pure numeric numbers within the standard set run
+    raw_cn = str(item.get("collector_number", ""))
+    match = re.match(r"^(\d+)", raw_cn)
+    if match:
+        cn_num = int(match.group(1))
+        has_alpha_suffix = 1 if len(match.group(1)) < len(raw_cn) else 0
+    else:
+        cn_num = 999999
+        has_alpha_suffix = 1
+
+    regularity_penalty = (
+        layout_penalty,
+        is_promo,
+        has_boosterfun,
+        is_borderless,
+        is_full_art,
+        has_special_frame,
+        is_textless,
+        not_booster,
+        is_variation,
+        has_alpha_suffix,
+        cn_num,
+    )
+
+    return (effective_date, is_reprint, is_digital, regularity_penalty)
+
+
 def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int, int]:
     """Ingest Scryfall cards and aliases into Card and CardLookup tables.
 
@@ -217,15 +365,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
 
             # Extract image URI
             img = _extract_image_uri(item)
-
-            # Original printing ranking:
-            # Earliest release date first; non-reprints preferred over reprints;
-            # paper preferred over digital-only for vintage/legacy sets if dates tie.
-            released_at = item.get("released_at") or "9999-99-99"
-            reprint = item.get("reprint", True)
-            is_digital = item.get("digital", False)
-            # Tuple sorting: (released_date, 1 if reprint else 0, 1 if digital else 0)
-            print_rank = (released_at, 1 if reprint else 0, 1 if is_digital else 0)
+            print_rank = _calculate_print_rank(item)
 
             norm_name = normalize_card_name(name)
             type_line = item.get("type_line", "")
@@ -259,16 +399,16 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                     "legalities": item.get("legalities", {}),
                     "is_land": is_land,
                     "is_basic_land": is_basic,
-                    "best_rank": print_rank if img else ("9999-99-99", 1, 1),
+                    "best_rank": print_rank if img else WORST_PRINT_RANK,
                 }
             else:
                 rec = cards_by_oracle[oracle_id]
-                # If this printing has an image and is an earlier (or original) print, update image
+                # If this printing has an image and is preferred over the current best, update
                 if img and (rec["image_uri"] is None or print_rank < rec["best_rank"]):
+                    rec["id"] = card_id
                     rec["image_uri"] = img
                     rec["best_rank"] = print_rank
 
-            canonical_id = cards_by_oracle[oracle_id]["id"]
             canonical_name = cards_by_oracle[oracle_id]["name"]
 
             # 2. Extract all aliases from this printing
@@ -349,7 +489,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                     lookup_map[l_norm] = {
                         "lookup_name": l_norm,
                         "canonical_name": c_name,
-                        "card_id": canonical_id,
+                        "oracle_id": oracle_id,
                         "priority": prio,
                     }
 
@@ -378,7 +518,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
         CardLookup(
             lookup_name=d["lookup_name"],
             canonical_name=d["canonical_name"],
-            card_id=d["card_id"],
+            card_id=cards_by_oracle[d["oracle_id"]]["id"],
             priority=d["priority"],
         )
         for d in lookup_map.values()

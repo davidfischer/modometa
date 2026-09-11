@@ -60,7 +60,14 @@
       </div>
     </div>
 
-    <div class="mt-4 overflow-x-auto">
+    <!-- Bump Chart: Top 8 Rank Evolution (26 Weeks) -->
+    {% if bump_chart.has_data %}
+      <div class="mt-6 pt-6 border-t border-zinc-800">
+        {% include "includes/format_bump_chart.html" %}
+      </div>
+    {% endif %}
+
+    <div class="mt-6 pt-6 border-t border-zinc-800 overflow-x-auto">
       <table class="w-full text-left text-xs text-zinc-300">
         <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500">
           <tr>
@@ -69,6 +76,7 @@
             <th class="py-3 px-3 text-right" title="5-0 Decks / Total 5-0 Decks">League Share</th>
             <th class="py-3 px-3 text-right" title="Challenge Decks / Total Challenge Decks">Challenge Share</th>
             <th class="py-3 px-3 text-right" title="Top 8 Finishes / Total Top 8 Slots">Top 8 Share</th>
+            <th class="py-3 px-3 text-right" title="Top 8 finishes in last {{ TIMEFRAME }} days vs previous {{ TIMEFRAME }} days">T8 Momentum</th>
             <th class="py-3 px-3 text-right" title="Top 8 Finishes / Challenge Appearances">Conversion</th>
           </tr>
         </thead>
@@ -87,6 +95,17 @@
               <td class="py-3 px-3 text-right text-zinc-400" title="{{ a.league_5_0_count }}/{{ stats.total_5_0s }}">{{ a.league_share }}%</td>
               <td class="py-3 px-3 text-right text-zinc-300" title="{{ a.chall_appearances }}/{{ stats.total_chall_decks }}">{{ a.challenge_share }}%</td>
               <td class="py-3 px-3 text-right text-emerald-400 font-bold" title="{{ a.top8_count }}/{{ stats.total_top8_slots }}">{{ a.top8_share }}%</td>
+              <td class="py-3 px-3 text-right whitespace-nowrap">
+                <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-bold font-mono {% if a.t8_momentum > 0 %}text-emerald-400 border border-emerald-500/30{% elif a.t8_momentum < 0 %}text-rose-400 border border-rose-500/30{% else %}text-zinc-400 border border-zinc-700/40{% endif %}" title="{{ a.top8_count }} Top 8s (last {{ TIMEFRAME }}d) vs {{ a.prev_top8_count }} (prior {{ TIMEFRAME }}d)">
+                  {% if a.t8_momentum > 0 %}
+                    +{{ a.t8_momentum }} ▲
+                  {% elif a.t8_momentum < 0 %}
+                    {{ a.t8_momentum }} ▼
+                  {% else %}
+                    0 ▬
+                  {% endif %}
+                </span>
+              </td>
               <td class="py-3 px-3 text-right" title="{{ a.top8_count }}/{{ a.chall_appearances }}">
                 <span class="rounded px-1.5 py-0.5 text-2xs font-semibold {% if a.conversion_rate >= 25 %}bg-emerald-500/20 text-emerald-300{% elif a.conversion_rate >= 15 %}bg-sky-500/20 text-sky-300{% else %}text-zinc-400{% endif %}">
                   {{ a.conversion_rate }}%
@@ -95,7 +114,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="6" class="py-6 text-center text-zinc-500 italic">No archetype data available for this timeframe.</td>
+              <td colspan="7" class="py-6 text-center text-zinc-500 italic">No archetype data available for this timeframe.</td>
             </tr>
           {% endfor %}
         </tbody>

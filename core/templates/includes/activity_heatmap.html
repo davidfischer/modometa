@@ -1,0 +1,69 @@
+<div class="mt-6 pt-6 border-t border-zinc-800">
+
+  <!-- Heatmap SVG Container -->
+  <div class="w-full max-w-[28rem] mx-auto">
+    <svg
+      viewBox="0 0 {{ heatmap.svg_width }} {{ heatmap.svg_height }}"
+      class="w-full h-auto block select-none"
+      aria-label="{{ heatmap.aria_label|default:'26-week activity heatmap' }}"
+      role="img"
+    >
+        <!-- Month labels -->
+        {% for m in heatmap.month_labels %}
+          <text x="{{ m.x }}" y="12"{% if m.anchor %} text-anchor="{{ m.anchor }}"{% endif %} class="text-xs font-mono fill-zinc-400">{{ m.name }}</text>
+        {% endfor %}
+
+        <!-- Day of week labels (Mon, Wed, Fri, Sun) -->
+        {% for d in heatmap.day_labels %}
+          <text x="30" y="{{ d.y }}" text-anchor="end" class="text-xs font-mono fill-zinc-500">{{ d.name }}</text>
+        {% endfor %}
+
+        <!-- Weeks and day cells -->
+        {% for week in heatmap.weeks %}
+          <g transform="translate({{ week.col_x }}, 0)">
+            {% for day in week.days %}
+              {% if day.url %}
+                <a href="{{ day.url }}" class="focus:outline-none">
+                  <rect
+                    x="0"
+                    y="{{ day.y }}"
+                    width="{{ heatmap.cell_size }}"
+                    height="{{ heatmap.cell_size }}"
+                    rx="2"
+                    ry="2"
+                    class="activity-cell {{ day.color_class }}"
+                    data-date="{{ day.date_str }}"
+                    tabindex="0"
+                    role="gridcell"
+                    aria-label="{{ day.tooltip }}"
+                  >
+                    <title>{{ day.tooltip }}</title>
+                  </rect>
+                </a>
+              {% else %}
+                <rect
+                  x="0"
+                  y="{{ day.y }}"
+                  width="{{ heatmap.cell_size }}"
+                  height="{{ heatmap.cell_size }}"
+                  rx="2"
+                  ry="2"
+                  class="activity-cell {{ day.color_class }}"
+                  data-date="{{ day.date_str }}"
+                  {% if not day.is_future %}
+                    tabindex="0"
+                    role="gridcell"
+                    aria-label="{{ day.tooltip }}"
+                  {% endif %}
+                >
+                  {% if not day.is_future %}
+                    <title>{{ day.tooltip }}</title>
+                  {% endif %}
+                </rect>
+              {% endif %}
+            {% endfor %}
+          </g>
+        {% endfor %}
+    </svg>
+  </div>
+</div>

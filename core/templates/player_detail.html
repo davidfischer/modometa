@@ -44,6 +44,11 @@
         </div>
       </div>
     </div>
+
+    {% if heatmap %}
+      <!-- Player Activity Heatmap (26 Weeks) -->
+      {% include "includes/activity_heatmap.html" %}
+    {% endif %}
   </div>
 
   <!-- Tournament Appearances & Decks -->

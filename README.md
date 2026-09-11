@@ -3,10 +3,10 @@
 [MODOMeta](https://modometa.com) is a Magic the Gathering Online ([MTGO](https://www.mtgo.com)) metagame analyzer focused on tracking archetype play rates, Challenge Top 8 shares, League 5-0 shares, and conversion rates across all major MTGO formats:
 - **Vintage**
 - **Legacy**
+- **Premodern**
 - **Modern** (WIP)
 - **Pioneer** (WIP)
 - **Standard** (WIP)
-- **Premodern** (WIP)
 - **Pauper** (WIP)
 
 The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/fbettega/MTG_decklistcache). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db

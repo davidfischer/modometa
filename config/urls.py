@@ -8,6 +8,11 @@ from django.urls import path
 from django.views.generic import TemplateView
 
 
+admin_path = getattr(settings, "DJANGO_ADMIN_PATH", "")
+if admin_path and not admin_path.endswith("/"):
+    admin_path = f"{admin_path}/"
+admin_path = admin_path.lstrip("/")
+
 urlpatterns = [
     path(
         "robots.txt",
@@ -15,7 +20,7 @@ urlpatterns = [
         name="robots_txt",
     ),
     path("healthz", lambda request: HttpResponse("OK"), name="healthz"),
-    path("admin/", admin.site.urls),
+    path(f"admin/{admin_path}", admin.site.urls),
     path("", include("core.urls")),
 ]
 

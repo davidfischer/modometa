@@ -56,8 +56,8 @@ COLOR_NAMES = {
 # Standard WUBRG sort order
 COLOR_ORDER = {"W": 0, "U": 1, "B": 2, "R": 3, "G": 4}
 
-# Cards with alternate costs, pitch effects, or Phyrexian mana that must NOT
-# contribute to deck color identity unless the deck's mana base actually produces their color.
+# Cards with alternate costs, pitch effects, Phyrexian mana, or reanimation targets that
+# must NEVER contribute to deck color identity.
 PSEUDO_COLORED_CARDS = {
     # Phyrexian Mana
     "surgical extraction": {"B"},
@@ -101,6 +101,14 @@ PSEUDO_COLORED_CARDS = {
     "mindbreak trap": {"U"},
     "once upon a time": {"G"},
     "land grant": {"G"},
+    # Zero-cost Pacts
+    "pact of negation": {"U"},
+    "slaughter pact": {"B"},
+    "pact of the titan": {"R"},
+    "summoner's pact": {"G"},
+    "intervention pact": {"W"},
+    # Flashback / Alternate Cost
+    "dread return": {"B"},
     # Creatures that are usually not cast
     "atraxa, grand unifier": {"W", "U", "B", "G"},
     "griselbrand": {"B"},
@@ -213,6 +221,7 @@ LAND_COLOR_MAP = {
     "tarnished citadel": {"W", "U", "B", "R", "G"},
     "aether hub": {"W", "U", "B", "R", "G"},
     # Artifact / Dork Mana Sources
+    "black lotus": {"W", "U", "B", "R", "G"},
     "mox diamond": {"W", "U", "B", "R", "G"},
     "lotus petal": {"W", "U", "B", "R", "G"},
     "chrome mox": {"W", "U", "B", "R", "G"},
@@ -255,13 +264,8 @@ def deduce_deck_colors(
     # Step 2: Detect colors needed by castable spells
     needed_colors: set[str] = set()
     for card in norm_mainboard:
-        # Check if card is an excluded pseudo-colored card
+        # Excluded pseudo-colored cards never count toward deck colors
         if card in PSEUDO_COLORED_CARDS:
-            # Only count its color if the mana base can already produce it reliably
-            pseudo_cols = PSEUDO_COLORED_CARDS[card]
-            for col in pseudo_cols:
-                if col in producible_colors:
-                    needed_colors.add(col)
             continue
 
         # Otherwise check card colors

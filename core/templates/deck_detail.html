@@ -29,7 +29,13 @@
       </div>
 
       <h1 class="mt-2 text-2xl font-bold text-white sm:text-3xl">
-        {{ deck.archetype }}
+        {% if deck.archetype_slug %}
+          <a href="{% url 'core:archetype_detail' deck.format deck.archetype_slug %}" class="hover:text-emerald-400 transition-colors">
+            {{ deck.archetype }}
+          </a>
+        {% else %}
+          {{ deck.archetype }}
+        {% endif %}
       </h1>
       <p class="mt-1 text-sm text-zinc-400">
         Played by <a href="{% url 'core:player_detail' deck.player %}" class="text-emerald-400 hover:underline font-semibold">{{ deck.player }}</a> in
@@ -39,30 +45,35 @@
     </div>
 
     <!-- Result / Badges / Actions -->
-    <div class="flex flex-col md:items-end gap-2 shrink-0">
+    <div class="flex flex-col md:items-end gap-2 shrink-0 w-full md:w-auto">
       {% if deck.is_top8 %}
-        <div class="rounded-lg bg-emerald-500/20 px-4 py-2 text-center border border-emerald-500/30">
+        <div class="rounded-lg bg-emerald-500/20 px-4 py-2 text-center border border-emerald-500/30 w-full md:w-auto">
           <div class="text-2xs uppercase tracking-wider text-emerald-400 font-semibold">Finish</div>
           <div class="text-lg font-bold text-emerald-300">★ {{ deck.result }}</div>
         </div>
       {% elif deck.is_5_0 %}
-        <div class="rounded-lg bg-sky-500/20 px-4 py-2 text-center border border-sky-500/30">
+        <div class="rounded-lg bg-sky-500/20 px-4 py-2 text-center border border-sky-500/30 w-full md:w-auto">
           <div class="text-2xs uppercase tracking-wider text-sky-400 font-semibold">Result</div>
           <div class="text-lg font-bold text-sky-300">🏆 5-0 Trophy</div>
         </div>
       {% else %}
-        <div class="rounded-lg bg-zinc-800 px-4 py-2 text-center">
+        <div class="rounded-lg bg-zinc-800 px-4 py-2 text-center w-full md:w-auto">
           <div class="text-2xs uppercase tracking-wider text-zinc-400 font-semibold">Result</div>
           <div class="text-base font-bold text-white">{{ deck.result }}</div>
         </div>
       {% endif %}
 
-      <div class="flex items-center gap-2 mt-1">
-        <button id="copy-deck-btn" class="rounded bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-1 w-full sm:w-auto">
+        {% if deck.archetype_slug %}
+          <a href="{% url 'core:archetype_detail' deck.format deck.archetype_slug %}" class="block w-full sm:w-auto text-center rounded bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors">
+            Archetype Overview →
+          </a>
+        {% endif %}
+        <button id="copy-deck-btn" class="block w-full sm:w-auto text-center rounded bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors">
           📋 Copy List
         </button>
         {% if deck.anchor_uri %}
-          <a href="{{ deck.anchor_uri }}" target="_blank" rel="noopener" class="rounded bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors">
+          <a href="{{ deck.anchor_uri }}" target="_blank" rel="noopener" class="block w-full sm:w-auto text-center rounded bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors">
             MTGO ↗
           </a>
         {% endif %}
@@ -78,36 +89,47 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
           <!-- Mainboard -->
           <div>
-            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
               <h2 class="text-base font-bold text-white">Mainboard</h2>
               <span class="text-xs font-mono text-emerald-400">{{ deck.mainboard_card_count }} Cards</span>
             </div>
 
-            <ul class="mt-3 space-y-1 text-xs">
-              {% for item in deck.mainboard %}
-                <li class="flex items-center justify-between py-1 border-b border-zinc-800/40 last:border-0 hover:bg-zinc-800/30 px-1 rounded">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-zinc-500 w-4 text-right">{{ item.count }}</span>
-                    <a href="{{ item.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
-                      {{ item.card }}
-                    </a>
-                    {% if item.is_banned or item.card in deck.illegal_cards %}
-                      <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
-                        Banned
-                      </span>
-                    {% endif %}
-                  </div>
-                  {% if item.mana_cost %}
-                    <span class="text-xs text-zinc-400 shrink-0">{{ item.mana_cost|mana_cost }}</span>
-                  {% endif %}
-                </li>
+            <div class="space-y-4">
+              {% for section in mainboard_sections %}
+                <div>
+                  <h3 class="flex items-center text-xs font-semibold text-zinc-400 mb-1.5">
+                    <span class="mana {{ section.icon }} ms ms-{{ section.icon }} mr-1.5 text-zinc-400"></span>{{ section.name }} ({{ section.count }})
+                  </h3>
+                  <ul class="space-y-1 text-xs">
+                    {% for item in section.cards %}
+                      <li class="flex items-center justify-between py-1 border-b border-zinc-800/40 last:border-0 hover:bg-zinc-800/30 px-1 rounded">
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono text-zinc-500 w-4 text-right">{{ item.count }}</span>
+                          <a href="{{ item.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
+                            {{ item.card }}
+                          </a>
+                          {% if item.is_banned or item.card in deck.illegal_cards %}
+                            <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
+                              Banned
+                            </span>
+                          {% endif %}
+                        </div>
+                        {% if item.mana_cost %}
+                          <span class="text-xs text-zinc-400 shrink-0">{{ item.mana_cost|mana_cost }}</span>
+                        {% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% empty %}
+                <p class="text-zinc-500 italic py-2 text-xs">No mainboard entries.</p>
               {% endfor %}
-            </ul>
+            </div>
           </div>
 
           <!-- Sideboard -->
           <div>
-            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
               <h2 class="text-base font-bold text-white">Sideboard</h2>
               <span class="text-xs font-mono text-emerald-400">{{ deck.sideboard_card_count }} Cards</span>
             </div>

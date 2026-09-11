@@ -23,6 +23,17 @@ IS_TESTING = (
     or any("pytest" in arg for arg in sys.argv)
 )
 
+if IS_TESTING:
+    # Exclude WhiteNoise middleware during test runs:
+    # WhiteNoise searches for STATIC_ROOT ('staticfiles/'), which is only populated
+    # by collectstatic in production and triggers repeated UserWarnings in tests.
+    MIDDLEWARE = [
+        m
+        for m in MIDDLEWARE  # noqa: F405
+        if m != "whitenoise.middleware.WhiteNoiseMiddleware"
+    ]
+
+
 # Django Debug Toolbar (Development Only, excluded during automated tests)
 if not IS_TESTING:
     INSTALLED_APPS = [*INSTALLED_APPS, "debug_toolbar"]  # noqa: F405

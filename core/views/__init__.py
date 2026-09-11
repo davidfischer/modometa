@@ -1,6 +1,7 @@
 """Views for Modometa metagame analyzer."""
 
 import functools
+import re
 from collections import Counter
 from collections.abc import Iterable
 from datetime import date
@@ -11,6 +12,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.db.models import Max
+from django.db.models import Min
 from django.db.models import Q
 from django.http import Http404
 from django.http import HttpResponse
@@ -122,6 +124,28 @@ def get_timeframe_cutoff(days: int = 90) -> tuple[date, date]:
     ref = get_reference_date()
     cutoff = ref - timedelta(days=days)
     return cutoff, ref
+
+
+def get_dataset_min_date() -> date | None:
+    """Get the earliest date of leagues or challenges in the dataset, cached for 4 hours."""
+    is_testing = getattr(settings, "IS_TESTING", False)
+    key = "dataset_min_date_v1"
+    min_date = None if is_testing else cache.get(key)
+    if min_date is None:
+        min_date = Tournament.objects.filter(
+            event_type__in=["league", "challenge"]
+        ).aggregate(min_d=Min("date"))["min_d"]
+        if not min_date:
+            min_date = Tournament.objects.aggregate(min_d=Min("date"))["min_d"]
+        if min_date and not is_testing:
+            cache.set(key, min_date, timeout=4 * 3600)
+    return min_date
+
+
+def get_dataset_start_year() -> int | None:
+    """Get the earliest year of leagues or challenges in the dataset."""
+    min_date = get_dataset_min_date()
+    return min_date.year if min_date else None
 
 
 @public_cache(cdn_seconds=3600, browser_seconds=180)
@@ -417,12 +441,16 @@ def format_overview(request, format):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
+    is_supported_format = fmt_slug in active_slugs
+
     return render(
         request,
         "format_overview.html",
         {
             "format_slug": fmt_slug,
             "format_name": fmt_slug.capitalize(),
+            "is_supported_format": is_supported_format,
             "stats": {
                 "total_decks": total_decks,
                 "challenge_count": challenge_count,
@@ -472,13 +500,28 @@ def tournament_list(request, format):
     )
 
 
+def tournament_deck_sort_key(
+    deck: Deck,
+) -> tuple[float | int, tuple[int, int], str, str]:
+    """Sort key for decks in a tournament: rank -> match record -> player -> id."""
+    rank = deck.rank if deck.rank is not None else float("inf")
+    result_str = (deck.result or "").strip()
+    match = re.match(r"^(\d+)-(\d+)(?:-\d+)?$", result_str)
+    if match:
+        wins = int(match.group(1))
+        losses = int(match.group(2))
+        record = (-wins, losses)
+    else:
+        record = (0, 0)
+    return (rank, record, deck.player_lower, deck.id)
+
+
 @public_cache(cdn_seconds=86400, browser_seconds=300)
 def tournament_detail(request, format, event):
     """Tournament detail view: Displays standings and decklinks for an event."""
     tournament = get_object_or_404(Tournament, id=event)
-    raw_decks = list(
-        Deck.objects.filter(tournament=tournament).order_by("rank", "player")
-    )
+    raw_decks = list(Deck.objects.filter(tournament=tournament))
+    raw_decks.sort(key=tournament_deck_sort_key)
 
     # Disambiguate players with multiple decks
     player_counts = Counter()
@@ -564,8 +607,88 @@ def player_detail(request, player):
             "decks": page_obj.object_list,
             "page_obj": page_obj,
             "heatmap": heatmap,
+            "start_year": get_dataset_start_year(),
         },
     )
+
+
+CARD_TYPE_CATEGORIES: list[tuple[str, str, str]] = [
+    ("creature", "Creatures", "creature"),
+    ("planeswalker", "Planeswalkers", "planeswalker"),
+    ("instant", "Instants", "instant"),
+    ("sorcery", "Sorceries", "sorcery"),
+    ("artifact", "Artifacts", "artifact"),
+    ("enchantment", "Enchantments", "enchantment"),
+    ("battle", "Battles", "battle"),
+    ("land", "Lands", "land"),
+    ("other", "Other", "multiple"),
+]
+
+
+def classify_card_type(card: Card | None) -> str:
+    """Classify a card into a type category key.
+
+    Precedence:
+    1. If it's a MDFC, use the front face for the type.
+    2. If it's a land, always put in 'land' (e.g. Dryad Arbor is a land creature -> land).
+    3. If not land, put in 'creature' if it's a creature (e.g. Overlord of the Balemurk -> creature).
+    4. Otherwise choose one of the remaining categories:
+       planeswalker, instant, sorcery, artifact, enchantment, battle.
+    """
+    if not card or not card.type_line:
+        return "other"
+
+    front_face = card.type_line.split(" // ")[0].strip().lower()
+    main_type = front_face.split("—")[0].split("-")[0]
+    words = set(main_type.split())
+
+    if "land" in words:
+        return "land"
+    if "creature" in words:
+        return "creature"
+    if "planeswalker" in words:
+        return "planeswalker"
+    if "instant" in words:
+        return "instant"
+    if "sorcery" in words:
+        return "sorcery"
+    if "artifact" in words:
+        return "artifact"
+    if "enchantment" in words:
+        return "enchantment"
+    if "battle" in words:
+        return "battle"
+    return "other"
+
+
+def build_deck_mainboard_sections(annotated_mainboard: list[dict]) -> list[dict]:
+    """Group and sort mainboard cards into sections by card type.
+
+    Within each type section, cards are sorted by converted mana cost followed by name.
+    """
+    buckets: dict[str, list[dict]] = {k: [] for k, _, _ in CARD_TYPE_CATEGORIES}
+    for item in annotated_mainboard:
+        card = item.get("card_obj")
+        cat = classify_card_type(card)
+        buckets[cat].append(item)
+
+    sections = []
+    for cat_key, cat_name, icon in CARD_TYPE_CATEGORIES:
+        cards = buckets.get(cat_key, [])
+        if not cards:
+            continue
+        cards.sort(key=lambda x: (x.get("cmc", 0.0), x.get("card", "")))
+        count = sum(x.get("count", 0) for x in cards)
+        sections.append(
+            {
+                "key": cat_key,
+                "name": cat_name,
+                "icon": icon,
+                "count": count,
+                "cards": cards,
+            }
+        )
+    return sections
 
 
 @public_cache(cdn_seconds=86400, browser_seconds=300)
@@ -600,6 +723,7 @@ def deck_detail(request, player, event, deck_index=1):
                 "card": item["card"],
                 "card_obj": card,
                 "count": item["count"],
+                "cmc": card.cmc if card else 0.0,
                 "image_uri": card.image_uri if card else None,
                 "mana_cost": card.mana_cost if card else None,
                 "scryfall_url": card.scryfall_url
@@ -620,6 +744,7 @@ def deck_detail(request, player, event, deck_index=1):
                 "card": item["card"],
                 "card_obj": card,
                 "count": item["count"],
+                "cmc": card.cmc if card else 0.0,
                 "image_uri": card.image_uri if card else None,
                 "mana_cost": card.mana_cost if card else None,
                 "scryfall_url": card.scryfall_url
@@ -631,9 +756,12 @@ def deck_detail(request, player, event, deck_index=1):
                 "is_banned": item["card"] in illegal_set,
             }
         )
+    annotated_sideboard.sort(key=lambda x: (x.get("cmc", 0.0), x.get("card", "")))
 
+    mainboard_sections = build_deck_mainboard_sections(annotated_mainboard)
     deck.mainboard = annotated_mainboard
     deck.sideboard = annotated_sideboard
+    deck.mainboard_sections = mainboard_sections
 
     # Generate text for copy to clipboard
     deck_text = deck.decklist_text
@@ -759,6 +887,7 @@ def deck_detail(request, player, event, deck_index=1):
             "deck": deck,
             "tournament": tournament,
             "deck_text": deck_text,
+            "mainboard_sections": mainboard_sections,
             "format_neighbors": format_neighbors,
             "cross_format_neighbors": cross_format_neighbors,
         },
@@ -1661,14 +1790,20 @@ def archetype_detail(request, format, archetype):
         colors = sample_deck.colors if sample_deck else ""
         color_name = sample_deck.color_name if sample_deck else ""
 
-    core_cards = []
-    top_cards = card_counts.most_common(12)
-    cards_map = get_cards_map([c[0] for c in top_cards])
-
-    for name, cnt in top_cards:
-        card = cards_map.get(name)
+    card_stats = []
+    for name, cnt in card_counts.items():
         adopt_pct = round((cnt / max(1, total_decks)) * 100, 1)
         avg_cp = round(card_total_copies[name] / max(1, cnt), 1)
+        card_stats.append((adopt_pct, avg_cp, cnt, name))
+
+    # Sort primarily by adoption_pct (descending), secondarily by avg_copies (descending), then name (ascending)
+    card_stats.sort(key=lambda x: (-x[0], -x[1], -x[2], x[3]))
+    top_cards = card_stats[:12]
+    cards_map = get_cards_map([c[3] for c in top_cards])
+
+    core_cards = []
+    for adopt_pct, avg_cp, _cnt, name in top_cards:
+        card = cards_map.get(name)
         core_cards.append(
             {
                 "name": name,

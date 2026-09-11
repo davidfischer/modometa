@@ -2,8 +2,10 @@ name: Daily Data Sync & R2 Push
 
 on:
   schedule:
-    # Run daily at 06:00 UTC (02:00 EDT)
-    - cron: "0 6 * * *"
+    # Run daily at 05:24 UTC (01:24 EDT).
+    # Scheduling at an off-peak, non-zero minute avoids high-load delays at the start of the hour:
+    # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
+    - cron: "24 5 * * *"
   workflow_dispatch:
     inputs:
       force_ingest:

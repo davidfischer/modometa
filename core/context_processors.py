@@ -23,6 +23,7 @@ def modometa_globals(request):
     return {
         "MODOMETA_FORMATS": formats,
         "ACTIVE_FORMAT": active_format,
+        "ACTIVE_FORMAT_SLUGS": active_slugs,
         "TIMEFRAME": timeframe,
         "SITE_NAME": getattr(settings, "SITE_NAME", "MODOMeta"),
     }

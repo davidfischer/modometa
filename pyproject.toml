@@ -72,3 +72,6 @@ lines-after-imports = 2
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.dev"
 python_files = ["test_*.py", "*_test.py", "tests.py"]
+filterwarnings = [
+    "ignore:No directory at.*staticfiles:UserWarning",
+]

@@ -181,3 +181,101 @@ def test_zero_cost_pacts_do_not_add_colors():
     code, name = deduce_deck_colors(cards, card_colors)
     assert code == "G"
     assert name == "Mono-Green"
+
+
+def test_dimir_reanimator_with_atraxa_and_misty_rainforest():
+    """Dimir Reanimator with Misty Rainforest and Atraxa must be classified as Dimir (UB), not Sultai."""
+    cards = [
+        "Underground Sea",
+        "Misty Rainforest",
+        "Polluted Delta",
+        "Island",
+        "Swamp",
+        "Reanimate",
+        "Entomb",
+        "Brainstorm",
+        "Force of Will",
+        "Atraxa, Grand Unifier",
+    ]
+    card_colors = {
+        "reanimate": ["B"],
+        "entomb": ["B"],
+        "brainstorm": ["U"],
+        "force of will": ["U"],
+        "atraxa grand unifier": ["W", "U", "B", "G"],
+    }
+    code, name = deduce_deck_colors(cards, card_colors)
+    assert code == "UB"
+    assert name == "Dimir"
+
+
+def test_triomes_with_apostrophes_produce_colors():
+    """Triomes with apostrophes (e.g. Raffine's Tower, Spara's Headquarters) produce proper colors."""
+    cards = [
+        "Raffine's Tower",
+        "Void Rend",
+    ]
+    card_colors = {
+        "void rend": ["W", "U", "B"],
+    }
+    code, name = deduce_deck_colors(cards, card_colors)
+    assert code == "WUB"
+    assert name == "Esper"
+
+
+def test_apostles_blessing_does_not_add_white():
+    """Apostle's Blessing in Mono-Blue deck does not make it Azorius."""
+    cards = [
+        "Island",
+        "Delver of Secrets",
+        "Brainstorm",
+        "Apostle's Blessing",
+    ]
+    card_colors = {
+        "delver of secrets": ["U"],
+        "brainstorm": ["U"],
+        "apostles blessing": ["W"],
+    }
+    code, name = deduce_deck_colors(cards, card_colors)
+    assert code == "U"
+    assert name == "Mono-Blue"
+
+
+def test_offcolor_fetchlands_do_not_add_unsupported_colors():
+    """Marsh Flats in Azorius deck with hybrid Ashiok does NOT make it Esper (WUB)."""
+    cards = [
+        "Marsh Flats",
+        "Flooded Strand",
+        "Island",
+        "Plains",
+        "Hallowed Fountain",
+        "Counterspell",
+        "Path to Exile",
+        "Ashiok, Dream Render",
+    ]
+    card_colors = {
+        "counterspell": ["U"],
+        "path to exile": ["W"],
+        "ashiok, dream render": ["B", "U"],
+    }
+    code, name = deduce_deck_colors(cards, card_colors)
+    assert code == "WU"
+    assert name == "Azorius"
+
+
+def test_dryad_arbor_provides_green_with_fetchlands():
+    """Dryad Arbor in Golgari deck supplies Green mana."""
+    cards = [
+        "Verdant Catacombs",
+        "Swamp",
+        "Dryad Arbor",
+        "Grief",
+        "Abrupt Decay",
+    ]
+    card_colors = {
+        "grief": ["B"],
+        "abrupt decay": ["B", "G"],
+    }
+    code, name = deduce_deck_colors(cards, card_colors)
+    assert code == "BG"
+    assert name == "Golgari"

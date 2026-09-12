@@ -27,14 +27,17 @@ BASIC_LANDS = {
 }
 
 ANY_NUMBER_CARDS = {
-    "relentless rats",
-    "shadowborn apostle",
-    "persistent petitioners",
-    "dragon's approach",
-    "rat colony",
-    "slime against humanity",
-    "templar knight",
-    "hare apparent",
+    normalize_card_name(c)
+    for c in {
+        "relentless rats",
+        "shadowborn apostle",
+        "persistent petitioners",
+        "dragon's approach",
+        "rat colony",
+        "slime against humanity",
+        "templar knight",
+        "hare apparent",
+    }
 }
 
 

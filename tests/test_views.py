@@ -1555,6 +1555,13 @@ def test_robots_txt_endpoint(client):
     assert b"Crawl-delay: 2" in response.content
 
 
+def test_favicon_endpoint(client):
+    """Favicon endpoint should redirect to static favicon."""
+    response = client.get("/favicon.ico")
+    assert response.status_code == 301
+    assert "/static/img/favicon.ico" in response.headers["Location"]
+
+
 def test_public_cache_decorator():
     """public_cache decorator should emit public, browser max-age, and matching CDN max-age."""
     rf = RequestFactory()

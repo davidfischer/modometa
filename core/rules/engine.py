@@ -18,62 +18,74 @@ logger = logging.getLogger(__name__)
 
 # Key cards used to infer tactical posture for unclassified decks
 FAST_MANA_CARDS = {
-    "dark ritual",
-    "lotus petal",
-    "lion's eye diamond",
-    "chrome mox",
-    "mox opal",
-    "mox diamond",
-    "rite of flame",
-    "simian spirit guide",
-    "elvish spirit guide",
-    "ancient tomb",
-    "city of traitors",
-    "bazaar of baghdad",
-    "mishra's workshop",
+    normalize_card_name(c)
+    for c in {
+        "dark ritual",
+        "lotus petal",
+        "lion's eye diamond",
+        "chrome mox",
+        "mox opal",
+        "mox diamond",
+        "rite of flame",
+        "simian spirit guide",
+        "elvish spirit guide",
+        "ancient tomb",
+        "city of traitors",
+        "bazaar of baghdad",
+        "mishra's workshop",
+    }
 }
 
 TEMPO_CARDS = {
-    "daze",
-    "wasteland",
-    "stifle",
-    "spell pierce",
-    "snuff out",
-    "delver of secrets",
-    "psychic frog",
-    "counterspell",
-    "monastery swiftspear",
-    "spellstutter sprite",
+    normalize_card_name(c)
+    for c in {
+        "daze",
+        "wasteland",
+        "stifle",
+        "spell pierce",
+        "snuff out",
+        "delver of secrets",
+        "psychic frog",
+        "counterspell",
+        "monastery swiftspear",
+        "spellstutter sprite",
+    }
 }
 
 CONTROL_CARDS = {
-    "supreme verdict",
-    "toxic deluge",
-    "wrath of the skies",
-    "wrath of god",
-    "prismatic ending",
-    "swords to plowshares",
-    "the one ring",
-    "counterbalance",
-    "teferi, time raveler",
-    "teferi, hero of dominaria",
-    "jace, the mind sculptor",
-    "force of will",
-    "chainer's edict",
-    "sunfall",
+    normalize_card_name(c)
+    for c in {
+        "supreme verdict",
+        "toxic deluge",
+        "wrath of the skies",
+        "wrath of god",
+        "prismatic ending",
+        "swords to plowshares",
+        "the one ring",
+        "counterbalance",
+        "teferi, time raveler",
+        "teferi, hero of dominaria",
+        "jace, the mind sculptor",
+        "force of will",
+        "chainer's edict",
+        "sunfall",
+    }
 }
 
 AGGRO_CARDS = {
-    "goblin guide",
-    "monastery swiftspear",
-    "slickshot show-off",
-    "lightning bolt",
-    "lava spike",
-    "jackal pup",
-    "ocelot pride",
-    "guide of souls",
-    "kuldotha rebirth",
-    "slippery bogle",
+    normalize_card_name(c)
+    for c in {
+        "goblin guide",
+        "monastery swiftspear",
+        "slickshot show-off",
+        "lightning bolt",
+        "lava spike",
+        "jackal pup",
+        "ocelot pride",
+        "guide of souls",
+        "kuldotha rebirth",
+        "slippery bogle",
+    }
 }
 
 

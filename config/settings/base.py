@@ -97,8 +97,8 @@ SITE_NAME = "MODOMeta"
 # Modometa domain configuration
 MODOMETA_FORMATS = FORMAT_SLUGS
 
-# Formats actively displayed in navigation and homepage (MVP: Vintage & Legacy)
-ACTIVE_FORMAT_SLUGS = ["vintage", "legacy", "premodern"]
+# Formats actively displayed in navigation and homepage
+ACTIVE_FORMAT_SLUGS = ["legacy", "vintage", "modern", "premodern"]
 
 ARCHETYPES_DIR = BASE_DIR / "archetypes"
 DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "MTG_decklistcache" / "Tournaments" / "MTGO"

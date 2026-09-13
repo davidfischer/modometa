@@ -1,157 +1,43 @@
 # Modern Archetype Signatures for Modometa
 
-- name: "Boros Energy"
+#####################################################################
+# Aggro Archetypes
+#####################################################################
+
+# Mardu or Boros
+- name: "Energy"
   category: "Aggro"
   priority: 100
-  signatures:
+  mandatory:
     - "ocelot pride"
     - "guide of souls"
+  signatures:
+    - "Ragavan, Nimble Pilferer"
     - "ajani, nacatl pariah"
-    - "amped raptor"
-    - "phlage, titan of fire's fury"
+    - "Goblin Bombardment"
     - "galvanic discharge"
-  min_signatures: 3
+    - "Orcish Bowmasters"
+    - "chthonian nightmare"
+    # Banned
+    - "amped raptor"
+  min_signatures: 2
   anti_signatures:
-    - "blood crypt"
-    - "orcish bowmasters"
-    - "chthonian nightmare"
+    - "Hallowed Fountain"
 
-- name: "Mardu Energy"
-  category: "Midrange"
-  priority: 105
-  signatures:
-    - "ocelot pride"
-    - "guide of souls"
-    - "ajani, nacatl pariah"
-    - "chthonian nightmare"
-    - "orcish bowmasters"
-    - "phlage, titan of fire's fury"
-  min_signatures: 3
-
-- name: "Mono-Black Necro"
-  category: "Midrange"
-  priority: 95
-  mandatory:
-    - "necrodominance"
-  signatures:
-    - "soul spike"
-    - "grief"
-    - "dauthi voidwalker"
-    - "march of wretched sorrow"
-    - "sheoldred, the apocalypse"
-  min_signatures: 2
-
-- name: "Amulet Titan"
-  category: "Combo"
-  priority: 95
-  mandatory:
-    - "amulet of vigor"
-    - "primeval titan"
-  signatures:
-    - "summoner's pact"
-    - "urza's saga"
-    - "valakut, the molten pinnacle"
-    - "dryad of the Ilysian grove"
-  min_signatures: 2
-
-- name: "Eldrazi Tron / Eldrazi Aggro"
+- name: "Izzet Prowess"
   category: "Aggro"
-  priority: 95
-  signatures:
-    - "eldrazi temple"
-    - "devourer of destiny"
-    - "thought-knot seer"
-    - "chalice of the void"
-    - "all is dust"
-    - "urza's tower"
-  min_signatures: 3
-
-- name: "Mono-Green Tron"
-  category: "Ramp"
   priority: 90
   mandatory:
-    - "urza's tower"
-    - "urza's power plant"
-    - "urza's mine"
+    - "Slickshot Show-Off"
   signatures:
-    - "karn the great creator"
-    - "karn liberated"
-    - "expedition map"
-    - "sylvan scrying"
-    - "ancient stirrings"
-    - "the one ring"
-  min_signatures: 2
-  anti_signatures:
-    - "eldrazi temple"
-
-- name: "Dimir Murktide / Frogtide"
-  category: "Tempo"
-  priority: 95
-  signatures:
-    - "psychic frog"
-    - "murktide regent"
-    - "counterspell"
-    - "fatal push"
-    - "drown in the loch"
-    - "subtlety"
-  min_signatures: 3
-
-- name: "Izzet Murktide"
-  category: "Tempo"
-  priority: 90
-  signatures:
-    - "murktide regent"
+    - "Monastery Swiftspear"
     - "dragon's rage channeler"
     - "lightning bolt"
-    - "unholy heat"
-    - "counterspell"
+    - "Cori-Steel Cutter"
     - "mishra's bauble"
   min_signatures: 3
   anti_signatures:
     - "psychic frog"
-
-- name: "Golgari Yawgmoth"
-  category: "Combo"
-  priority: 95
-  mandatory:
-    - "yawgmoth, thran physician"
-  signatures:
-    - "chord of calling"
-    - "young wolf"
-    - "strangleroot geist"
-    - "orcish bowmasters"
-    - "delighted halfling"
-  min_signatures: 2
-
-- name: "Living End"
-  category: "Combo"
-  priority: 95
-  mandatory:
-    - "living end"
-  signatures:
-    - "shardless agent"
-    - "violent outburst"
-    - "grief"
-    - "striped riverwinder"
-    - "curator of mysteries"
-    - "oliphaunt"
-  min_signatures: 3
-
-- name: "Burn"
-  category: "Aggro"
-  priority: 85
-  signatures:
-    - "lightning bolt"
-    - "lava spike"
-    - "rift bolt"
-    - "monastery swiftspear"
-    - "eidolon of the great revel"
-    - "boros charm"
-    - "searing blaze"
-  min_signatures: 3
-  anti_signatures:
-    - "guide of souls"
-    - "ocelot pride"
 
 - name: "Domain Zoo"
   category: "Aggro"
@@ -161,8 +47,11 @@
     - "territorial kavu"
     - "nishoba brawler"
     - "tribal flames"
+    - "leyline binding"
     - "leyline of the guildpact"
-  min_signatures: 3
+    - "wild nacatl"
+    - "Nishoba Brawler"
+  min_signatures: 4
 
 - name: "Hardened Scales"
   category: "Aggro"
@@ -176,16 +65,398 @@
     - "the ozolith"
   min_signatures: 2
 
+- name: "Burn"
+  category: "Aggro"
+  priority: 85
+  mandatory:
+    - "lightning bolt"
+  signatures:
+    - "lava spike"
+    - "rift bolt"
+    - "monastery swiftspear"
+    - "eidolon of the great revel"
+    - "boros charm"
+    - "searing blaze"
+    - "Skewer the Critics"
+    - "Light Up the Stage"
+  min_signatures: 3
+  anti_signatures:
+    - "guide of souls"
+
+# This is Legacy MadVine in Modern
+- name: "Hollow One"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Hollow One"
+  signatures:
+    - "vengevine"
+    - "blazing rootwalla"
+    - "burning inquiry"
+    - "Faithless Looting"
+    - "Detective's Phoenix"
+    - "Marauding Mako"
+  min_signatures: 2
+
+- name: "Merfolk"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "master of the pearl trident"
+  signatures:
+    - "tide shaper"
+    - "vodalian hexcatcher"
+    - "svyelun of sea and sky"
+    - "merfolk trickster"
+    - "tishanas tidebinder"
+    - "harbinger of the seas"
+    - "flare of denial"
+  min_signatures: 3
+
+- name: "Eldrazi Aggro"
+  category: "Aggro"
+  # Lower than Eldrazi ramp
+  priority: 60
+  mandatory:
+    - "thought-knot seer"
+  signatures:
+    - "ugins labyrinth"
+    - "devourer of destiny"
+    - "eldrazi temple"
+    - "kozileks command"
+    - "Eldrazi Linebreaker"
+    - "Wastescape Battlemage"
+  min_signatures: 3
+  anti_signatures:
+    - "Basking Broodscale"
+
+- name: "Jund"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Stomping Ground"
+    - "Blood Crypt"
+    - "Overgrown Tomb"
+  signatures:
+    - "wrenn and six"
+    - "six"
+    - "tarmogoyf"
+    - "ragavan nimble pilferer"
+    - "orcish bowmasters"
+    - "inquisition of kozilek"
+    - "nethergoyf"
+  min_signatures: 3
+
+#####################################################################
+# Midrange Archetypes
+#####################################################################
+
+- name: "Blink"
+  category: "Midrange"
+  priority: 95
+  mandatory:
+    - "Ephemerate"
+    - "Phelia, Exuberant Shepherd"
+  signatures:
+    - "Overlord of the Balemurk"
+    - "Quantum Riddler"
+    - "Solitude"
+    - "Flickerwisp"
+    - "Emperor of Bones"
+  min_signatures: 2
+
+- name: "Eldrazi Ramp"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Sowing Mycospawn"
+  signatures:
+    - "Sire of Seven Deaths"
+    - "Kozilek's Command"
+    - "Emrakul, the Promised End"
+    - "Malevolent Rumble"
+    - "Ugin's Labyrinth"
+    - "Icetill Explorer"
+  min_signatures: 3
+  anti_signatures:
+    # Broodscale -> Combo
+    - "Blade of the Bloodchief"
+
+- name: "Affinity"
+  category: "Midrange"
+  priority: 90
+  signatures:
+    - "Pinnacle Emissary"
+    - "Mishra's Bauble"
+    - "Mox Opal"
+    - "Cori-Steel Cutter"
+    - "Metallic Rebuke"
+    - "Kappa Cannoneer"
+    - "Emry, Lurker of the Loch"
+    - "thoughtcast"
+    - "thought monitor"
+  min_signatures: 4
+
+- name: "Dimir Midrange"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Psychic Frog"
+    - "Orcish Bowmasters"
+  signatures:
+    - "Kaito, Bane of Nightmares"
+    - "Fatal Push"
+    - "Quantum Riddler"
+    - "Subtlety"
+    - "Tamiyo, Inquisitive Student"
+    - "Murktide Regent"
+  min_signatures: 2
+  anti_signatures:
+    - "Hallowed Fountain"
+
+- name: "Mono-Black Aggro"
+  category: "Aggro"
+  priority: 70
+  signatures:
+    - "Ifnir Deadlands"
+    - "Nethergoyf"
+    - "Thought-Knot Seer"
+    - "Fatal Push"
+    - "Kozilek's Command"
+    - "Thoughtseize"
+    - "Orcish Bowmasters"
+  min_signatures: 4
+  anti_signatures:
+    - "Psychic Frog"
+    - "Basking Broodscale"
+    - "Sowing Mycospawn"
+
+- name: "Birthing Ritual"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Birthing Ritual"
+  signatures:
+    - "shardless agent"
+    - "fblthp the lost"
+    - "endurance"
+    - "ice-fang coatl"
+    - "coiling oracle"
+    - "Abhorrent Oculus"
+  min_signatures: 3
+
+- name: "Cookbook"
+  category: "Midrange"
+  priority: 60
+  mandatory:
+    - "asmoranomardicadaistinaculdacar"
+    - "ovalchase daredevil"
+    - "the underworld cookbook"
+  signatures:
+    - "Monument to Endurance"
+    - "Faithless Looting"
+    - "Academy Manufactor"
+    - "Time Sieve"
+    - "street wraith"
+    - "galvanic blast"
+  min_signatures: 1
+  anti_signatures:
+    - "Lantern of Insight"
+
+- name: "Necrodominance"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - card: "necrodominance"
+      min: 3
+  signatures:
+    - "soul spike"
+    - "sheoldred the apocalypse"
+    - "orcish bowmasters"
+    - "Caustic Bronco"
+    - "March of Wretched Sorrow"
+    - "Dauthi Voidwalker"
+    - "Force of Despair"
+  min_signatures: 3
+
+
+#####################################################################
+# Control Archetypes
+#####################################################################
+
 - name: "Mill"
   category: "Control"
   priority: 95
-  signatures:
+  mandatory:
     - "archive trap"
+  signatures:
     - "glimpse the unthinkable"
     - "tasha's hideous laughter"
     - "hedron crab"
     - "ruin crab"
     - "fractured sanity"
+    - "visions of beyond"
+    - "Maddening Cacophony"
+    - "Jace, the Perfected Mind"
+  min_signatures: 3
+
+- name: "Lantern Control"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "lantern of insight"
+  signatures:
+    - "the mycosynth gardens"
+    - "the underworld cookbook"
+    - "codex shredder"
+    - "Whir of Invention"
+    - "Ensnaring Bridge"
+    - "Pyxis of Pandemonium"
+  min_signatures: 2
+
+- name: "Ponza"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "cleansing wildfire"
+  signatures:
+    - "price of freedom"
+    - "Avengers Disassembled"
+    - "erode"
+    - "path to exile"
+    - "demolition field"
+  min_signatures: 3
+
+- name: "Eagles Of The North"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "martyr of sands"
+  signatures:
+    - "eagles of the north"
+    - "abiding grace"
+    - "Kami of False Hope"
+    - "Haywire Mite"
+    - "Ranger-Captain of Eos"
+    - "Emeria, the Sky Ruin"
+  min_signatures: 2
+
+
+#####################################################################
+# Combo Archetypes
+#####################################################################
+
+- name: "Reanimator"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Goryo's Vengeance"
+      min: 3
+  signatures:
+    - "psychic frog"
+    - "griselbrand"
+    - "Faithful Mending"
+    - "sheoldred, the apocalypse"
+    - "Atraxa, Grand Unifier"
+    - "ulamog the defiler"
+    - "tainted indulgence"
+  min_signatures: 2
+
+- name: "Broodscale Combo"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "Basking Broodscale"
+      min: 3
+    - "Blade of the Bloodchief"
+  signatures:
+    - "Urza's Saga"
+    - "Devourer of Destiny"
+    - "Glaring Fleshraker"
+    - "Malevolent Rumble"
+    - "Sowing Mycospawn"
+    - "Kozilek's Command"
+  min_signatures: 2
+
+- name: "Amulet Titan"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "amulet of vigor"
+    - "primeval titan"
+  signatures:
+    - "summoner's pact"
+    - "urza's saga"
+    - "spelunking"
+    - "scapeshift"
+    - "Arboreal Grazer"
+    - "Hanweir Battlements"
+  min_signatures: 2
+
+- name: "Tron"
+  category: "Ramp"
+  priority: 90
+  mandatory:
+    - "urza's tower"
+    - "urza's power plant"
+    - "urza's mine"
+  signatures:
+    - "karn the great creator"
+    # Somewhat outdated
+    - "karn liberated"
+    - "Ugin, Eye of the Storms"
+    - "expedition map"
+    - "Sowing Mycospawn"
+    - "ancient stirrings"
+  min_signatures: 2
+
+- name: "Yawgmoth"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "yawgmoth, thran physician"
+      min: 2
+  signatures:
+    - "chord of calling"
+    - "young wolf"
+    - "strangleroot geist"
+    - "orcish bowmasters"
+    - "delighted halfling"
+    - "Agatha's Soul Cauldron"
+    - "Dredger's Insight"
+    - "Green Sun's Zenith"
+  min_signatures: 3
+
+- name: "Living End"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "living end"
+      min: 2
+  signatures:
+    - "shardless agent"
+    - "violent outburst"
+    - "Generous Ent"
+    - "striped riverwinder"
+    - "curator of mysteries"
+    - "oliphaunt"
+    - "Wistfulness"
+    - "Deceit"
+  min_signatures: 3
+
+- name: "Hammer Time"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Colossus Hammer"
+      min: 3
+  signatures:
+    - "Steelshaper's Gift"
+    - "Stoneforge Mystic"
+    - "Puresteel Paladin"
+    - "Kili the Resourceful"
+    - "Ornithopter"
+    - "Sigarda's Aid"
   min_signatures: 3
 
 - name: "Ruby Storm"
@@ -197,7 +468,204 @@
     - "ral, monsoon mage"
     - "desperate ritual"
     - "pyretic ritual"
-    - "gorging vulture"
     - "grapeshot"
     - "wish"
+    - "Wrenn's Resolve"
+    - "Manamorphose"
+    - "Past in Flames"
+  min_signatures: 3
+
+- name: "Belcher"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Goblin Charbelcher"
+      min: 3
+  signatures:
+    - "Hydroelectric Specimen"
+    - "Suppression Ray"
+    - "Sea Gate Restoration"
+    - "Beyeen Veil"
+    - "Jwari Disruption"
+    - "Whir of Invention"
+  min_signatures: 3
+
+- name: "Druid"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Devoted Druid"
+      min: 3
+  signatures:
+    - "Nature's Rhythm"
+    - "Agatha's Soul Cauldron"
+    - "Leyline of Abundance"
+    - "Tyvar, Jubilant Brawler"
+    - "Duskwatch Recruiter"
+    - "Walking Ballista"
+  min_signatures: 3
+
+- name: "Neobrand"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "allosaurus rider"
+    - "Neoform"
+  signatures:
+    - "Generous Ent"
+    - "eldritch evolution"
+    - "Planar Genesis"
+    - "Pact of Negation"
+    - "Ureni, the Song Unending"
+    - "Griselbrand"
+  min_signatures: 2
+
+# Banned!
+- name: "Nadu"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "nadu winged wisdom"
+  signatures:
+    - "wall of roots"
+    - "summoners pact"
+    - "shifting woodland"
+    - "springheart nantuko"
+    - "Shuko"
+  min_signatures: 2
+
+- name: "Sam Combo"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "samwise gamgee"
+      min: 2
+  signatures:
+    - "cauldron familiar"
+    - "young wolf"
+    - "carrion feeder"
+    - "Birthing Ritual"
+    - "Goblin Bombardment"
+    - "chord of calling"
+  min_signatures: 3
+
+- name: "Scapeshift"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - "scapeshift"
+    - "valakut the molten pinnacle"
+  signatures:
+    - "wish"
+    - "dryad of the ilysian grove"
+    - "wrenn and six"
+  min_signatures: 2
+  anti_signatures:
+    # No amulet titan
+    - "Amulet of Vigor"
+
+- name: "Soultrader"
+  category: "Control"
+  priority: 90
+  mandatory:
+    - card: "warren soultrader"
+      min: 3
+  signatures:
+    - "flare of malice"
+    - "orcish bowmasters"
+    - "gravecrawler"
+    - "marionette apprentice"
+    - "stitchers supplier"
+    - "spymasters vault"
+    - "chthonian nightmare"
+    - "Sephiroth, Fabled SOLDIER"
+    - "Birthing Ritual"
+  min_signatures: 3
+
+- name: "Through The Breach"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "through the breach"
+      min: 3
+  signatures:
+    - "ulamog the defiler"
+    - "kozileks return"
+    - "ugins labyrinth"
+    - "Emrakul, the Aeons Torn"
+    - "Yggdrasil, Rebirth Engine"
+    - "Nulldrifter"
+  min_signatures: 2
+
+- name: "Lessons Reanimator"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "eyetwitch"
+      min: 3
+    - "Persist"
+  signatures:
+    - "flare of malice"
+    - "bone shards"
+    - "archon of cruelty"
+    - "Emperor of Bones"
+    - "Stitcher's Supplier"
+  min_signatures: 2
+
+- name: "Creativity"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - card: "indomitable creativity"
+      min: 3
+  signatures:
+    - "wrenn and six"
+    - "fable of the mirror-breaker"
+    - "dwarven mine"
+    - "Archon of Cruelty"
+    - "Teferi, Time Raveler"
+  min_signatures: 2
+
+- name: "Cosmogoyf"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "cosmogoyf"
+  signatures:
+    - "pact of negation"
+    - "thud"
+    - "plunge into darkness"
+    - "Serum Powder"
+    - "Devourer of Destiny"
+    - "Callous Sell-Sword"
+  min_signatures: 2
+
+- name: "Twiddle Storm"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "lotus field"
+  signatures:
+    - "hidden strings"
+    - "vizier of tumbling sands"
+    - "wish"
+    - "deserted temple"
+    - "expedition map"
+    - "dreams grip"
+    - "Twiddle"
+  min_signatures: 3
+
+# Banned
+- name: "Scam"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "grief"
+    - "not dead after all"
+  signatures:
+    - "orcish bowmasters"
+    - "dauthi voidwalker"
+    - "thoughtseize"
+    - "Sheoldred, the Apocalypse"
+    - "Malakir Rebirth"
   min_signatures: 3

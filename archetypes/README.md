@@ -4,6 +4,11 @@ This directory contains declarative YAML rule files used by MODOMeta's rule-base
 
 When decks are ingested or reclassified, the engine tests candidate decks against these rules. If no explicit rule matches, MODOMeta falls back to an automated posture deduction combining the deck's deduced mana-base colors with its strategic speed (e.g., *Mono-Red Aggro*, *Dimir Control*, *Grixis Midrange*).
 
+Archetype classification is by far the most brittle part of MODOMeta.
+Archetypes change over time as new sets are printed (affects Standard/Pioneer more than Vintage/Legacy)
+and as the metagame evolves.
+It's very hard to build classification that works today that also classifies decks from years ago.
+
 ---
 
 ## 1. Rule Schema & Specification

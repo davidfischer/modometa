@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from datetime import date
 from datetime import timedelta
 
+import resvg_py
 from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
@@ -19,6 +20,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.cache import patch_cache_control
 
@@ -32,6 +34,7 @@ from core.models.card import get_scryfall_url
 from core.models.card import normalize_card_name
 from core.models.deck import Deck
 from core.models.tournament import Tournament
+from core.templatetags.mana_tags import COLOR_ORDER
 
 
 def public_cache(cdn_seconds: int = 3600, browser_seconds: int = 300):
@@ -1860,6 +1863,7 @@ def archetype_detail(request, format, archetype):
         "archetype_detail.html",
         {
             "archetype_name": sample_deck.archetype,
+            "archetype_slug": arch_slug,
             "format_name": fmt_slug.capitalize(),
             "format_slug": fmt_slug,
             "colors": colors,
@@ -2030,3 +2034,221 @@ def search_index(request):
         cache.set(cache_key, data, timeout=86400)
 
     return JsonResponse(data)
+
+
+# Open Graph Dynamic Images
+def render_og_png(template_name: str, context: dict, request=None) -> HttpResponse:
+    """Render an SVG template and rasterize it to PNG via resvg-py."""
+    svg_text = render_to_string(template_name, context, request=request)
+    png_bytes = resvg_py.svg_to_bytes(svg_string=svg_text)
+    return HttpResponse(png_bytes, content_type="image/png")
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def default_og_image(request):
+    """Serve default Open Graph PNG image with site branding and features."""
+    return render_og_png(
+        "og/default_og.svg",
+        {
+            "site_name": getattr(settings, "SITE_NAME", "MODOMeta"),
+        },
+        request=request,
+    )
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def format_og_image(request, format):
+    """Serve dynamic Open Graph PNG image for a format metagame, including bump chart."""
+    fmt_slug = format.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404(f"Format '{format}' not found.")
+
+    cutoff, ref_date = get_timeframe_cutoff(365)
+    bump_chart = build_format_bump_chart(fmt_slug, ref_date)
+    total_decks = Deck.objects.filter(
+        format=fmt_slug,
+        tournament__date__gte=cutoff,
+        tournament__date__lte=ref_date,
+    ).count()
+
+    return render_og_png(
+        "og/format_og.svg",
+        {
+            "format_slug": fmt_slug,
+            "format_name": fmt_slug.capitalize(),
+            "bump_chart": bump_chart,
+            "total_decks": f"{total_decks:,}",
+        },
+        request=request,
+    )
+
+
+def build_mana_pill(colors_str: str | None) -> dict | None:
+    """Build SVG layout metadata for rendering MTG mana symbols in a badge pill."""
+    unique_chars = {
+        c.upper() for c in str(colors_str or "") if c.upper() in COLOR_ORDER
+    }
+    if not unique_chars:
+        return None
+    sorted_chars = sorted(unique_chars, key=lambda c: COLOR_ORDER.get(c, 99))
+    mana_symbols = [c.lower() for c in sorted_chars]
+    pill_width = 20 + len(mana_symbols) * 28 + (len(mana_symbols) - 1) * 6
+    pill_x = 1140 - pill_width
+    return {
+        "x": pill_x,
+        "y": 115,
+        "width": pill_width,
+        "height": 40,
+        "symbols": [
+            {"id": f"mana-{sym}", "x": 10 + idx * 34, "y": 6}
+            for idx, sym in enumerate(mana_symbols)
+        ],
+    }
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def archetype_og_image(request, format, archetype):
+    """Serve dynamic Open Graph PNG image for an archetype, including activity heatmap."""
+    fmt_slug = format.lower().strip()
+    arch_slug = archetype.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404(f"Format '{format}' not found.")
+
+    decks_qs = Deck.objects.filter(format=fmt_slug, archetype_slug=arch_slug)
+    sample_deck = decks_qs.first()
+    if not sample_deck:
+        raise Http404(f"Archetype '{archetype}' not found in {fmt_slug.capitalize()}.")
+
+    ref_date = get_reference_date()
+    cutoff, _ = get_timeframe_cutoff(90)
+    recent_qs = decks_qs.filter(
+        tournament__date__gte=cutoff, tournament__date__lte=ref_date
+    )
+    active_qs = recent_qs if recent_qs.exists() else decks_qs
+
+    stats_agg = active_qs.aggregate(
+        top8_count=Count("id", filter=Q(is_top8=True)),
+        chall_appearances=Count("id", filter=Q(tournament__event_type="challenge")),
+        league_5_0_count=Count(
+            "id", filter=Q(tournament__event_type="league", is_5_0=True)
+        ),
+    )
+    top8_count = stats_agg["top8_count"]
+    chall_appearances = stats_agg["chall_appearances"]
+    league_5_0_count = stats_agg["league_5_0_count"]
+
+    conv_rate = (
+        round((top8_count / chall_appearances) * 100, 1)
+        if chall_appearances > 0
+        else 0.0
+    )
+
+    fmt_totals_key = f"format_totals_v1:{fmt_slug}:90"
+    fmt_totals = cache.get(fmt_totals_key)
+    if fmt_totals is None:
+        fmt_decks = Deck.objects.filter(
+            format=fmt_slug,
+            tournament__date__gte=cutoff,
+            tournament__date__lte=ref_date,
+        )
+        total_chall_decks = max(
+            1, fmt_decks.filter(tournament__event_type="challenge").count()
+        )
+        chall_count = Tournament.objects.filter(
+            format=fmt_slug,
+            event_type="challenge",
+            date__gte=cutoff,
+            date__lte=ref_date,
+        ).count()
+        total_top8_slots = max(1, chall_count * 8)
+        total_5_0s = max(
+            1, fmt_decks.filter(tournament__event_type="league", is_5_0=True).count()
+        )
+        fmt_totals = (total_chall_decks, total_top8_slots, total_5_0s)
+        cache.set(fmt_totals_key, fmt_totals, timeout=3600)
+    else:
+        total_chall_decks, total_top8_slots, total_5_0s = fmt_totals
+
+    league_share = (
+        round((league_5_0_count / total_5_0s) * 100, 1) if total_5_0s > 0 else 0.0
+    )
+
+    heatmap = build_archetype_heatmap(fmt_slug, arch_slug, ref_date)
+
+    deck_colors = sample_deck.colors
+    if not deck_colors:
+        non_empty = decks_qs.exclude(colors="").values_list("colors", flat=True).first()
+        if non_empty:
+            deck_colors = non_empty
+    mana_pill = build_mana_pill(deck_colors)
+
+    return render_og_png(
+        "og/archetype_og.svg",
+        {
+            "format_slug": fmt_slug,
+            "format_name": fmt_slug.capitalize(),
+            "archetype_slug": arch_slug,
+            "archetype_name": sample_deck.archetype,
+            "mana_pill": mana_pill,
+            "stats": {
+                "league_share": league_share,
+                "league_5_0_count": league_5_0_count,
+                "challenge_appearances": chall_appearances,
+                "top8_count": top8_count,
+                "conversion_rate": conv_rate,
+            },
+            "heatmap": heatmap,
+        },
+        request=request,
+    )
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def player_og_image(request, player):
+    """Serve dynamic Open Graph PNG image for a player, including activity heatmap."""
+    player_clean = player.strip()
+    player_lower = player_clean.lower()
+
+    decks_qs = (
+        Deck.objects.filter(player_lower=player_lower)
+        .select_related("tournament")
+        .defer("mainboard", "sideboard", "illegal_cards")
+    )
+    all_decks = list(decks_qs)
+    total_decks = len(all_decks)
+    if total_decks == 0:
+        raise Http404(f"No records found for player '{player}'.")
+
+    total_top8s = sum(1 for d in all_decks if d.is_top8)
+    total_5_0s = sum(
+        1
+        for d in all_decks
+        if d.is_5_0 and getattr(d.tournament, "event_type", "") == "league"
+    )
+    chall_appearances = sum(
+        1 for d in all_decks if getattr(d.tournament, "event_type", "") == "challenge"
+    )
+    conversion_rate = (
+        round((total_top8s / chall_appearances) * 100, 1)
+        if chall_appearances > 0
+        else 0.0
+    )
+    formats_played = sorted(set(d.format.capitalize() for d in all_decks if d.format))
+    player_name = all_decks[0].player
+
+    ref_date = get_reference_date()
+    heatmap = build_player_heatmap(player_lower, ref_date, player_name=player_name)
+
+    return render_og_png(
+        "og/player_og.svg",
+        {
+            "player_name": player_name,
+            "total_decks": total_decks,
+            "total_5_0s": total_5_0s,
+            "total_top8s": total_top8s,
+            "conversion_rate": conversion_rate,
+            "formats_played": formats_played,
+            "heatmap": heatmap,
+        },
+        request=request,
+    )

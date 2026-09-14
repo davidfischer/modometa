@@ -1,0 +1,45 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="880" y="42" width="260" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1010" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">FORMAT METAGAME</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Main Title & Subtitle -->
+  <text x="60" y="145" class="font-sans" font-size="46" font-weight="800" fill="#ffffff">{{ format_name }} Metagame</text>
+  <text x="60" y="180" class="font-sans" font-size="17" fill="#a1a1aa">{{ total_decks }} decks recorded across leagues and challenges over the previous year across competitive {{ format_name }} events on MTGO</text>
+
+  <!-- Infographic section title -->
+  <text x="60" y="235" class="font-mono" font-size="13" font-weight="600" fill="#71717a" letter-spacing="0.08em">52-WEEK ARCHETYPE TOP 8 RANK EVOLUTION</text>
+
+  <!-- Infographic Card Container -->
+  <rect x="60" y="250" width="1080" height="305" rx="16" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+  <!-- Embedded Format Bump Chart -->
+  {% if bump_chart.has_data %}
+  <g transform="translate(95, 286) scale(1.26)">
+    <!-- Month labels -->
+    {% for m in bump_chart.month_labels %}
+      <text x="{{ m.x }}" y="12"{% if m.anchor %} text-anchor="{{ m.anchor }}"{% endif %} class="font-mono" font-size="11" fill="#71717a">{{ m.name }}</text>
+    {% endfor %}
+
+    <!-- Horizontal Guidelines -->
+    {% for r in bump_chart.rank_lines %}
+      <line x1="{{ bump_chart.x_start }}" y1="{{ r.y }}" x2="{{ bump_chart.x_end }}" y2="{{ r.y }}" class="bump-guideline" />
+    {% endfor %}
+
+    <!-- Archetype Tracks -->
+    {% for track in bump_chart.tracks %}
+      {% if track.path_d %}
+        <path d="{{ track.path_d }}" class="bump-track" stroke="{{ track.color }}" opacity="0.85" />
+      {% endif %}
+      {% for pt in track.points %}
+        <circle cx="{{ pt.x }}" cy="{{ pt.y }}" r="3.5" class="bump-node" fill="{{ track.color }}" />
+      {% endfor %}
+    {% endfor %}
+  </g>
+  {% else %}
+  <text x="600" y="415" class="font-sans" font-size="18" fill="#71717a" text-anchor="middle">No Top 8 tournament data available in this 52-week window</text>
+  {% endif %}
+{% endblock %}

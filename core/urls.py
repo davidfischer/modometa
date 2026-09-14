@@ -9,7 +9,10 @@ urlpatterns = [
     # Home & FAQ
     path("", views.home, name="home"),
     path("faq/", views.faq, name="faq"),
+    # Open Graph dynamic images
+    path("og.png", views.default_og_image, name="default_og_image"),
     # Player views
+    path("player/<str:player>/og.png", views.player_og_image, name="player_og_image"),
     path("player/<str:player>/", views.player_detail, name="player_detail"),
     path(
         "player/<str:player>/deck/<str:event>/", views.deck_detail, name="deck_detail"
@@ -22,6 +25,12 @@ urlpatterns = [
     # Search API
     path("api/search-index/", views.search_index, name="search_index"),
     # Format views
+    path("<str:format>/og.png", views.format_og_image, name="format_og_image"),
+    path(
+        "<str:format>/archetype/<str:archetype>/og.png",
+        views.archetype_og_image,
+        name="archetype_og_image",
+    ),
     path("<str:format>/", views.format_overview, name="format_overview"),
     path("<str:format>/tournaments/", views.tournament_list, name="tournament_list"),
     path(

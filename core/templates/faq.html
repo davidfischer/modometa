@@ -2,6 +2,46 @@
 {% load mana_tags %}
 
 {% block title %}FAQ & About{% endblock %}
+{% block meta_description %}Frequently asked questions about {{ SITE_NAME }}: MTGO tournament coverage, metagame metrics, deck classification rules, and project details.{% endblock %}
+{% block og_title %}FAQ & About — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}Frequently asked questions about {{ SITE_NAME }}: MTGO tournament coverage, metagame metrics, deck classification rules, and project details.{% endblock %}
+{% block twitter_title %}FAQ & About — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}Frequently asked questions about {{ SITE_NAME }}: MTGO tournament coverage, metagame metrics, deck classification rules, and project details.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Where does the tournament data come from?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Data is ingested from official MTGO tournament postings archived in the MTG_decklistcache repository, covering Challenges, Preliminaries, and League 5-0 finishes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does {{ SITE_NAME }} identify archetypes and colors?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MODOMeta uses declarative YAML rules per format with card-inclusion signatures, combined with TF-IDF vectorization and nearest-neighbor classification for unclassified decks."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does {{ SITE_NAME }} do that other aggregators don't?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MODOMeta offers 52-week tier evolution bump charts, player match histories and conversion rates, automated archetype classification, and open metagame analysis."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

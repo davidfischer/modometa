@@ -1,0 +1,82 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="880" y="42" width="260" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1010" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">{{ format_name|upper }} ARCHETYPE</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Archetype Title & Colors -->
+  <text x="60" y="145" class="font-sans" font-size="46" font-weight="800" fill="#ffffff">{{ archetype_name }}</text>
+  <text x="60" y="178" class="font-sans" font-size="18" fill="#a1a1aa">{{ format_name }} Archetype Performance &amp; Metagame Share Over The Previous 90 Days</text>
+
+  {% if mana_pill %}
+  <g transform="translate({{ mana_pill.x }}, {{ mana_pill.y }})">
+    <rect x="0" y="0" width="{{ mana_pill.width }}" height="{{ mana_pill.height }}" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+    {% for s in mana_pill.symbols %}
+      <use href="#{{ s.id }}" x="{{ s.x }}" y="{{ s.y }}" width="28" height="28"/>
+    {% endfor %}
+  </g>
+  {% endif %}
+
+  <!-- Stat Summary Row -->
+  <g transform="translate(60, 205)">
+    <!-- League Share Card -->
+    <rect x="0" y="0" width="250" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="16" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">LEAGUE SHARE</text>
+    <text x="16" y="54" class="font-mono" font-size="24" font-weight="700" fill="#38bdf8">{{ stats.league_share }}%</text>
+    <text x="120" y="53" class="font-mono" font-size="12" fill="#71717a">({{ stats.league_5_0_count }} 5-0s)</text>
+
+    <!-- Challenge Appearances Card -->
+    <rect x="276" y="0" width="250" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="292" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CHALLENGE ENTRIES</text>
+    <text x="292" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{{ stats.challenge_appearances }}</text>
+    <text x="360" y="53" class="font-mono" font-size="12" fill="#71717a">played</text>
+
+    <!-- Top 8 Finishes Card -->
+    <rect x="552" y="0" width="250" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="568" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CHALLENGE TOP 8S</text>
+    <text x="568" y="54" class="font-mono" font-size="24" font-weight="700" fill="#10b981">{{ stats.top8_count }}</text>
+    <text x="625" y="53" class="font-mono" font-size="12" fill="#71717a">finishes</text>
+
+    <!-- Conversion Rate Card -->
+    <rect x="828" y="0" width="252" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="844" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CONVERSION RATE</text>
+    <text x="844" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{{ stats.conversion_rate }}%</text>
+    <text x="940" y="53" class="font-mono" font-size="12" fill="#71717a">T8 / entry</text>
+  </g>
+
+  <!-- Heatmap Label -->
+  <text x="60" y="315" class="font-mono" font-size="13" font-weight="600" fill="#71717a" letter-spacing="0.08em">52-WEEK ACTIVITY &amp; TOURNAMENT FINISHES</text>
+
+  <!-- Infographic Card Container -->
+  <rect x="60" y="330" width="1080" height="225" rx="16" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+  <!-- Embedded Archetype Heatmap -->
+  <g transform="translate(90, 358) scale(1.36)">
+    <!-- Month labels -->
+    {% for m in heatmap.month_labels %}
+      <text x="{{ m.x }}" y="12"{% if m.anchor %} text-anchor="{{ m.anchor }}"{% endif %} class="font-mono" font-size="11" fill="#71717a">{{ m.name }}</text>
+    {% endfor %}
+
+    <!-- Day labels -->
+    {% for d in heatmap.day_labels %}
+      <text x="30" y="{{ d.y }}" text-anchor="end" class="font-mono" font-size="10" fill="#71717a">{{ d.name }}</text>
+    {% endfor %}
+
+    <!-- Weeks and cells -->
+    {% for week in heatmap.weeks %}
+      <g transform="translate({{ week.col_x }}, 0)">
+        {% for day in week.days %}
+          <rect
+            x="0"
+            y="{{ day.y }}"
+            width="{{ heatmap.cell_size }}"
+            height="{{ heatmap.cell_size }}"
+            class="activity-cell {{ day.color_class }}"
+          />
+        {% endfor %}
+      </g>
+    {% endfor %}
+  </g>
+{% endblock %}

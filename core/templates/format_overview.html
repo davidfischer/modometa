@@ -2,6 +2,38 @@
 {% load mana_tags %}
 
 {% block title %}{{ format_name }} Metagame Overview{% endblock %}
+{% block meta_description %}Explore the {{ format_name }} metagame on Magic Online. Track top archetypes, play rates, 52-week tier evolution, and recent tournament decklists.{% endblock %}
+{% block og_title %}{{ format_name }} Metagame Overview — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}Explore the {{ format_name }} metagame on Magic Online. Track top archetypes, play rates, 52-week tier evolution, and recent tournament decklists.{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_og_image' format_slug %}{% endblock %}
+{% block og_image_alt %}{{ format_name }} Metagame 52-week bump chart on {{ SITE_NAME }}{% endblock %}
+{% block twitter_title %}{{ format_name }} Metagame Overview — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}Explore the {{ format_name }} metagame on Magic Online. Track top archetypes, play rates, 52-week tier evolution, and recent tournament decklists.{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_og_image' format_slug %}{% endblock %}
+{% block twitter_image_alt %}{{ format_name }} Metagame 52-week tier evolution on {{ SITE_NAME }}{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ format_name }} Metagame",
+      "item": "{{ request.build_absolute_uri }}"
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

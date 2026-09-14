@@ -2,6 +2,40 @@
 {% load mana_tags %}
 
 {% block title %}Most Played Cards in {{ format_name }}{% endblock %}
+{% block meta_description %}Explore the most played cards and format staples in MTGO {{ format_name }}. Mainboard inclusion, sideboard rates, and average copies per deck.{% endblock %}
+{% block og_title %}Most Played Cards in {{ format_name }} — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}Explore the most played cards and format staples in MTGO {{ format_name }}. Mainboard inclusion, sideboard rates, and average copies per deck.{% endblock %}
+{% block twitter_title %}Most Played Cards in {{ format_name }} — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}Explore the most played cards and format staples in MTGO {{ format_name }}. Mainboard inclusion, sideboard rates, and average copies per deck.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ format_name }}",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_overview' format_slug %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Most Played Cards",
+      "item": "{{ request.build_absolute_uri }}"
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

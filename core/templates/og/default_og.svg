@@ -1,0 +1,64 @@
+{% extends "og/base_og.svg" %}
+
+{% block defs %}
+  <radialGradient id="glow-center" cx="50%" cy="40%" r="55%">
+    <stop offset="0%" stop-color="#10b981" stop-opacity="0.14"/>
+    <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+  </radialGradient>
+{% endblock %}
+
+{% block background %}
+  <rect width="1200" height="630" fill="#09090b"/>
+  <rect width="1200" height="630" fill="url(#glow-center)"/>
+  <rect width="1200" height="6" fill="#10b981"/>
+{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+  <!-- Large Center Shield Logo -->
+  <use href="#shield-logo" x="560" y="80" width="80" height="94"/>
+
+  <!-- Big Brand Heading -->
+  <text x="600" y="230" class="font-sans" font-size="54" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-0.02em">MODOMETA</text>
+  <text x="600" y="270" class="font-sans" font-size="22" font-weight="500" fill="#a1a1aa" text-anchor="middle">Magic: The Gathering Online Metagame Analyzer</text>
+
+  <!-- Feature Grid / Cards -->
+  <g transform="translate(140, 315)">
+    <!-- Feature 1 -->
+    <rect x="0" y="0" width="440" height="80" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <circle cx="36" cy="40" r="14" fill="#10b981" opacity="0.15"/>
+    <text x="36" y="45" class="font-mono" font-size="14" fill="#10b981" text-anchor="middle">📈</text>
+    <text x="66" y="36" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">52-Week Archetype Metagame</text>
+    <text x="66" y="58" class="font-sans" font-size="13" fill="#71717a">Archetype play rate, Top 8 share &amp; momentum</text>
+
+    <!-- Feature 2 -->
+    <rect x="480" y="0" width="440" height="80" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <circle cx="516" cy="40" r="14" fill="#38bdf8" opacity="0.15"/>
+    <text x="516" y="45" class="font-mono" font-size="14" fill="#10b981" text-anchor="middle">⚡</text>
+    <text x="546" y="36" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">Track The Changing Metagame</text>
+    <text x="546" y="58" class="font-sans" font-size="13" fill="#71717a">Advanced stats on the top decks, recent finishes &amp; top pilots</text>
+
+    <!-- Feature 3 -->
+    <rect x="0" y="100" width="440" height="80" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <circle cx="36" cy="140" r="14" fill="#10b981" opacity="0.15"/>
+    <text x="36" y="145" class="font-mono" font-size="14" fill="#10b981" text-anchor="middle">🏆</text>
+    <text x="66" y="136" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">Trophies &amp; Conversion Rates</text>
+    <text x="66" y="158" class="font-sans" font-size="13" fill="#71717a">Challenge Top 8s and League 5-0 finishes</text>
+
+    <!-- Feature 4 -->
+    <rect x="480" y="100" width="440" height="80" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <circle cx="516" cy="140" r="14" fill="#34d399" opacity="0.15"/>
+    <text x="516" y="145" class="font-mono" font-size="14" fill="#34d399" text-anchor="middle">👤</text>
+    <text x="546" y="136" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">Player Profiles &amp; Activity</text>
+    <text x="546" y="158" class="font-sans" font-size="13" fill="#71717a">Leaderboard including challenge finishes &amp; conversion rates</text>
+  </g>
+{% endblock %}
+
+{% block footer %}
+  <!-- Format chips along footer -->
+  <text x="600" y="575" class="font-mono" font-size="13" fill="#71717a" text-anchor="middle" letter-spacing="0.08em">
+    MODERN  •  LEGACY  •  PREMODERN  •  VINTAGE  •  PIONEER  •  STANDARD  •  PAUPER
+  </text>
+  <text x="600" y="605" class="font-sans" font-size="12" fill="#52525b" text-anchor="middle">modometa.com</text>
+{% endblock %}

@@ -2,6 +2,50 @@
 {% load mana_tags %}
 
 {% block title %}{{ player_name }}'s Record{% endblock %}
+{% block meta_description %}MTGO tournament record and lifetime match history for {{ player_name }}. View league 5-0 trophies, challenge Top 8 appearances, conversion rates, and favorite archetypes.{% endblock %}
+{% block og_type %}profile{% endblock %}
+{% block og_title %}{{ player_name }}'s Record — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}MTGO tournament record and lifetime match history for {{ player_name }}. View league 5-0 trophies, challenge Top 8 appearances, conversion rates, and favorite archetypes.{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:player_og_image' player_name %}{% endblock %}
+{% block og_image_alt %}{{ player_name }}'s MTGO 52-week activity heatmap on {{ SITE_NAME }}{% endblock %}
+{% block twitter_title %}{{ player_name }}'s Record — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}MTGO tournament record and lifetime match history for {{ player_name }}. View league 5-0 trophies, challenge Top 8 appearances, conversion rates, and favorite archetypes.{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:player_og_image' player_name %}{% endblock %}
+{% block twitter_image_alt %}{{ player_name }}'s MTGO 52-week activity heatmap on {{ SITE_NAME }}{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "{{ player_name }}",
+        "item": "{{ request.build_absolute_uri }}"
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "mainEntity": {
+      "@type": "Person",
+      "name": "{{ player_name }}",
+      "description": "Magic: The Gathering Online player with {{ total_decks }} tournament decks recorded on {{ SITE_NAME }}."
+    }
+  }
+]
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

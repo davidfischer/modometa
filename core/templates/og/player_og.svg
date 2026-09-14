@@ -1,0 +1,67 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="910" y="42" width="230" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1025" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">PLAYER PROFILE</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Player Title & Subtitle -->
+  <text x="60" y="145" class="font-sans" font-size="46" font-weight="800" fill="#ffffff">{{ player_name }}</text>
+  <text x="60" y="178" class="font-sans" font-size="18" fill="#a1a1aa">Record across {{ total_decks }} tournament deck{{ total_decks|pluralize }} in {{ formats_played|join:", " }}</text>
+
+  <!-- Lifetime Stat Summary Row -->
+  <g transform="translate(60, 205)">
+    <!-- League 5-0 Trophies -->
+    <rect x="0" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="20" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">LEAGUE 5-0 TROPHIES</text>
+    <text x="20" y="54" class="font-mono" font-size="24" font-weight="700" fill="#38bdf8">{{ total_5_0s }}</text>
+    <text x="100" y="53" class="font-mono" font-size="12" fill="#71717a">trophies</text>
+
+    <!-- Challenge Top 8s -->
+    <rect x="370" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="390" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CHALLENGE TOP 8S</text>
+    <text x="390" y="54" class="font-mono" font-size="24" font-weight="700" fill="#10b981">{{ total_top8s }}</text>
+    <text x="460" y="53" class="font-mono" font-size="12" fill="#71717a">appearances</text>
+
+    <!-- Conversion Rate -->
+    <rect x="740" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="760" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CONVERSION RATE</text>
+    <text x="760" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{{ conversion_rate }}%</text>
+    <text x="860" y="53" class="font-mono" font-size="12" fill="#71717a">T8 / entry</text>
+  </g>
+
+  <!-- Heatmap Label -->
+  <text x="60" y="315" class="font-mono" font-size="13" font-weight="600" fill="#71717a" letter-spacing="0.08em">52-WEEK MTGO ACTIVITY HISTORY</text>
+
+  <!-- Infographic Card Container -->
+  <rect x="60" y="330" width="1080" height="225" rx="16" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+  <!-- Embedded Player Activity Heatmap -->
+  <g transform="translate(90, 358) scale(1.36)">
+    <!-- Month labels -->
+    {% for m in heatmap.month_labels %}
+      <text x="{{ m.x }}" y="12"{% if m.anchor %} text-anchor="{{ m.anchor }}"{% endif %} class="font-mono" font-size="11" fill="#71717a">{{ m.name }}</text>
+    {% endfor %}
+
+    <!-- Day labels -->
+    {% for d in heatmap.day_labels %}
+      <text x="30" y="{{ d.y }}" text-anchor="end" class="font-mono" font-size="10" fill="#71717a">{{ d.name }}</text>
+    {% endfor %}
+
+    <!-- Weeks and cells -->
+    {% for week in heatmap.weeks %}
+      <g transform="translate({{ week.col_x }}, 0)">
+        {% for day in week.days %}
+          <rect
+            x="0"
+            y="{{ day.y }}"
+            width="{{ heatmap.cell_size }}"
+            height="{{ heatmap.cell_size }}"
+            class="activity-cell {{ day.color_class }}"
+          />
+        {% endfor %}
+      </g>
+    {% endfor %}
+  </g>
+{% endblock %}

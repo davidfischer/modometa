@@ -5,6 +5,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title_tag %}{% block title %}MTGO Metagame Analyzer{% endblock %} — {{ SITE_NAME }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Magic: The Gathering Online metagame analyzer tracking competitive decklists, format staples, archetype win shares, and tournament results across Vintage, Legacy, Modern, Pioneer, Standard, and Premodern.{% endblock %}">
+  <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}">
+  <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:site_name" content="{{ SITE_NAME }}">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}MTGO Metagame Analyzer — {{ SITE_NAME }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Magic: The Gathering Online metagame analyzer tracking competitive decklists, format staples, archetype win shares, and tournament results across Vintage, Legacy, Modern, Pioneer, Standard, and Premodern.{% endblock %}">
+  <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:default_og_image' %}{% endblock %}">
+  <meta property="og:image:type" content="{% block og_image_type %}image/png{% endblock %}">
+  <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
+  <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
+  <meta property="og:image:alt" content="{% block og_image_alt %}{{ SITE_NAME }} - Magic Online Metagame Analyzer{% endblock %}">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+  <meta name="twitter:title" content="{% block twitter_title %}{% block twitter_title_default %}MTGO Metagame Analyzer — {{ SITE_NAME }}{% endblock %}{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}Magic: The Gathering Online metagame analyzer tracking competitive decklists, format staples, archetype win shares, and tournament results across Vintage, Legacy, Modern, Pioneer, Standard, and Premodern.{% endblock %}">
+  <meta name="twitter:image" content="{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:default_og_image' %}{% endblock %}">
+  <meta name="twitter:image:alt" content="{% block twitter_image_alt %}{{ SITE_NAME }} - Magic Online Metagame Analyzer{% endblock %}">
+
+  <!-- JSON-LD Structured Data -->
+  {% block json_ld %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "{{ SITE_NAME }}",
+    "url": "{{ request.scheme }}://{{ request.get_host }}/",
+    "description": "Magic: The Gathering Online metagame analyzer tracking competitive decklists, format staples, archetype win shares, and tournament results across Vintage, Legacy, Modern, Pioneer, Standard, and Premodern."
+  }
+  </script>
+  {% endblock %}
   <link rel="icon" type="image/svg+xml" href="{% static 'img/modometa-shield.svg' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32x32.png' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">

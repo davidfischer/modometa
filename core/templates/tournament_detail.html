@@ -2,6 +2,61 @@
 {% load mana_tags %}
 
 {% block title %}{{ tournament.name }}{% endblock %}
+{% block meta_description %}Results, Top 8 standings, and decklists from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). View player records and archetype standings.{% endblock %}
+{% block og_title %}{{ tournament.name }} — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}Results, Top 8 standings, and decklists from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). View player records and archetype standings.{% endblock %}
+{% block twitter_title %}{{ tournament.name }} — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}Results, Top 8 standings, and decklists from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). View player records and archetype standings.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "{{ tournament.format|capfirst }}",
+        "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_overview' tournament.format %}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Tournaments",
+        "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:tournament_list' tournament.format %}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "{{ tournament.name }}",
+        "item": "{{ request.build_absolute_uri }}"
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "{{ tournament.name }}",
+    "startDate": "{{ tournament.date|date:'Y-m-d' }}",
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+    "location": {
+      "@type": "VirtualLocation",
+      "url": "https://www.mtgo.com"
+    },
+    "description": "{{ tournament.format|capfirst }} {{ tournament.event_type|capfirst }} tournament on Magic Online with {{ decks|length }} decks recorded."
+  }
+]
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

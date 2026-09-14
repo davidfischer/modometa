@@ -2,6 +2,46 @@
 {% load mana_tags %}
 
 {% block title %}{{ deck.player }}'s {{ deck.archetype }}{% endblock %}
+{% block meta_description %}{{ deck.player }}'s {{ deck.archetype }} decklist from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). Complete mainboard, sideboard, and card statistics.{% endblock %}
+{% block og_title %}{{ deck.player }}'s {{ deck.archetype }} — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}{{ deck.player }}'s {{ deck.archetype }} decklist from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). Complete mainboard, sideboard, and card statistics.{% endblock %}
+{% block twitter_title %}{{ deck.player }}'s {{ deck.archetype }} — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}{{ deck.player }}'s {{ deck.archetype }} decklist from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). Complete mainboard, sideboard, and card statistics.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ deck.format|capfirst }}",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_overview' deck.format %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "{{ tournament.name }}",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:tournament_detail' deck.format tournament.id %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "{{ deck.player }}",
+      "item": "{{ request.build_absolute_uri }}"
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">

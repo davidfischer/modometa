@@ -11,6 +11,7 @@ from django.test import Client
 from core.models import Deck
 from core.models import Tournament
 from core.views import build_mana_pill
+from core.views import render_og_png
 
 
 @pytest.fixture
@@ -323,3 +324,12 @@ def test_player_og_image_view(client, sample_data):
     # Test non-existent player returns 404
     resp_invalid = client.get("/player/nonexistent_player_12345/og.png")
     assert resp_invalid.status_code == 404
+
+
+def test_render_og_png_font_resolution():
+    """Test that render_og_png rasterizes SVGs with font directory configuration."""
+    response = render_og_png("og/default_og.svg", {"site_name": "MODOMeta"})
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/png"
+    assert response.content[:4] == b"\x89PNG"
+    assert len(response.content) > 5000

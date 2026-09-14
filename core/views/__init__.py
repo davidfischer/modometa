@@ -6,6 +6,7 @@ from collections import Counter
 from collections.abc import Iterable
 from datetime import date
 from datetime import timedelta
+from pathlib import Path
 
 import resvg_py
 from django.conf import settings
@@ -2040,7 +2041,22 @@ def search_index(request):
 def render_og_png(template_name: str, context: dict, request=None) -> HttpResponse:
     """Render an SVG template and rasterize it to PNG via resvg-py."""
     svg_text = render_to_string(template_name, context, request=request)
-    png_bytes = resvg_py.svg_to_bytes(svg_string=svg_text)
+    font_dirs = [
+        str(d)
+        for d in [
+            Path("/usr/share/fonts"),
+            Path("/usr/local/share/fonts"),
+            settings.BASE_DIR / "core" / "static" / "fonts",
+        ]
+        if d.is_dir()
+    ]
+    png_bytes = resvg_py.svg_to_bytes(
+        svg_string=svg_text,
+        font_dirs=font_dirs if font_dirs else None,
+        sans_serif_family="DejaVu Sans",
+        monospace_family="DejaVu Sans Mono",
+        font_family="DejaVu Sans",
+    )
     return HttpResponse(png_bytes, content_type="image/png")
 
 

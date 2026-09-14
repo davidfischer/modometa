@@ -17,12 +17,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # - zstd: for decompressing zstd-compressed databases
 # - ca-certificates: for secure TLS connections
 # - sqlite3: for database inspection/WAL management
+# - fonts-dejavu-core, fonts-dejavu-mono, fontconfig: for resvg OG image rendering
 RUN apt-get update -qq && \
     apt-get install -y -qq --no-install-recommends \
         curl \
         ca-certificates \
         zstd \
-        sqlite3 && \
+        sqlite3 \
+        fonts-dejavu-core \
+        fonts-dejavu-mono \
+        fontconfig && \
     rm -rf /var/lib/apt/lists/*
 
 # Environment variables

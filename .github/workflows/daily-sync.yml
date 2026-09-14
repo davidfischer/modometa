@@ -111,8 +111,9 @@ jobs:
           fi
           uv run modometa ingest_tournaments --dir MTG_decklistcache/Tournaments/MTGO $EXTRA_ARGS
 
+      # Skip kNN here. We'll run it explicitly in the next step
       - name: Reclassify tournament decks
-        run: uv run modometa reclassify_decks
+        run: uv run modometa reclassify_decks --skip-knn
 
       - name: Rebuild kNN similarity index
         run: uv run modometa build_knn

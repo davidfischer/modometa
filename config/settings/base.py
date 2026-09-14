@@ -98,7 +98,9 @@ SITE_NAME = "MODOMeta"
 MODOMETA_FORMATS = FORMAT_SLUGS
 
 # Formats actively displayed in navigation and homepage
-ACTIVE_FORMAT_SLUGS = ["legacy", "vintage", "modern", "premodern"]
+# These are ordered manually here by number of decks (desc)
+# That's a proxy for popularity
+ACTIVE_FORMAT_SLUGS = ["modern", "legacy", "premodern", "vintage"]
 
 ARCHETYPES_DIR = BASE_DIR / "archetypes"
 DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "MTG_decklistcache" / "Tournaments" / "MTGO"

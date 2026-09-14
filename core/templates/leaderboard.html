@@ -4,9 +4,9 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="{% url 'core:format_overview' format_slug %}?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <a href="{% url 'core:format_overview' format_slug %}{{ TIMEFRAME_QUERY }}" class="hover:text-white capitalize">{{ format_name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white">Leaderboard</span>
 </div>
@@ -23,7 +23,7 @@
       </div>
       <h1 class="mt-2 text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Leaderboard</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Top 100 competitors ranked by Challenge Top 8 finishes over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+        Top 100 competitors ranked by Challenge Top 8 finishes over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
   </div>
@@ -78,7 +78,7 @@
               </td>
               <td class="py-3 px-4 font-sans">
                 {% if p.top_archetype %}
-                  <a href="{% url 'core:archetype_detail' format_slug p.top_archetype_slug %}" class="text-zinc-300 hover:text-emerald-400">
+                  <a href="{% url 'core:archetype_detail' format_slug p.top_archetype_slug %}{{ TIMEFRAME_QUERY }}" class="text-zinc-300 hover:text-emerald-400">
                     {{ p.top_archetype }}
                   </a>
                 {% else %}

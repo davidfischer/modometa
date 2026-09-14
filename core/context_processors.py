@@ -15,15 +15,20 @@ def modometa_globals(request):
     path = request.path.strip("/").split("/")
     active_format = path[0] if path and path[0] in settings.MODOMETA_FORMATS else None
 
-    # Timeframe (30 or 90 days)
+    # Timeframe (30, 90, 180, 365 days; default 90)
     timeframe = request.GET.get("days", "90")
-    if timeframe not in ("30", "90"):
+    if timeframe not in ("30", "90", "180", "365"):
         timeframe = "90"
+
+    timeframe_query = f"?days={timeframe}" if timeframe != "90" else ""
+    timeframe_query_param = timeframe if timeframe != "90" else None
 
     return {
         "MODOMETA_FORMATS": formats,
         "ACTIVE_FORMAT": active_format,
         "ACTIVE_FORMAT_SLUGS": active_slugs,
         "TIMEFRAME": timeframe,
+        "TIMEFRAME_QUERY": timeframe_query,
+        "TIMEFRAME_QUERY_PARAM": timeframe_query_param,
         "SITE_NAME": getattr(settings, "SITE_NAME", "MODOMeta"),
     }

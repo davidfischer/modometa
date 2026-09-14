@@ -34,14 +34,14 @@
     <div>
       <h1 class="text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Metagame</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Competitive MTGO stats over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+        Competitive MTGO stats over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
     <div class="flex items-center gap-2">
-      <a href="{% url 'core:tournament_list' format_slug %}?days={{ TIMEFRAME }}" class="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors">
+      <a href="{% url 'core:tournament_list' format_slug %}{{ TIMEFRAME_QUERY }}" class="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors">
         View All Tournaments →
       </a>
-      <a href="{% url 'core:leaderboard' format_slug %}?days={{ TIMEFRAME }}" class="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
+      <a href="{% url 'core:leaderboard' format_slug %}{{ TIMEFRAME_QUERY }}" class="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
         Leaderboard 🏆
       </a>
     </div>
@@ -76,7 +76,7 @@
       </div>
     </div>
 
-    <!-- Bump Chart: Top 8 Rank Evolution (26 Weeks) -->
+    <!-- Bump Chart: Top 8 Rank Evolution (52 Weeks) -->
     {% if bump_chart.has_data %}
       <div class="mt-6 pt-6 border-t border-zinc-800">
         {% include "includes/format_bump_chart.html" %}
@@ -100,7 +100,7 @@
           {% for a in archetypes %}
             <tr class="hover:bg-zinc-800/40 transition-colors">
               <td class="py-3 px-3 font-sans font-medium text-white">
-                <a href="{% url 'core:archetype_detail' format_slug a.slug %}?days={{ TIMEFRAME }}" class="hover:text-emerald-400">
+                <a href="{% url 'core:archetype_detail' format_slug a.slug %}{{ TIMEFRAME_QUERY }}" class="hover:text-emerald-400">
                   {{ a.name }}
                 </a>
                 {% if a.colors %}
@@ -145,12 +145,12 @@
         </div>
         <div class="flex items-center gap-2">
           {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.previous_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
               ← Previous
             </a>
           {% endif %}
           {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+            <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.next_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
               Next →
             </a>
           {% endif %}
@@ -165,7 +165,7 @@
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-bold text-white">Most Played Cards</h2>
-        <a href="{% url 'core:cards_list' format_slug %}?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+        <a href="{% url 'core:cards_list' format_slug %}{{ TIMEFRAME_QUERY }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
           View All Cards →
         </a>
       </div>
@@ -197,7 +197,7 @@
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-bold text-white">Recent {{ format_name }} Events</h2>
-        <a href="{% url 'core:tournament_list' format_slug %}?days={{ TIMEFRAME }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+        <a href="{% url 'core:tournament_list' format_slug %}{{ TIMEFRAME_QUERY }}" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
           All Events →
         </a>
       </div>

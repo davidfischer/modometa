@@ -39,23 +39,11 @@
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-zinc-800 bg-zinc-900/95 px-6 pb-8 pt-6 backdrop-blur transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 xl:w-80">
     <!-- Brand Logo -->
     <div class="flex items-center gap-3">
-      <a href="{% url 'core:home' %}" class="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white hover:text-emerald-400 transition-colors">
+      <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white hover:text-emerald-400 transition-colors">
         <img src="{% static 'img/modometa-shield.svg' %}" alt="{{ SITE_NAME }} logo" class="h-7 w-auto shrink-0" width="24" height="28" aria-hidden="true">
         <span>MODOMETA</span>
       </a>
     </div>
-
-    {% if request.path != '/faq/' %}
-      <!-- Timeframe Switcher in Sidebar (Mobile / Tablet convenience) -->
-      <div class="mt-6 flex rounded-lg bg-zinc-950 p-1 border border-zinc-800">
-        <button data-timeframe-toggle="30" class="flex-1 rounded-md py-1.5 text-xs font-semibold transition-all {% if TIMEFRAME == '30' %}bg-emerald-500 text-white shadow-sm{% else %}text-zinc-400 hover:text-white{% endif %}">
-          30 Days
-        </button>
-        <button data-timeframe-toggle="90" class="flex-1 rounded-md py-1.5 text-xs font-semibold transition-all {% if TIMEFRAME == '90' %}bg-emerald-500 text-white shadow-sm{% else %}text-zinc-400 hover:text-white{% endif %}">
-          90 Days
-        </button>
-      </div>
-    {% endif %}
 
     <!-- Navigation Links -->
     <nav class="mt-8 flex-1 space-y-6 overflow-y-auto text-sm">
@@ -64,7 +52,7 @@
         <ul class="mt-2 space-y-1">
           {% for fmt in MODOMETA_FORMATS %}
             <li>
-              <a href="{% url 'core:format_overview' fmt.slug %}?days={{ TIMEFRAME }}" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if ACTIVE_FORMAT == fmt.slug %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
+              <a href="{% url 'core:format_overview' fmt.slug %}{{ TIMEFRAME_QUERY }}" class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition-colors {% if ACTIVE_FORMAT == fmt.slug %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100{% endif %}">
                 <span>{{ fmt.name }}</span>
                 {% if ACTIVE_FORMAT == fmt.slug %}
                   <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
@@ -75,22 +63,22 @@
                 <!-- Sub-navigation for active format -->
                 <ul class="ml-4 mt-1 space-y-1 border-l border-zinc-800 pl-3">
                   <li>
-                    <a href="{% url 'core:format_overview' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-300 hover:text-emerald-400">
+                    <a href="{% url 'core:format_overview' fmt.slug %}{{ TIMEFRAME_QUERY }}" class="block py-1 text-xs text-zinc-300 hover:text-emerald-400">
                       Overview
                     </a>
                   </li>
                   <li>
-                    <a href="{% url 'core:tournament_list' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:tournament_list' fmt.slug %}{{ TIMEFRAME_QUERY }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Recent Tournaments
                     </a>
                   </li>
                   <li>
-                    <a href="{% url 'core:cards_list' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:cards_list' fmt.slug %}{{ TIMEFRAME_QUERY }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Most Played Cards
                     </a>
                   </li>
                   <li>
-                    <a href="{% url 'core:leaderboard' fmt.slug %}?days={{ TIMEFRAME }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
+                    <a href="{% url 'core:leaderboard' fmt.slug %}{{ TIMEFRAME_QUERY }}" class="block py-1 text-xs text-zinc-400 hover:text-emerald-400">
                       Leaderboard
                     </a>
                   </li>
@@ -155,7 +143,7 @@
         {% block breadcrumbs %}
           <div class="text-sm font-medium text-zinc-400 truncate">
             {% if ACTIVE_FORMAT %}
-              <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
+              <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="hover:text-white">Home</a>
               <span class="mx-2 text-zinc-600">/</span>
               <span class="text-white capitalize">{{ ACTIVE_FORMAT }}</span>
             {% else %}

@@ -119,7 +119,21 @@ def get_reference_date() -> date:
     return latest or date.today()
 
 
-def get_timeframe_cutoff(days: int = 90) -> tuple[date, date]:
+VALID_TIMEFRAMES = {30, 90, 180, 365}
+DEFAULT_TIMEFRAME = 90
+
+
+def parse_timeframe(request, default: int = DEFAULT_TIMEFRAME) -> int:
+    """Parse and validate timeframe in days from request GET parameters."""
+    val = request.GET.get("days")
+    try:
+        days = int(val)
+        return days if days in VALID_TIMEFRAMES else default
+    except ValueError, TypeError:
+        return default
+
+
+def get_timeframe_cutoff(days: int = DEFAULT_TIMEFRAME) -> tuple[date, date]:
     """Return (cutoff_date, reference_date)."""
     ref = get_reference_date()
     cutoff = ref - timedelta(days=days)
@@ -151,7 +165,7 @@ def get_dataset_start_year() -> int | None:
 @public_cache(cdn_seconds=3600, browser_seconds=180)
 def home(request):
     """Home view: Overview of active formats with top 3-5 archetypes each."""
-    days = 30 if request.GET.get("days") == "30" else 90
+    days = parse_timeframe(request)
     cutoff, ref_date = get_timeframe_cutoff(days)
 
     active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
@@ -330,7 +344,7 @@ def format_overview(request, format):
     if fmt_slug not in settings.MODOMETA_FORMATS:
         raise Http404("Format not supported")
 
-    days = 30 if request.GET.get("days") == "30" else 90
+    days = parse_timeframe(request)
     cutoff, ref_date = get_timeframe_cutoff(days)
 
     decks_qs = Deck.objects.filter(
@@ -516,7 +530,8 @@ def tournament_deck_sort_key(
     return (rank, record, deck.player_lower, deck.id)
 
 
-@public_cache(cdn_seconds=86400, browser_seconds=300)
+# These basically never change unless it's today's leagues
+@public_cache(cdn_seconds=3600 * 4, browser_seconds=300)
 def tournament_detail(request, format, event):
     """Tournament detail view: Displays standings and decklinks for an event."""
     tournament = get_object_or_404(Tournament, id=event)
@@ -691,7 +706,7 @@ def build_deck_mainboard_sections(annotated_mainboard: list[dict]) -> list[dict]
     return sections
 
 
-@public_cache(cdn_seconds=86400, browser_seconds=300)
+@public_cache(cdn_seconds=3600, browser_seconds=300)
 def deck_detail(request, player, event, deck_index=1):
     """Deck detail view: Displays mainboard, sideboard, Scryfall previews, and kNN similarities."""
     player_lower = player.strip().lower()
@@ -1109,10 +1124,10 @@ def assign_archetype_colors(
 
 
 def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
-    """Build a 26-week Top 10 rank evolution bump chart for a format by T8 share."""
+    """Build a 52-week Top 10 rank evolution bump chart for a format by T8 share."""
     monday_offset = ref_date.weekday()
     current_week_monday = ref_date - timedelta(days=monday_offset)
-    total_weeks = 26
+    total_weeks = 52
     start_monday = current_week_monday - timedelta(weeks=total_weeks - 1)
 
     t8_decks = list(
@@ -1130,7 +1145,7 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
     STEP_Y = 16
     x_start = X_OFFSET - 8
     x_end = X_OFFSET + (total_weeks - 1) * STEP_X + 8
-    SVG_WIDTH = X_OFFSET + (total_weeks - 1) * STEP_X + 18  # 411
+    SVG_WIDTH = X_OFFSET + (total_weeks - 1) * STEP_X + 18  # 801
     SVG_HEIGHT = Y_OFFSET + 9 * STEP_Y + 16  # 184
 
     month_labels = []
@@ -1352,7 +1367,7 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
 
 
 def get_activity_heatmap_date_range(
-    ref_date: date, weeks_prior: int = 26
+    ref_date: date, weeks_prior: int = 52
 ) -> tuple[date, date, int]:
     """Calculate start date and total number of weeks (weeks_prior + partial/current week)."""
     monday_offset = ref_date.weekday()
@@ -1366,11 +1381,11 @@ def build_activity_heatmap_grid(
     finishes_by_date: dict[date, list[dict]],
     ref_date: date,
     default_format: str | None = None,
-    aria_label: str = "26-week activity heatmap",
+    aria_label: str = "52-week activity heatmap",
 ) -> dict:
-    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap SVG grid."""
+    """Build 52 weeks + partial week (53 columns x 7 days, Monday-Sunday) activity heatmap SVG grid."""
     start_date, _, total_weeks = get_activity_heatmap_date_range(
-        ref_date, weeks_prior=26
+        ref_date, weeks_prior=52
     )
 
     CELL_SIZE = 10
@@ -1610,8 +1625,8 @@ def build_activity_heatmap_grid(
 def build_archetype_heatmap(
     format_slug: str, archetype_slug: str, ref_date: date
 ) -> dict:
-    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap."""
-    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=26)
+    """Build 52 weeks + partial week (53 columns x 7 days, Monday-Sunday) activity heatmap."""
+    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=52)
 
     # Query all appearances for archetype within [start_date, ref_date]
     decks_qs = Deck.objects.filter(
@@ -1642,15 +1657,15 @@ def build_archetype_heatmap(
         finishes_by_date=finishes_by_date,
         ref_date=ref_date,
         default_format=format_slug,
-        aria_label="Archetype 26-week activity heatmap",
+        aria_label="Archetype 52-week activity heatmap",
     )
 
 
 def build_player_heatmap(
     player_lower: str, ref_date: date, player_name: str | None = None
 ) -> dict:
-    """Build 26 weeks + partial week (27 columns x 7 days, Monday-Sunday) activity heatmap for a player across all formats."""
-    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=26)
+    """Build 52 weeks + partial week (53 columns x 7 days, Monday-Sunday) activity heatmap for a player across all formats."""
+    start_date, _, _ = get_activity_heatmap_date_range(ref_date, weeks_prior=52)
 
     # Query all appearances for player within [start_date, ref_date]
     decks_qs = Deck.objects.filter(
@@ -1677,9 +1692,9 @@ def build_player_heatmap(
         finishes_by_date[d_date].append(d)
 
     aria_label = (
-        f"{player_name}'s 26-week activity heatmap"
+        f"{player_name}'s 52-week activity heatmap"
         if player_name
-        else "Player 26-week activity heatmap"
+        else "Player 52-week activity heatmap"
     )
 
     return build_activity_heatmap_grid(
@@ -1698,7 +1713,7 @@ def archetype_detail(request, format, archetype):
     if fmt_slug not in settings.MODOMETA_FORMATS:
         raise Http404("Format not supported")
 
-    days = 30 if request.GET.get("days") == "30" else 90
+    days = parse_timeframe(request)
     cutoff, ref_date = get_timeframe_cutoff(days)
 
     decks_qs = Deck.objects.filter(
@@ -1879,7 +1894,7 @@ def cards_list(request, format):
     if fmt_slug not in settings.MODOMETA_FORMATS:
         raise Http404("Format not supported")
 
-    days = 30 if request.GET.get("days") == "30" else 90
+    days = parse_timeframe(request)
     active_type = request.GET.get("type", "").lower().strip()
     if active_type not in ("challenge", "league"):
         active_type = ""
@@ -1913,7 +1928,7 @@ def leaderboard(request, format):
     if fmt_slug not in settings.MODOMETA_FORMATS:
         raise Http404("Format not supported")
 
-    days = 30 if request.GET.get("days") == "30" else 90
+    days = parse_timeframe(request)
     cutoff, ref_date = get_timeframe_cutoff(days)
 
     decks_qs = Deck.objects.filter(
@@ -1983,12 +1998,13 @@ def leaderboard(request, format):
     )
 
 
-@public_cache(cdn_seconds=86400, browser_seconds=3600)
+@public_cache(cdn_seconds=3600, browser_seconds=3600)
 def faq(request):
     """FAQ view explaining data sources, tournament coverage, and acknowledgments."""
     return render(request, "faq.html")
 
 
+# It's OK to cache this for a long time since it's read off disk
 @public_cache(cdn_seconds=86400, browser_seconds=3600)
 def search_index(request):
     """Return cached JSON search index from disk, in-memory cache, or database fallback."""

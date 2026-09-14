@@ -604,7 +604,7 @@ def test_archetype_detail_view(client):
         # Verify heatmap context
         assert "heatmap" in response.context
         heatmap = response.context["heatmap"]
-        assert len(heatmap["weeks"]) == 27
+        assert len(heatmap["weeks"]) == 53
         assert len(heatmap["weeks"][0]["days"]) == 7
         assert heatmap["weeks"][0]["days"][0]["date"].weekday() == 0  # Monday
         assert heatmap["weeks"][0]["days"][6]["date"].weekday() == 6  # Sunday
@@ -943,10 +943,10 @@ def test_archetype_activity_heatmap(client):
     # Verify link appears in rendered HTML
     assert b'href="/modern/tournaments/heatmap_tourn_same_chall/"' in response.content
 
-    # 7. Check 30d toggle keeps 27 weeks in heatmap
+    # 7. Check 30d toggle keeps 53 weeks in heatmap
     resp_30 = client.get("/modern/archetype/grixis-shadow/?days=30")
     assert resp_30.status_code == 200
-    assert len(resp_30.context["heatmap"]["weeks"]) == 27
+    assert len(resp_30.context["heatmap"]["weeks"]) == 53
 
 
 @pytest.mark.django_db
@@ -1053,12 +1053,12 @@ def test_player_activity_heatmap(client):
     assert "heatmap" in response.context
     heatmap = response.context["heatmap"]
 
-    assert len(heatmap["weeks"]) == 27
+    assert len(heatmap["weeks"]) == 53
     assert heatmap["active_days_count"] == 4
     assert heatmap["total_leagues"] == 1
     assert heatmap["total_challenges"] == 3
     assert heatmap["total_top8s"] == 2
-    assert heatmap["aria_label"] == f"{player_name}'s 26-week activity heatmap"
+    assert heatmap["aria_label"] == f"{player_name}'s 52-week activity heatmap"
 
     # Verify cell days map
     days_by_date = {}
@@ -1087,7 +1087,7 @@ def test_player_activity_heatmap(client):
     assert d_entry["url"] == "/pioneer/tournaments/player_tourn_chall_entry/"
 
     # Verify SVG markup in rendered HTML
-    assert b"26-week activity heatmap" in response.content
+    assert b"52-week activity heatmap" in response.content
     assert b'href="/legacy/tournaments/player_tourn_chall_t8/"' in response.content
     assert b"activity-challenge-winner" in response.content
 
@@ -1475,13 +1475,13 @@ def test_search_box_in_header_replaces_window_switcher(client):
     assert "Window:" not in header_html
     assert "data-timeframe-toggle" not in header_html
 
-    # But sidebar aside still contains the timeframe switcher
+    # Timeframe toggle is removed from sidebar and header, available inline on page
     aside_start = content.find("<aside")
     aside_end = content.find("</aside>")
     assert aside_start != -1 and aside_end != -1
     aside_html = content[aside_start:aside_end]
-    assert 'data-timeframe-toggle="30"' in aside_html
-    assert 'data-timeframe-toggle="90"' in aside_html
+    assert "data-timeframe-toggle" not in aside_html
+    assert "data-timeframe-select" in content
 
 
 @pytest.mark.django_db
@@ -1510,10 +1510,10 @@ def test_active_formats_hidden_from_navigation_and_homepage(client):
     sidebar_html = content[aside_start:aside_end]
 
     for slug in active_slugs:
-        assert f'href="/{slug}/?days=90"' in sidebar_html
+        assert f'href="/{slug}/"' in sidebar_html
 
     for slug in hidden_slugs:
-        assert f'href="/{slug}/?days=90"' not in sidebar_html
+        assert f'href="/{slug}/"' not in sidebar_html
 
 
 @pytest.mark.django_db
@@ -1695,10 +1695,10 @@ def test_no_hardcoded_internal_links_in_templates():
 
 @pytest.mark.django_db
 def test_format_overview_bump_chart_and_momentum(client):
-    """Test 26-week bump chart SSR SVG generation and T8 Momentum calculation."""
+    """Test 52-week bump chart SSR SVG generation and T8 Momentum calculation."""
     ref = get_reference_date()
 
-    # Create tournaments across the last 26 weeks and prior 90-day window
+    # Create tournaments across the last 52 weeks and prior 90-day window
     # Archetype A: Surging in recent 90d (3 T8s in last 90d, 0 in prior 90d) -> momentum +3
     # Archetype B: Declining (1 T8 in last 90d, 4 in prior 90d) -> momentum -3
     # Archetype C: Stable (2 T8s in last 90d, 2 in prior 90d) -> momentum 0
@@ -1842,7 +1842,7 @@ def test_format_overview_bump_chart_and_momentum(client):
     assert "bump_chart" in response.context
     bump_chart = response.context["bump_chart"]
     assert bump_chart["has_data"] is True
-    assert bump_chart["svg_width"] == 411
+    assert bump_chart["svg_width"] == 801
     assert bump_chart["svg_height"] == 184
     assert len(bump_chart["rank_lines"]) == 10
     assert len(bump_chart["month_labels"]) >= 1
@@ -1852,7 +1852,7 @@ def test_format_overview_bump_chart_and_momentum(client):
     content = response.content.decode("utf-8")
     assert 'class="bump-track"' in content
     assert 'class="bump-node"' in content
-    assert 'viewBox="0 0 411 184"' in content
+    assert 'viewBox="0 0 801 184"' in content
     assert ">#1</text>" not in content
     assert ">#5</text>" not in content
     assert 'text-anchor="end"' in content
@@ -1893,7 +1893,7 @@ def test_format_overview_bump_chart_and_momentum(client):
     # In prior 30d window [ref-60, ref-30), there were 0 tournaments, so prior=0 for all
     assert arch_dict_30["kuldotha-red"]["prev_top8_count"] == 0
     assert arch_dict_30["kuldotha-red"]["t8_momentum"] == 3
-    # Bump chart retains 26 weeks of data regardless of ?days=30
+    # Bump chart retains 52 weeks of data regardless of ?days=30
     assert resp_30.context["bump_chart"]["has_data"] is True
 
 
@@ -1927,3 +1927,106 @@ def test_format_overview_unsupported_format_notification(client):
             "https://github.com/davidfischer/modometa/tree/main/archetypes"
             not in resp_overridden.content.decode()
         )
+
+
+@pytest.mark.django_db
+def test_timeframe_select_dropdown_renders_inline(client):
+    """Verify inline timeframe select dropdown renders with 90d and 30d options."""
+    # 1. Homepage
+    resp_home = client.get("/")
+    assert resp_home.status_code == 200
+    home_html = resp_home.content.decode()
+    assert "data-timeframe-select" in home_html
+    assert 'value="30"' in home_html
+    assert 'value="90"' in home_html
+    assert 'value="180"' in home_html
+    assert 'value="365"' in home_html
+    assert "selected" in home_html
+
+    # 2. Format overview
+    resp_format = client.get("/legacy/")
+    assert resp_format.status_code == 200
+    format_html = resp_format.content.decode()
+    assert "data-timeframe-select" in format_html
+
+    # 3. Timeframe selection reflects in select options
+    resp_30 = client.get("/legacy/?days=30")
+    assert resp_30.status_code == 200
+    assert (
+        'value="30" class="bg-zinc-900 text-zinc-100 py-1" selected'
+        in resp_30.content.decode()
+    )
+
+    resp_180 = client.get("/legacy/?days=180")
+    assert resp_180.status_code == 200
+    assert resp_180.context["TIMEFRAME"] == "180"
+    assert resp_180.context["TIMEFRAME_QUERY_PARAM"] == "180"
+    assert (
+        'value="180" class="bg-zinc-900 text-zinc-100 py-1" selected'
+        in resp_180.content.decode()
+    )
+
+    resp_365 = client.get("/legacy/?days=365")
+    assert resp_365.status_code == 200
+    assert resp_365.context["TIMEFRAME"] == "365"
+    assert resp_365.context["TIMEFRAME_QUERY_PARAM"] == "365"
+    assert (
+        'value="365" class="bg-zinc-900 text-zinc-100 py-1" selected'
+        in resp_365.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_timeframe_navigation_clean_urls_and_preservation(client):
+    """Clean URLs by default (90d), with ?days=30/180/365 preserved when active."""
+    # When visiting /legacy/ (default 90d):
+    resp_default = client.get("/legacy/")
+    assert resp_default.status_code == 200
+    html_default = resp_default.content.decode()
+
+    # Sidebar links should be clean
+    assert 'href="/legacy/"' in html_default
+    assert 'href="/legacy/tournaments/"' in html_default
+    assert 'href="/legacy/cards/"' in html_default
+    assert 'href="/legacy/leaderboard/"' in html_default
+    assert "?days=90" not in html_default
+
+    # When visiting /legacy/?days=30 (explicit 30d):
+    resp_30 = client.get("/legacy/?days=30")
+    assert resp_30.status_code == 200
+    html_30 = resp_30.content.decode()
+
+    # Sidebar and subnavigation links preserve ?days=30
+    assert 'href="/legacy/?days=30"' in html_30
+    assert 'href="/legacy/tournaments/?days=30"' in html_30
+    assert 'href="/legacy/cards/?days=30"' in html_30
+    assert 'href="/legacy/leaderboard/?days=30"' in html_30
+
+    # When visiting /legacy/?days=180 (explicit 180d):
+    resp_180 = client.get("/legacy/?days=180")
+    assert resp_180.status_code == 200
+    html_180 = resp_180.content.decode()
+    assert 'href="/legacy/?days=180"' in html_180
+    assert 'href="/legacy/cards/?days=180"' in html_180
+
+    # Cards filter pills and querystring tag behavior:
+    cards_default = client.get("/legacy/cards/")
+    assert cards_default.context["TIMEFRAME_QUERY_PARAM"] is None
+    cards_default_html = cards_default.content.decode()
+    assert 'href="/legacy/cards/"' in cards_default_html
+    assert 'href="?type=challenge"' in cards_default_html
+    assert 'href="?type=league"' in cards_default_html
+
+    cards_30 = client.get("/legacy/cards/?days=30")
+    assert cards_30.context["TIMEFRAME_QUERY_PARAM"] == "30"
+    cards_30_html = cards_30.content.decode()
+    assert 'href="/legacy/cards/?days=30"' in cards_30_html
+    assert 'href="?days=30&amp;type=challenge"' in cards_30_html
+    assert 'href="?days=30&amp;type=league"' in cards_30_html
+
+    cards_180 = client.get("/legacy/cards/?days=180")
+    assert cards_180.context["TIMEFRAME_QUERY_PARAM"] == "180"
+    cards_180_html = cards_180.content.decode()
+    assert 'href="/legacy/cards/?days=180"' in cards_180_html
+    assert 'href="?days=180&amp;type=challenge"' in cards_180_html
+    assert 'href="?days=180&amp;type=league"' in cards_180_html

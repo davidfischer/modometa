@@ -1,34 +1,33 @@
 /**
  * Modometa client script:
- * - LocalStorage timeframe persistence (30d vs 90d)
+ * - Timeframe select dropdown (30d vs 90d vs 180d vs 365d)
  * - Lightweight Scryfall card preview tooltip on hover
  * - Mobile sidebar drawer navigation toggle
+ * - Dark mode theme toggle
+ * - Global search autocomplete (archetypes & players)
+ * - Horizontal scroll initial alignment (bump chart & heatmap)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Timeframe (30d vs 90d) Persistence (excluded on informational pages like /faq/)
-  if (!window.location.pathname.startsWith('/faq')) {
-    const savedTimeframe = localStorage.getItem('modometa_timeframe');
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentDays = urlParams.get('days');
-
-    if (savedTimeframe && !currentDays && (savedTimeframe === '30' || savedTimeframe === '90')) {
-      if (savedTimeframe !== '90') {
-        urlParams.set('days', savedTimeframe);
-        window.location.search = urlParams.toString();
-      }
-    }
+  // Clean up legacy localStorage key if present
+  try {
+    localStorage.removeItem('modometa_timeframe');
+  } catch (e) {
+    // Ignore storage exceptions
   }
 
-  // Bind timeframe switcher buttons
-  document.querySelectorAll('[data-timeframe-toggle]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const val = btn.getAttribute('data-timeframe-toggle');
-      localStorage.setItem('modometa_timeframe', val);
-      const params = new URLSearchParams(window.location.search);
-      params.set('days', val);
-      window.location.search = params.toString();
+  // 1. Timeframe select dropdown change handler
+  document.querySelectorAll('[data-timeframe-select]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const days = e.target.value;
+      const url = new URL(window.location.href);
+      if (days === '90') {
+        url.searchParams.delete('days');
+      } else {
+        url.searchParams.set('days', days);
+      }
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
     });
   });
 
@@ -525,4 +524,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // 6. Horizontal Scroll Initial Alignment (Recent Weeks First)
+  function initScrollRight() {
+    document.querySelectorAll('[data-scroll-right]').forEach(el => {
+      el.scrollLeft = el.scrollWidth;
+    });
+  }
+  initScrollRight();
+  requestAnimationFrame(initScrollRight);
 });

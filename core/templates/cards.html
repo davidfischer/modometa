@@ -5,9 +5,9 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="{% url 'core:format_overview' format_slug %}?days={{ TIMEFRAME }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <a href="{% url 'core:format_overview' format_slug %}{{ TIMEFRAME_QUERY }}" class="hover:text-white capitalize">{{ format_name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white">Most Played Cards</span>
 </div>
@@ -19,19 +19,19 @@
     <div>
       <h1 class="text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Cards</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Most commonly played cards across {{ total_decks }} {% if active_type == 'challenge' %}Challenge{% elif active_type == 'league' %}League{% else %}League and Challenge{% endif %} decks in {{ format_name }} over the last <strong class="text-emerald-400">{{ TIMEFRAME }} days</strong>.
+        Most commonly played cards across {{ total_decks }} {% if active_type == 'challenge' %}Challenge{% elif active_type == 'league' %}League{% else %}League and Challenge{% endif %} decks in {{ format_name }} over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
 
     <!-- Event Filter Pills -->
     <div class="flex items-center gap-1.5 rounded-lg bg-zinc-900 p-1 border border-zinc-800 text-xs">
-      <a href="?days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if not active_type %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% url 'core:cards_list' format_slug %}{{ TIMEFRAME_QUERY }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if not active_type %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         All
       </a>
-      <a href="?type=challenge&days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'challenge' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% querystring days=TIMEFRAME_QUERY_PARAM type='challenge' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'challenge' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         Challenges
       </a>
-      <a href="?type=league&days={{ TIMEFRAME }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'league' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% querystring days=TIMEFRAME_QUERY_PARAM type='league' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'league' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         Leagues
       </a>
     </div>
@@ -97,12 +97,12 @@
       </div>
       <div class="flex items-center gap-2">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}{% if active_type %}&type={{ active_type }}{% endif %}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+          <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.previous_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
             ← Previous
           </a>
         {% endif %}
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}{% if active_type %}&type={{ active_type }}{% endif %}&days={{ TIMEFRAME }}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+          <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.next_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
             Next →
           </a>
         {% endif %}

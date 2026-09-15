@@ -3,16 +3,24 @@
 import re
 import unicodedata
 import urllib.parse
+import uuid
 from collections import Counter
 from collections.abc import Iterable
 from typing import Any
 
 from django.db import models
+from django.urls import reverse
+from django.utils.text import slugify
 
 
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
+
+
+def generate_card_slug(name: str) -> str:
+    """Generate a clean URL slug for a card name."""
+    return slugify(name) or "card"
 
 
 def get_scryfall_url(name: str | None = None, card_id: str | None = None) -> str:
@@ -135,6 +143,7 @@ class Card(models.Model):
     id = models.CharField(max_length=64, primary_key=True, verbose_name="ID")
     oracle_id = models.CharField(max_length=64, db_index=True, verbose_name="Oracle ID")
     name = models.CharField(max_length=255, db_index=True)
+    slug = models.SlugField(max_length=255, unique=True, db_index=True)
     normalized_name = models.CharField(max_length=255, db_index=True)
     mana_cost = models.CharField(max_length=128, blank=True, null=True)
     # Defined as a float in Scryfall's data - probably for unset cards
@@ -149,22 +158,81 @@ class Card(models.Model):
     legalities = models.JSONField(default=dict)
     is_land = models.BooleanField(default=False, db_index=True)
     is_basic_land = models.BooleanField(default=False)
+    printings = models.JSONField(default=list, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
-            import uuid
-
             self.id = str(uuid.uuid4())
         if not self.oracle_id:
-            import uuid
-
             self.oracle_id = str(uuid.uuid4())
         if not self.normalized_name and self.name:
             self.normalized_name = normalize_card_name(self.name)
+        if not self.slug and self.name:
+            base_slug = generate_card_slug(self.name)
+            candidate = base_slug
+            counter = 1
+            while Card.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = candidate
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name
+
+    def get_absolute_url(self) -> str:
+        """URL to the card detail view."""
+        return reverse("core:card_detail", kwargs={"slug": self.slug})
+
+    @property
+    def price_tix(self) -> str | None:
+        """First available MTGO TIX price from printings."""
+        for p in self.printings or []:
+            if p.get("price_tix"):
+                return str(p["price_tix"])
+        return None
+
+    @property
+    def price_usd(self) -> str | None:
+        """First available USD market price from printings."""
+        for p in self.printings or []:
+            if p.get("price_usd"):
+                return str(p["price_usd"])
+        return None
+
+    @property
+    def price_eur(self) -> str | None:
+        """First available EUR market price from printings."""
+        for p in self.printings or []:
+            if p.get("price_eur"):
+                return str(p["price_eur"])
+        return None
+
+    @property
+    def tcgplayer_url(self) -> str:
+        """Direct TCGPlayer product or search URL."""
+        for p in self.printings or []:
+            if p.get("tcgplayer_id"):
+                return f"https://www.tcgplayer.com/product/{p['tcgplayer_id']}"
+        return f"https://www.tcgplayer.com/search/magic/product?q={urllib.parse.quote_plus(self.name)}"
+
+    @property
+    def cardhoarder_url(self) -> str:
+        """Direct Cardhoarder card or search URL."""
+        for p in self.printings or []:
+            if p.get("mtgo_id"):
+                return f"https://www.cardhoarder.com/cards/{p['mtgo_id']}"
+            if p.get("cardhoarder_id"):
+                return f"https://www.cardhoarder.com/cards/{p['cardhoarder_id']}"
+        return f"https://www.cardhoarder.com/cards?search={urllib.parse.quote_plus(self.name)}"
+
+    @property
+    def cardmarket_url(self) -> str:
+        """Direct Cardmarket product or search URL."""
+        for p in self.printings or []:
+            if p.get("cardmarket_id"):
+                return f"https://www.cardmarket.com/en/Magic/Products?idProduct={p['cardmarket_id']}"
+        return f"https://www.cardmarket.com/en/Magic/Products/Search?searchString={urllib.parse.quote_plus(self.name)}"
 
     @property
     def scryfall_url(self) -> str:
@@ -175,6 +243,11 @@ class Card(models.Model):
     def gatherer_url(self) -> str:
         """URL to the card on Gatherer."""
         return get_gatherer_url(self.name)
+
+    @property
+    def goatbots_url(self) -> str:
+        """URL to the card on Goatbots."""
+        return f"https://www.goatbots.com/card/{self.slug}"
 
     def get_scryfall_url(self) -> str:
         """URL to the card on Scryfall."""

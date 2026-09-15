@@ -97,6 +97,6 @@
   <!-- Footer Branding -->
   {% block footer %}
   <text x="60" y="595" class="font-sans" font-size="14" fill="#52525b">modometa.com • Magic Online Metagame Analyzer</text>
-  <text x="1140" y="595" class="font-mono" font-size="13" fill="#10b981" text-anchor="end">Live Competitive MTGO Stats</text>
+  <text x="1140" y="595" class="font-mono" font-size="13" fill="#10b981" text-anchor="end">Competitive MTGO Stats</text>
   {% endblock %}
 </svg>

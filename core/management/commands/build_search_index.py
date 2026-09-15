@@ -63,6 +63,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Successfully built search index ({size_kb:.1f} KB, "
+                f"{len(data.get('cards', [])):,} cards, "
                 f"{len(data['archetypes'])} archetypes, {len(data['players']):,} players) "
                 f"in {duration:.2f}s -> {dest_path}"
             )

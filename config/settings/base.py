@@ -94,6 +94,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Site branding
 SITE_NAME = "MODOMeta"
 
+# Outbound HTTP User-Agent
+USER_AGENT = os.environ.get(
+    "MODOMETA_USER_AGENT", "Modometa/1.0 (https://github.com/modometa/modometa)"
+)
+
 # Modometa domain configuration
 MODOMETA_FORMATS = FORMAT_SLUGS
 

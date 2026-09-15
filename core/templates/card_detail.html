@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}{{ card.name }} — MTGO Metagame & Decks{% endblock %}
+{% block meta_description %}View competitive MTGO decklists with {{ card.name }}, format legalities, printings, and metagame statistics across Magic: The Gathering Online tournaments.{% endblock %}
+
+{% block og_title %}{{ card.name }} — MTGO Metagame & Decks — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}View competitive MTGO decklists with {{ card.name }}, format legalities, printings, and metagame statistics across Magic: The Gathering Online tournaments.{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:card_og_image' card.name %}{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:card_og_image' card.name %}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-zinc-500">Cards</span>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">{{ card.name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Top Hero / Card Details -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- Left Column: Card Image -->
+      <div class="lg:col-span-4 xl:col-span-4 flex flex-col items-center">
+        <!-- Card Image -->
+        <div class="relative w-full max-w-xs mx-auto">
+          {% if card.image_uri %}
+            <img
+              src="{{ card.image_uri }}"
+              alt="{{ card.name }}"
+              class="w-full h-auto rounded-2xl border border-zinc-700/60 shadow-2xl transition-transform hover:scale-[1.01]"
+              loading="eager"
+            >
+          {% else %}
+            <div class="aspect-[5/7] w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 flex flex-col items-center justify-center p-6 text-center shadow-lg">
+              <span class="text-4xl mb-3">🎴</span>
+              <span class="font-bold text-zinc-300 text-sm">{{ card.name }}</span>
+              <span class="text-2xs text-zinc-500 mt-1">{{ card.type_line }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column: Card Metadata, Oracle Rules & Legalities -->
+      <div class="lg:col-span-8 xl:col-span-8 space-y-6">
+
+        <!-- Title & Mana Cost Header -->
+        <div class="border-b border-zinc-800 pb-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">{{ card.name }}</h1>
+            {% if card.mana_cost %}
+              <div class="text-lg">{{ card.mana_cost|mana_cost }}</div>
+            {% endif %}
+          </div>
+          <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-sans">
+            <span class="font-medium text-zinc-200">{{ card.type_line }}</span>
+            <span class="text-zinc-600">•</span>
+            <span class="font-mono text-zinc-400">Mana Value: {{ card.cmc|floatformat:0 }}</span>
+          </div>
+        </div>
+
+        <!-- Oracle Rules Text -->
+        <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 space-y-3">
+          <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500">Oracle Text</h2>
+          {% if card.oracle_text %}
+            <div class="text-sm font-sans text-zinc-200 leading-relaxed font-normal">
+              {{ card.oracle_text|oracle_text_format }}
+            </div>
+          {% else %}
+            <p class="text-xs text-zinc-500 italic">No rules text (vanilla card or basic land).</p>
+          {% endif %}
+        </div>
+
+        <!-- Format Legalities & External Links -->
+        <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 divide-y divide-zinc-800/80 overflow-hidden">
+          <!-- Format Legality Section -->
+          <div class="p-5 space-y-3">
+            <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500">Format Legality</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {% for leg in legalities_display %}
+                <div class="flex items-center justify-between rounded-lg border border-zinc-800/80 bg-zinc-900/60 px-3 py-2 text-xs">
+                  <span class="text-zinc-300 font-medium">{{ leg.name }}</span>
+                  {% if leg.badge_type == "legal" %}
+                    <span class="rounded bg-emerald-500/10 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/20">
+                      Legal
+                    </span>
+                  {% elif leg.badge_type == "restricted" %}
+                    <span class="rounded bg-amber-500/10 px-2 py-0.5 text-2xs font-bold text-amber-400 border border-amber-500/20">
+                      Restricted
+                    </span>
+                  {% elif leg.badge_type == "banned" %}
+                    <span class="rounded bg-rose-500/10 px-2 py-0.5 text-2xs font-bold text-rose-400 border border-rose-500/20">
+                      Banned
+                    </span>
+                  {% else %}
+                    <span class="rounded bg-zinc-800/60 px-2 py-0.5 text-2xs font-medium text-zinc-500">
+                      Not Legal
+                    </span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- External Links Section -->
+          <div class="p-5 space-y-3">
+            <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500">External Links</h2>
+            <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2.5">
+              <!-- Scryfall -->
+              <a
+                href="{{ card.scryfall_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 sm:py-1.5 text-xs text-zinc-300 hover:border-orange-500/50 hover:bg-zinc-800/60 hover:text-white transition-colors"
+              >
+                <span class="font-bold text-orange-400">Scryfall</span>
+                <span class="text-zinc-500 text-2xs">↗</span>
+              </a>
+
+              <!-- Gatherer -->
+              <a
+                href="{{ card.gatherer_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 sm:py-1.5 text-xs text-zinc-300 hover:border-sky-500/50 hover:bg-zinc-800/60 hover:text-white transition-colors"
+              >
+                <span class="font-bold text-sky-400">Gatherer</span>
+                <span class="text-zinc-500 text-2xs">↗</span>
+              </a>
+
+              <!-- GoatBots -->
+              <a
+                href="{{ card.goatbots_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 sm:py-1.5 text-xs text-zinc-300 hover:border-amber-500/50 hover:bg-zinc-800/60 hover:text-white transition-colors"
+                title="View on GoatBots"
+              >
+                <span class="font-bold text-amber-400">GoatBots</span>
+                <span class="text-zinc-500 text-2xs">↗</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Printings & Marketplace -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <div class="p-4 sm:p-5 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-bold text-white">Printings &amp; Market Pricing</h2>
+        <p class="text-2xs text-zinc-500 mt-0.5">Pricing is based on daily averages and estimates and cannot be guaranteed.</p>
+      </div>
+      {% if printings %}
+        <span class="text-2xs font-mono text-zinc-400 bg-zinc-800/80 border border-zinc-700/50 px-2.5 py-1 rounded-full">
+          {{ printings|length }} shown
+        </span>
+      {% endif %}
+    </div>
+
+    {% if printings %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-zinc-300">
+          <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap">
+            <tr>
+              <th class="py-3 px-4">Set</th>
+              <th class="py-3 px-4">Printing</th>
+              <th class="py-3 px-4 hidden sm:table-cell">Rarity</th>
+              <th class="py-3 px-4 hidden sm:table-cell">Released</th>
+              <th class="py-3 px-4 text-right">Pricing</th>
+              <th class="py-3 px-4 text-right">Marketplace</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-800/60 whitespace-nowrap">
+            {% for p in printings %}
+              <tr class="hover:bg-zinc-800/40 transition-colors">
+                <td class="py-3 px-4 font-mono">
+                  <span class="rounded bg-zinc-800 px-2 py-0.5 text-2xs font-bold text-emerald-400">
+                    {{ p.set|upper|default:"—" }}
+                  </span>
+                </td>
+                <td
+                  class="py-3 px-4 cursor-pointer"
+                  data-card-image="{{ p.image_uri|default:'' }}"
+                >
+                  <div class="inline-flex items-center gap-2 group/card">
+                    <span class="font-medium text-white group-hover/card:text-emerald-400 transition-colors">{{ p.set_name|default:p.set|upper }}</span>
+                    {% if p.collector_number %}
+                      <span class="font-mono text-2xs text-zinc-500">#{{ p.collector_number }}</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="py-3 px-4 capitalize text-zinc-400 hidden sm:table-cell">
+                  {{ p.rarity|default:"—" }}
+                </td>
+                <td class="py-3 px-4 font-mono text-zinc-400 hidden sm:table-cell">
+                  {{ p.released_at|slice:":4"|default:"—" }}
+                </td>
+                <td class="py-3 px-4 text-right font-mono">
+                  <div class="flex flex-col items-end gap-0.5">
+                    <div class="flex items-center gap-2.5">
+                      {% if p.price_usd %}
+                        <span class="text-emerald-400 font-semibold" title="Paper USD">${{ p.price_usd }}</span>
+                      {% endif %}
+                      {% if p.price_eur %}
+                        <span class="text-sky-400 text-xs" title="Paper EUR">€{{ p.price_eur }}</span>
+                      {% endif %}
+                    </div>
+                    {% if p.price_tix %}
+                      <span class="text-amber-400 text-3xs" title="MTGO TIX">{{ p.price_tix }} tix</span>
+                    {% elif not p.price_usd and not p.price_eur %}
+                      <span class="text-zinc-600 text-2xs">—</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="py-3 px-4 text-right">
+                  <div class="inline-flex items-center justify-end gap-2">
+                    {% if p.tcgplayer_url %}
+                      <a
+                        href="{{ p.tcgplayer_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-2xs font-semibold text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-colors"
+                        title="Buy on TCGPlayer"
+                      >
+                        <span>TCGPlayer</span>
+                        <span>↗</span>
+                      </a>
+                    {% endif %}
+                    {% if p.cardmarket_url %}
+                      <a
+                        href="{{ p.cardmarket_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-2xs font-semibold text-sky-400 hover:bg-sky-500/20 hover:border-sky-500/50 transition-colors"
+                        title="Buy on Cardmarket"
+                      >
+                        <span>Cardmarket</span>
+                        <span>↗</span>
+                      </a>
+                    {% endif %}
+                    {% if p.cardhoarder_url %}
+                      <a
+                        href="{{ p.cardhoarder_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-2xs font-semibold text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 transition-colors"
+                        title="Buy on Cardhoarder"
+                      >
+                        <span>Cardhoarder</span>
+                        <span>↗</span>
+                      </a>
+                    {% endif %}
+                    {% if not p.tcgplayer_url and not p.cardmarket_url and not p.cardhoarder_url %}
+                      <span class="text-zinc-600 font-mono text-2xs">—</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-8 text-center text-xs text-zinc-500 italic">
+        No printings recorded for {{ card.name }}.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Recent Tournament Decks across Formats -->
+  <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-bold text-white">Recent Tournament Decks</h2>
+        <p class="text-2xs text-zinc-500 mt-0.5">Most recent finishes in supported formats where {{ card.name }} is legal</p>
+      </div>
+    </div>
+
+    {% if format_decks %}
+      <!-- Format Tabs -->
+      <div class="border-b border-zinc-800 bg-zinc-950/40 px-4">
+        <nav class="-mb-px flex space-x-2 sm:space-x-4 overflow-x-auto" aria-label="Format Tabs" role="tablist">
+          {% for fd in format_decks %}
+            <button
+              type="button"
+              role="tab"
+              id="tab-{{ fd.format_slug }}"
+              aria-controls="panel-{{ fd.format_slug }}"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              data-format-tab="{{ fd.format_slug }}"
+              class="group inline-flex items-center gap-2 border-b-2 py-3 px-3 text-xs font-medium whitespace-nowrap transition-colors {% if forloop.first %}border-emerald-400 text-white font-semibold{% else %}border-transparent text-zinc-400 hover:border-zinc-700 hover:text-zinc-200{% endif %}"
+            >
+              <span>{{ fd.format_name }}</span>
+              <span class="rounded-full px-2 py-0.5 text-2xs font-mono {% if forloop.first %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-zinc-800 text-zinc-400 group-hover:text-zinc-300{% endif %}">
+                {{ fd.count }}
+              </span>
+            </button>
+          {% endfor %}
+        </nav>
+      </div>
+
+      <!-- Format Panels -->
+      {% for fd in format_decks %}
+        <div
+          id="panel-{{ fd.format_slug }}"
+          role="tabpanel"
+          aria-labelledby="tab-{{ fd.format_slug }}"
+          data-format-panel="{{ fd.format_slug }}"
+          class="{% if not forloop.first %}hidden{% endif %}"
+        >
+          {% if fd.decks %}
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-zinc-300">
+                <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap">
+                  <tr>
+                    <th class="py-3 px-4">Date</th>
+                    <th class="py-3 px-4">Event</th>
+                    <th class="py-3 px-4">Player</th>
+                    <th class="py-3 px-4">Archetype</th>
+                    <th class="py-3 px-4">Copies</th>
+                    <th class="py-3 px-4 text-right">Result</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800/60 font-mono whitespace-nowrap">
+                  {% for d in fd.decks %}
+                    <tr class="hover:bg-zinc-800/40 transition-colors">
+                      <td class="py-3 px-4 text-zinc-400">
+                        <a href="{% url 'core:deck_detail' d.player d.tournament_id %}" class="text-white hover:text-emerald-400 hover:underline">
+                          {{ d.tournament.date|date:"Y-m-d" }}
+                        </a>
+                      </td>
+                      <td class="py-3 px-4 font-sans max-w-xs truncate">
+                        <a href="{% url 'core:tournament_detail' d.format d.tournament_id %}" class="text-zinc-200 hover:text-emerald-400 truncate" title="{{ d.tournament.name }}">
+                          {{ d.tournament.name }}
+                        </a>
+                      </td>
+                      <td class="py-3 px-4 font-sans">
+                        <a href="{% url 'core:player_detail' d.player %}" class="text-emerald-400 hover:underline font-medium">
+                          {{ d.player }}
+                        </a>
+                      </td>
+                      <td class="py-3 px-4 font-sans">
+                        <a href="{% url 'core:archetype_detail' d.format d.archetype_slug %}" class="text-zinc-200 hover:text-emerald-400 font-medium">
+                          {{ d.archetype }}
+                        </a>
+                        {% if d.colors %}
+                          <span class="ml-1.5 align-middle">{{ d.colors|mana_symbols:d.color_name }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="py-3 px-4 font-mono text-zinc-400 text-2xs">
+                        <span class="rounded bg-zinc-800/80 px-2 py-0.5 text-zinc-300 font-sans font-medium">{{ d.card_copies_display }}</span>
+                      </td>
+                      <td class="py-3 px-4 text-right">
+                        <a href="{% url 'core:deck_detail' d.player d.tournament_id %}" class="inline-flex">
+                          {% if d.is_top8 %}
+                            <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors">
+                              {{ d.result }}
+                            </span>
+                          {% elif d.is_5_0 %}
+                            <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30 hover:bg-sky-500/30 transition-colors">
+                              🏆 5-0
+                            </span>
+                          {% else %}
+                            <span class="text-zinc-400 hover:text-white transition-colors">{{ d.result }}</span>
+                          {% endif %}
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-8 text-center text-xs text-zinc-500 italic">
+              No recent tournament decks recorded with <span class="text-zinc-300 font-medium">{{ card.name }}</span> in {{ fd.format_name }}.
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="p-8 text-center text-xs text-zinc-500 italic">
+        {{ card.name }} is not currently legal in any active supported formats.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

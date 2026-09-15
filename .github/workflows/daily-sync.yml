@@ -109,7 +109,8 @@ jobs:
           else
             EXTRA_ARGS="--refresh-days 8"
           fi
-          uv run modometa ingest_tournaments --dir MTG_decklistcache/Tournaments/MTGO $EXTRA_ARGS
+          # Skip kNN here. We'll run it explicitly in the next step
+          uv run modometa ingest_tournaments --skip-knn --dir MTG_decklistcache/Tournaments/MTGO $EXTRA_ARGS
 
       # Skip kNN here. We'll run it explicitly in the next step
       - name: Reclassify tournament decks

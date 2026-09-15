@@ -70,11 +70,15 @@ if [ -n "$DOWNLOAD_URL" ]; then
     fi
 fi
 
-# Fallback: if database still does not exist, run initial migrations so app can start
+# Fallback: if database still does not exist, we'll create an empty one
 if [ ! -f "$DATABASE_PATH" ]; then
     echo "[entrypoint] Warning: No database found at $DATABASE_PATH. Running migrations to initialize an empty database..."
-    modometa migrate --no-input
 fi
+
+# Run migrations always
+# If the DB doesn't exist, this will create it
+# If the DB *does* exist, this will run any migrations that haven't been run yet
+modometa migrate --no-input
 
 # Precompute static search index if missing and database exists
 if [ ! -f "$SEARCH_INDEX_PATH" ] && [ -f "$DATABASE_PATH" ]; then

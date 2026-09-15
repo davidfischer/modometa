@@ -682,19 +682,20 @@ def card_detail(request, slug):
     quoted_name = f'"{card_obj.name}"'
     format_decks = []
     decks_to_show = 50
+    cutoff, _ = get_timeframe_cutoff(365)
     for fmt_slug in legal_active:
         fmt_info = FORMATS.get(fmt_slug)
         decks = list(
             # Tournament has a composite index on (format, date).
             # By filtering on `tournament__format` instead of `format`,
-            # that index will be used properly and this will be much faster
-            # This query can be slow if the card isn't played in a legal format
-            # because many decks will need to be scanned. We could add a cutoff (1 year?)
-            # to speed that up
+            # that index will be used properly and this will be much faster.
+            # The date cutoff here is necessary for performance,
+            # otherwise all decks need to be scanned where a card is legal but unplayed
             Deck.objects.filter(tournament__format=fmt_slug)
             .filter(
                 Q(mainboard__icontains=quoted_name)
-                | Q(sideboard__icontains=quoted_name)
+                | Q(sideboard__icontains=quoted_name),
+                tournament__date__gte=cutoff,
             )
             .select_related("tournament")
             .order_by("-tournament__date", "rank", "id")[:decks_to_show]

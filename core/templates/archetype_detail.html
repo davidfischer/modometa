@@ -202,7 +202,7 @@
         {% for card in core_cards %}
           <div class="flex items-center justify-between text-xs py-2 border-b border-zinc-800/40">
             <div class="flex items-center gap-1.5 truncate min-w-0 pr-3">
-              <a href="{{ card.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ card.image_uri }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
+              <a href="{% url 'core:card_detail' card.slug %}" data-card-image="{{ card.image_uri }}" class="text-zinc-200 hover:text-emerald-400 truncate font-medium">
                 {{ card.name }}
               </a>
               {% if card.mana_cost %}

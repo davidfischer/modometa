@@ -1,13 +1,16 @@
 """Views for Modometa metagame analyzer."""
 
+import base64
 import functools
 import re
+import urllib.parse
 from collections import Counter
 from collections.abc import Iterable
 from datetime import date
 from datetime import timedelta
 from pathlib import Path
 
+import httpx
 import resvg_py
 from django.conf import settings
 from django.core.cache import cache
@@ -27,9 +30,12 @@ from django.utils.cache import patch_cache_control
 
 from core.engine.knn import get_global_knn_index
 from core.engine.search_index import build_search_index_data
+from core.formats import FORMAT_CHOICES
+from core.formats import FORMAT_SLUGS
 from core.formats import FORMATS
 from core.models.card import Card
 from core.models.card import CardLookup
+from core.models.card import generate_card_slug
 from core.models.card import get_gatherer_url
 from core.models.card import get_scryfall_url
 from core.models.card import normalize_card_name
@@ -86,15 +92,22 @@ def get_cards_map(card_names: Iterable[str]) -> dict[str, Card]:
 
     Tries exact name match first, then falls back to CardLookup (for DFCs,
     split cards, aliases), and finally to Card.normalized_name.
+    Defers the heavy printings JSONField to avoid unnecessary payload/memory overhead.
     Returns a dict mapping original card names to Card instances.
     """
     names_set = set(card_names)
-    cards_map = {c.name: c for c in Card.objects.filter(name__in=names_set)}
+    cards_map = {
+        c.name: c for c in Card.objects.filter(name__in=names_set).defer("printings")
+    }
     missing = [n for n in names_set if n not in cards_map]
     if missing:
-        lookups = CardLookup.objects.filter(
-            lookup_name__in=[normalize_card_name(n) for n in missing]
-        ).select_related("card")
+        lookups = (
+            CardLookup.objects.filter(
+                lookup_name__in=[normalize_card_name(n) for n in missing]
+            )
+            .select_related("card")
+            .defer("card__printings")
+        )
         lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
         for n in missing:
             norm = normalize_card_name(n)
@@ -107,7 +120,7 @@ def get_cards_map(card_names: Iterable[str]) -> dict[str, Card]:
             c.normalized_name: c
             for c in Card.objects.filter(
                 normalized_name__in=[normalize_card_name(n) for n in still_missing]
-            )
+            ).defer("printings")
         }
         for n in still_missing:
             norm = normalize_card_name(n)
@@ -315,9 +328,11 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
     card_rows = []
     for name, cnt in sorted_cards:
         card = cards_map.get(name)
+        slug = card.slug if card and card.slug else generate_card_slug(name)
         card_rows.append(
             {
                 "name": name,
+                "slug": slug,
                 "card": card,
                 "mana_cost": card.mana_cost if card and card.mana_cost else "",
                 "type_line": card.type_line if card else "Card",
@@ -631,6 +646,135 @@ def player_detail(request, player):
     )
 
 
+@public_cache(cdn_seconds=3600, browser_seconds=300)
+def card_detail(request, slug):
+    """Card detail view: Card stats, printings, external links, and recent tournament decks."""
+    card_obj = Card.objects.filter(slug=slug).first()
+    if not card_obj:
+        raise Http404(f"Card with slug '{slug}' not found")
+
+    # Display top 25 printings from JSONField (populated via sync_scryfall)
+    raw_printings = (card_obj.printings or [])[:25]
+    printings = []
+    for p in raw_printings:
+        p_dict = dict(p)
+        tcg_id = p.get("tcgplayer_id")
+        mtgo_id = p.get("mtgo_id") or p.get("cardhoarder_id")
+        mkt_id = p.get("cardmarket_id")
+
+        p_dict["tcgplayer_url"] = (
+            f"https://www.tcgplayer.com/product/{tcg_id}" if tcg_id else None
+        )
+        p_dict["cardhoarder_url"] = (
+            f"https://www.cardhoarder.com/cards/{mtgo_id}" if mtgo_id else None
+        )
+        p_dict["cardmarket_url"] = (
+            f"https://www.cardmarket.com/en/Magic/Products?idProduct={mkt_id}"
+            if mkt_id
+            else None
+        )
+        printings.append(p_dict)
+
+    # Formats we support where the card is legal
+    active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
+    legal_active = [slug for slug in active_slugs if card_obj.is_legal_in(slug)]
+
+    quoted_name = f'"{card_obj.name}"'
+    format_decks = []
+    decks_to_show = 50
+    for fmt_slug in legal_active:
+        fmt_info = FORMATS.get(fmt_slug)
+        decks = list(
+            # Tournament has a composite index on (format, date).
+            # By filtering on `tournament__format` instead of `format`,
+            # that index will be used properly and this will be much faster
+            # This query can be slow if the card isn't played in a legal format
+            # because many decks will need to be scanned. We could add a cutoff (1 year?)
+            # to speed that up
+            Deck.objects.filter(tournament__format=fmt_slug)
+            .filter(
+                Q(mainboard__icontains=quoted_name)
+                | Q(sideboard__icontains=quoted_name)
+            )
+            .select_related("tournament")
+            .order_by("-tournament__date", "rank", "id")[:decks_to_show]
+        )
+
+        for d in decks:
+            mb_cnt = sum(
+                item.get("count", 1)
+                for item in d.mainboard
+                if item.get("card") == card_obj.name
+            )
+            sb_cnt = sum(
+                item.get("count", 1)
+                for item in d.sideboard
+                if item.get("card") == card_obj.name
+            )
+            parts = []
+            if mb_cnt > 0:
+                parts.append(f"{mb_cnt}x MB")
+            if sb_cnt > 0:
+                parts.append(f"{sb_cnt}x SB")
+            d.card_copies_display = ", ".join(parts) if parts else ""
+
+        format_decks.append(
+            {
+                "format_slug": fmt_slug,
+                "format_name": fmt_info.name if fmt_info else fmt_slug.capitalize(),
+                "decks": decks,
+                "count": len(decks),
+            }
+        )
+
+    # Legality status across supported formats for display
+    supported_slugs = getattr(settings, "MODOMETA_FORMATS", FORMAT_SLUGS)
+    choices_dict = dict(FORMAT_CHOICES)
+    supported_formats = [
+        (slug, choices_dict.get(slug, slug.capitalize()))
+        for slug in supported_slugs
+        if slug in choices_dict
+    ]
+    legalities_display = []
+    for f_slug, f_name in supported_formats:
+        status = card_obj.legalities.get(f_slug, "not_legal").lower()
+        if f_slug == "vintage" and status in ("legal", "restricted"):
+            display_status = "Restricted" if status == "restricted" else "Legal"
+            badge_type = "restricted" if status == "restricted" else "legal"
+        elif status == "legal":
+            display_status = "Legal"
+            badge_type = "legal"
+        elif status == "banned":
+            display_status = "Banned"
+            badge_type = "banned"
+        elif status == "restricted":
+            display_status = "Restricted"
+            badge_type = "restricted"
+        else:
+            display_status = "Not Legal"
+            badge_type = "not_legal"
+
+        legalities_display.append(
+            {
+                "slug": f_slug,
+                "name": f_name,
+                "status": display_status,
+                "badge_type": badge_type,
+            }
+        )
+
+    return render(
+        request,
+        "card_detail.html",
+        {
+            "card": card_obj,
+            "printings": printings,
+            "format_decks": format_decks,
+            "legalities_display": legalities_display,
+        },
+    )
+
+
 CARD_TYPE_CATEGORIES: list[tuple[str, str, str]] = [
     ("creature", "Creatures", "creature"),
     ("planeswalker", "Planeswalkers", "planeswalker"),
@@ -737,9 +881,11 @@ def deck_detail(request, player, event, deck_index=1):
     annotated_mainboard = []
     for item in deck.mainboard:
         card = cards_map.get(item["card"])
+        slug = card.slug if card and card.slug else generate_card_slug(item["card"])
         annotated_mainboard.append(
             {
                 "card": item["card"],
+                "slug": slug,
                 "card_obj": card,
                 "count": item["count"],
                 "cmc": card.cmc if card else 0.0,
@@ -758,9 +904,11 @@ def deck_detail(request, player, event, deck_index=1):
     annotated_sideboard = []
     for item in deck.sideboard:
         card = cards_map.get(item["card"])
+        slug = card.slug if card and card.slug else generate_card_slug(item["card"])
         annotated_sideboard.append(
             {
                 "card": item["card"],
+                "slug": slug,
                 "card_obj": card,
                 "count": item["count"],
                 "cmc": card.cmc if card else 0.0,
@@ -1823,9 +1971,11 @@ def archetype_detail(request, format, archetype):
     core_cards = []
     for adopt_pct, avg_cp, _cnt, name in top_cards:
         card = cards_map.get(name)
+        slug = card.slug if card and card.slug else generate_card_slug(name)
         core_cards.append(
             {
                 "name": name,
+                "slug": slug,
                 "card": card,
                 "mana_cost": card.mana_cost if card and card.mana_cost else "",
                 "adoption_pct": adopt_pct,
@@ -2265,6 +2415,175 @@ def player_og_image(request, player):
             "conversion_rate": conversion_rate,
             "formats_played": formats_played,
             "heatmap": heatmap,
+        },
+        request=request,
+    )
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def card_og_image(request, card):
+    """Serve dynamic Open Graph PNG image for a card, embedding the Scryfall artwork."""
+    card_query = urllib.parse.unquote(card).strip()
+    norm = normalize_card_name(card_query)
+
+    card_obj = (
+        Card.objects.filter(name=card_query).defer("printings").first()
+        or Card.objects.filter(name__iexact=card_query).defer("printings").first()
+        or Card.objects.filter(normalized_name=norm).defer("printings").first()
+    )
+
+    if not card_obj and norm:
+        lookup = (
+            CardLookup.objects.filter(lookup_name=norm)
+            .select_related("card")
+            .defer("card__printings")
+            .first()
+        )
+        if lookup:
+            card_obj = lookup.card
+
+    if not card_obj and "-" in card_query:
+        spaced_norm = normalize_card_name(card_query.replace("-", " "))
+        card_obj = (
+            Card.objects.filter(normalized_name=spaced_norm).defer("printings").first()
+        )
+        if not card_obj:
+            lookup = (
+                CardLookup.objects.filter(lookup_name=spaced_norm)
+                .select_related("card")
+                .defer("card__printings")
+                .first()
+            )
+            if lookup:
+                card_obj = lookup.card
+
+    if not card_obj:
+        raise Http404(f"Card '{card_query}' not found.")
+
+    cache_key = f"card_og_img_data_uri:{card_obj.id}"
+    image_data_uri = cache.get(cache_key)
+    if not image_data_uri and card_obj.image_uri:
+        try:
+            headers = {
+                "User-Agent": getattr(
+                    settings,
+                    "USER_AGENT",
+                    "Modometa/1.0 (https://github.com/modometa/modometa)",
+                )
+            }
+            with httpx.Client(timeout=5.0, follow_redirects=True) as client:
+                resp = client.get(card_obj.image_uri, headers=headers)
+                if resp.status_code == 200:
+                    content_type = resp.headers.get("content-type", "image/jpeg")
+                    b64_img = base64.b64encode(resp.content).decode("ascii")
+                    image_data_uri = f"data:{content_type};base64,{b64_img}"
+                    cache.set(cache_key, image_data_uri, timeout=604800)
+        except Exception:
+            image_data_uri = None
+
+    quoted_name = f'"{card_obj.name}"'
+    cutoff, _ = get_timeframe_cutoff(365)
+    format_counts_qs = (
+        Deck.objects.filter(
+            Q(mainboard__icontains=quoted_name) | Q(sideboard__icontains=quoted_name),
+            tournament__date__gte=cutoff,
+        )
+        .order_by()
+        .values("format")
+        .annotate(cnt=Count("id"))
+    )
+    format_counts = {item["format"]: item["cnt"] for item in format_counts_qs}
+    total_decks = sum(format_counts.values())
+
+    supported_slugs = getattr(settings, "MODOMETA_FORMATS", FORMAT_SLUGS)
+    choices_dict = dict(FORMAT_CHOICES)
+    supported_formats = [
+        (slug, choices_dict.get(slug, slug.capitalize()))
+        for slug in supported_slugs
+        if slug in choices_dict
+    ]
+    legal_formats = [
+        f_name for f_slug, f_name in supported_formats if card_obj.is_legal_in(f_slug)
+    ]
+
+    total_fmts = len(supported_formats)
+    row0_count = min(4, total_fmts)
+    row1_count = total_fmts - row0_count
+
+    legalities_display = []
+    for idx, (f_slug, f_name) in enumerate(supported_formats):
+        if idx < row0_count:
+            col = idx
+            row0_width = row0_count * 154 + max(0, row0_count - 1) * 18
+            start_x = (700 - row0_width) // 2
+            x = start_x + col * 172
+            y = 14
+        else:
+            col = idx - row0_count
+            row1_width = row1_count * 154 + max(0, row1_count - 1) * 18
+            start_x = (700 - row1_width) // 2
+            x = start_x + col * 172
+            y = 100
+        status = card_obj.legalities.get(f_slug, "not_legal").lower()
+        if f_slug == "vintage" and status in ("legal", "restricted"):
+            display_status = "Restricted" if status == "restricted" else "Legal"
+            badge_color = "#34d399" if status != "restricted" else "#fbbf24"
+            badge_bg = "#064e3b" if status != "restricted" else "#78350f"
+        elif status == "legal":
+            display_status = "Legal"
+            badge_color = "#34d399"
+            badge_bg = "#064e3b"
+        elif status == "restricted":
+            display_status = "Restricted"
+            badge_color = "#fbbf24"
+            badge_bg = "#78350f"
+        elif status == "banned":
+            display_status = "Banned"
+            badge_color = "#f87171"
+            badge_bg = "#881337"
+        else:
+            display_status = "Not Legal"
+            badge_color = "#71717a"
+            badge_bg = "#27272a"
+
+        legalities_display.append(
+            {
+                "name": f_name,
+                "status": display_status,
+                "badge_color": badge_color,
+                "badge_bg": badge_bg,
+                "x": x,
+                "y": y,
+            }
+        )
+
+    colors_str = "".join(card_obj.colors or card_obj.color_identity or [])
+    mana_pill = build_mana_pill(colors_str)
+    if mana_pill:
+        mana_pill["y"] = 135
+
+    if format_counts:
+        top_slug = max(
+            format_counts,
+            key=lambda f: (
+                format_counts[f],
+                -supported_slugs.index(f) if f in supported_slugs else -999,
+            ),
+        )
+        top_format_display = choices_dict.get(top_slug, top_slug.capitalize())
+    else:
+        top_format_display = "-"
+
+    return render_og_png(
+        "og/card_og.svg",
+        {
+            "card": card_obj,
+            "image_data_uri": image_data_uri,
+            "total_decks": f"{total_decks:,}",
+            "legal_format_count": len(legal_formats),
+            "top_format_display": top_format_display,
+            "legalities_display": legalities_display,
+            "mana_pill": mana_pill,
         },
         request=request,
     )

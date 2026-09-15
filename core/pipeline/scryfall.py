@@ -30,19 +30,23 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from django.conf import settings
 from django.db import transaction
 from tqdm import tqdm
 
 from core.formats import FORMAT_SLUGS
 from core.models.card import Card
 from core.models.card import CardLookup
+from core.models.card import generate_card_slug
 from core.models.card import normalize_card_name
 
 
 logger = logging.getLogger(__name__)
 
 SCRYFALL_BULK_URL = "https://api.scryfall.com/bulk-data"
-USER_AGENT = "Modometa/1.0 (https://github.com/modometa/modometa)"
+USER_AGENT = getattr(
+    settings, "USER_AGENT", "Modometa/1.0 (https://github.com/modometa/modometa)"
+)
 
 
 def fetch_default_cards_download_url() -> str:
@@ -340,6 +344,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
 
     # Map oracle_id -> dictionary of canonical card info + best (original) image tracking
     cards_by_oracle: dict[str, dict[str, Any]] = {}
+    printings_by_oracle: dict[str, list[dict[str, Any]]] = {}
     lookup_map: dict[str, dict[str, Any]] = {}
 
     with open_fn(json_path, "rt", encoding="utf-8") as fp:
@@ -408,6 +413,29 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                     rec["id"] = card_id
                     rec["image_uri"] = img
                     rec["best_rank"] = print_rank
+
+            # Track printing data
+            prices = item.get("prices") or {}
+            printing_dict = {
+                "id": card_id,
+                "set": item.get("set", "").lower(),
+                "set_name": item.get("set_name", ""),
+                "collector_number": str(item.get("collector_number", "")),
+                "released_at": item.get("released_at", ""),
+                "rarity": item.get("rarity", ""),
+                "image_uri": img,
+                "digital": item.get("digital", False),
+                "games": item.get("games") or [],
+                "tcgplayer_id": item.get("tcgplayer_id"),
+                "cardmarket_id": item.get("cardmarket_id"),
+                "mtgo_id": item.get("mtgo_id"),
+                "price_usd": prices.get("usd"),
+                "price_eur": prices.get("eur"),
+                "price_tix": prices.get("tix"),
+            }
+            if oracle_id not in printings_by_oracle:
+                printings_by_oracle[oracle_id] = []
+            printings_by_oracle[oracle_id].append(printing_dict)
 
             canonical_name = cards_by_oracle[oracle_id]["name"]
 
@@ -493,12 +521,30 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                         "priority": prio,
                     }
 
+    # Assign unique slugs and attach printings
+    used_slugs: dict[str, str] = {}
+    for oracle_id, d in cards_by_oracle.items():
+        base_slug = generate_card_slug(d["name"])
+        candidate = base_slug
+        counter = 1
+        while candidate in used_slugs and used_slugs[candidate] != oracle_id:
+            candidate = f"{base_slug}-{counter}"
+            counter += 1
+        used_slugs[candidate] = oracle_id
+        d["slug"] = candidate
+
+        # Sort printings chronologically (newest first)
+        p_list = printings_by_oracle.get(oracle_id, [])
+        p_list.sort(key=lambda x: x.get("released_at") or "", reverse=True)
+        d["printings"] = p_list
+
     # Build model instances
     card_objects = [
         Card(
             id=d["id"],
             oracle_id=d["oracle_id"],
             name=d["name"],
+            slug=d["slug"],
             normalized_name=d["normalized_name"],
             mana_cost=d["mana_cost"],
             cmc=d["cmc"],
@@ -510,6 +556,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
             legalities=d["legalities"],
             is_land=d["is_land"],
             is_basic_land=d["is_basic_land"],
+            printings=d["printings"],
         )
         for d in cards_by_oracle.values()
     ]

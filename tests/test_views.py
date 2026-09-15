@@ -1465,7 +1465,7 @@ def test_search_box_in_header_replaces_window_switcher(client):
 
     # Global search input must exist
     assert 'id="global-search-input"' in content
-    assert 'placeholder="Search archetypes &amp; players..."' in content
+    assert 'placeholder="Search cards, archetypes &amp; players..."' in content
 
     # Header should not contain Window: timeframe switcher
     header_start = content.find("<header")

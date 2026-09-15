@@ -79,6 +79,10 @@ def test_card_model_helpers():
         card.get_gatherer_url()
         == "https://gatherer.wizards.com/Pages/Card/Details.aspx?name=Phelia%2C+Exuberant+Shepherd"
     )
+    card.slug = "phelia-exuberant-shepherd"
+    assert (
+        card.goatbots_url == "https://www.goatbots.com/card/phelia-exuberant-shepherd"
+    )
 
 
 def test_card_verbose_names():
@@ -314,3 +318,48 @@ def test_deck_get_absolute_url_and_admin(admin_client):
     assert (
         resp.url == "http://testserver/player/Ark4n/deck/legacy-challenge-2024-05-10/"
     )
+
+
+@pytest.mark.django_db
+def test_card_slug_auto_generation_on_save():
+    card = Card.objects.create(name="Jace, the Mind Sculptor")
+    assert card.slug == "jace-the-mind-sculptor"
+    assert card.get_absolute_url() == "/card/jace-the-mind-sculptor/"
+
+    # Test collision avoidance
+    card2 = Card.objects.create(name="Jace, the Mind Sculptor")
+    assert card2.slug == "jace-the-mind-sculptor-1"
+    assert card2.get_absolute_url() == "/card/jace-the-mind-sculptor-1/"
+
+
+@pytest.mark.django_db
+def test_card_pricing_properties():
+    card = Card.objects.create(
+        name="Sol Ring",
+        printings=[
+            {
+                "id": "print-1",
+                "set": "lea",
+                "collector_number": "269",
+                "tcgplayer_id": 1289,
+                "mtgo_id": 200,
+                "price_usd": "800.00",
+                "price_eur": "750.00",
+                "price_tix": "3.50",
+            },
+            {
+                "id": "print-2",
+                "set": "c21",
+                "collector_number": "263",
+                "price_usd": "1.50",
+                "price_eur": "1.20",
+                "price_tix": "0.10",
+            },
+        ],
+    )
+    assert card.price_usd == "800.00"
+    assert card.price_eur == "750.00"
+    assert card.price_tix == "3.50"
+    assert "https://www.tcgplayer.com/product/1289" in card.tcgplayer_url
+    assert "https://www.cardhoarder.com/cards/200" in card.cardhoarder_url
+    assert "cardmarket.com" in card.cardmarket_url

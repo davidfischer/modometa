@@ -280,8 +280,50 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    function normalizeSearch(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['’]/g, '')
+        .replace(/[^a-z0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function prepareSearchIndex(data) {
+      if (!data || data._prepared) return;
+      data._prepared = true;
+
+      for (let i = 0; i < (data.cards || []).length; i++) {
+        const item = data.cards[i];
+        const c = typeof item === 'string' ? { name: item, slug: '' } : item;
+        const cName = c.name || '';
+        c.name = cName;
+        c.slug = c.slug || '';
+        c.norm = normalizeSearch(cName);
+        c.lower = cName.toLowerCase();
+        c.noSpace = c.norm.replace(/\s+/g, '');
+        data.cards[i] = c;
+      }
+
+      for (const a of data.archetypes || []) {
+        a.norm = normalizeSearch(a.name || '');
+        a.lower = (a.name || '').toLowerCase();
+        a.fmtLower = (a.format || '').toLowerCase();
+        a.noSpace = a.norm.replace(/\s+/g, '');
+      }
+
+      for (const p of data.players || []) {
+        p.norm = normalizeSearch(p.name || '');
+        p.lower = (p.name || '').toLowerCase();
+        p.noSpace = p.norm.replace(/\s+/g, '');
+      }
+    }
+
     function ensureSearchData(callback) {
       if (searchData) {
+        prepareSearchIndex(searchData);
         if (callback) callback(searchData);
         return;
       }
@@ -290,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fetch('/api/search-index/')
         .then(res => res.json())
         .then(data => {
+          prepareSearchIndex(data);
           searchData = data;
           isFetching = false;
           if (callback) callback(searchData);
@@ -360,42 +403,117 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const qLower = q.toLowerCase();
+      prepareSearchIndex(searchData);
+
+      const rawQ = q.toLowerCase();
+      const qNorm = normalizeSearch(q);
+      const qTokens = qNorm.split(' ').filter(Boolean);
+      const qNoSpace = qNorm.replace(/\s+/g, '');
+
+      // Filter & score cards
+      const matchedCards = [];
+      for (const c of searchData.cards || []) {
+        let score = 0;
+        if (c.lower === rawQ) {
+          score = 500;
+        } else if (c.lower.startsWith(rawQ)) {
+          score = 350;
+        } else if (c.lower.includes(rawQ)) {
+          score = 250;
+        } else if (c.norm === qNorm) {
+          score = 220;
+        } else if (c.norm.startsWith(qNorm)) {
+          score = 180;
+        } else if (c.norm.includes(qNorm)) {
+          score = 120;
+        } else if (qTokens.length > 1) {
+          let inOrder = true;
+          let lastIdx = -1;
+          for (const tok of qTokens) {
+            const idx = c.norm.indexOf(tok, lastIdx + 1);
+            if (idx === -1) {
+              inOrder = false;
+              break;
+            }
+            lastIdx = idx;
+          }
+          if (inOrder) {
+            score = 80;
+          } else if (qTokens.every(tok => c.norm.includes(tok))) {
+            score = 60;
+          }
+        } else if (qNoSpace.length >= 4) {
+          if (c.noSpace === qNoSpace) {
+            score = 190;
+          } else if (c.noSpace.startsWith(qNoSpace)) {
+            score = 130;
+          } else if (c.noSpace.includes(qNoSpace)) {
+            score = 70;
+          }
+        }
+
+        if (score > 0) {
+          matchedCards.push({ ...c, score });
+        }
+      }
+      matchedCards.sort((a, b) => b.score - a.score || a.name.length - b.name.length || a.name.localeCompare(b.name));
+      const topCards = matchedCards.slice(0, 6);
 
       // Filter & score archetypes
       const matchedArchetypes = [];
       for (const a of searchData.archetypes || []) {
-        const nameLower = a.name.toLowerCase();
-        const fmtLower = (a.format || '').toLowerCase();
-        if (nameLower.includes(qLower) || fmtLower.includes(qLower)) {
-          let score = 0;
-          if (nameLower.startsWith(qLower)) score += 100;
-          if (activeFormat && fmtLower === activeFormat) score += 50;
+        let score = 0;
+        if (a.lower === rawQ || a.norm === qNorm) {
+          score = 250;
+        } else if (a.lower.startsWith(rawQ) || a.norm.startsWith(qNorm)) {
+          score = 150;
+        } else if (a.lower.includes(rawQ) || a.norm.includes(qNorm)) {
+          score = 100;
+        } else if (qTokens.length > 1 && qTokens.every(tok => a.norm.includes(tok))) {
+          score = 75;
+        } else if (qNoSpace.length >= 4 && a.noSpace.includes(qNoSpace)) {
+          score = 60;
+        } else if (a.fmtLower.includes(rawQ)) {
+          score = 20;
+        }
+
+        if (score > 0) {
+          if (activeFormat && a.fmtLower === activeFormat) score += 50;
           score += Math.min(a.count || 0, 50);
           matchedArchetypes.push({ ...a, score });
         }
       }
-      matchedArchetypes.sort((a, b) => b.score - a.score);
+      matchedArchetypes.sort((a, b) => b.score - a.score || (b.count || 0) - (a.count || 0));
       const topArchetypes = matchedArchetypes.slice(0, 6);
 
       // Filter & score players
       const matchedPlayers = [];
       for (const p of searchData.players || []) {
-        const nameLower = p.name.toLowerCase();
-        if (nameLower.includes(qLower)) {
-          let score = 0;
-          if (nameLower.startsWith(qLower)) score += 100;
+        let score = 0;
+        if (p.lower === rawQ || p.norm === qNorm) {
+          score = 200;
+        } else if (p.lower.startsWith(rawQ) || p.norm.startsWith(qNorm)) {
+          score = 120;
+        } else if (p.lower.includes(rawQ) || p.norm.includes(qNorm)) {
+          score = 80;
+        } else if (qTokens.length > 1 && qTokens.every(tok => p.norm.includes(tok))) {
+          score = 50;
+        } else if (qNoSpace.length >= 4 && p.noSpace.includes(qNoSpace)) {
+          score = 40;
+        }
+
+        if (score > 0) {
           score += Math.min(p.count || 0, 50);
           matchedPlayers.push({ ...p, score });
         }
       }
-      matchedPlayers.sort((a, b) => b.score - a.score);
+      matchedPlayers.sort((a, b) => b.score - a.score || (b.count || 0) - (a.count || 0));
       const topPlayers = matchedPlayers.slice(0, 8);
 
-      if (topArchetypes.length === 0 && topPlayers.length === 0) {
+      if (topCards.length === 0 && topArchetypes.length === 0 && topPlayers.length === 0) {
         searchDropdown.innerHTML = `
           <div class="px-4 py-6 text-center text-xs text-zinc-500">
-            No archetypes or players found matching "<span class="text-zinc-300">${escapeHtml(q)}</span>"
+            No cards, archetypes, or players found matching "<span class="text-zinc-300">${escapeHtml(q)}</span>"
           </div>
         `;
         searchDropdown.classList.remove('hidden');
@@ -405,9 +523,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let html = '';
 
-      if (topArchetypes.length > 0) {
+      if (topCards.length > 0) {
         html += `
           <div class="px-3 py-1.5 text-2xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-950/80 border-b border-zinc-800/60">
+            Cards
+          </div>
+          <div class="divide-y divide-zinc-800/30">
+        `;
+        for (const c of topCards) {
+          const cardSlug = c.slug || c.name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '') || 'card';
+          const url = `/card/${encodeURIComponent(cardSlug)}/`;
+          html += `
+            <a href="${url}" data-search-item class="flex items-center justify-between px-3.5 py-2 text-xs text-zinc-200 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer" role="option">
+              <div class="flex items-center gap-2 truncate min-w-0 pr-2">
+                <span class="text-emerald-400 text-xs shrink-0">🃏</span>
+                <span class="font-medium truncate text-white">${escapeHtml(c.name)}</span>
+              </div>
+            </a>
+          `;
+        }
+        html += '</div>';
+      }
+
+      if (topArchetypes.length > 0) {
+        html += `
+          <div class="px-3 py-1.5 text-2xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-950/80 ${topCards.length > 0 ? 'border-t' : ''} border-b border-zinc-800/60">
             Archetypes
           </div>
           <div class="divide-y divide-zinc-800/30">
@@ -533,4 +673,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initScrollRight();
   requestAnimationFrame(initScrollRight);
+
+  // 7. Format Tabs Handler (Card Detail View)
+  const formatTabButtons = document.querySelectorAll('[data-format-tab]');
+  if (formatTabButtons.length > 0) {
+    formatTabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetFormat = btn.getAttribute('data-format-tab');
+        formatTabButtons.forEach(b => {
+          const isSelected = b === btn;
+          b.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+          const countBadge = b.querySelector('span:last-child');
+          if (isSelected) {
+            b.classList.add('border-emerald-400', 'text-white', 'font-semibold');
+            b.classList.remove('border-transparent', 'text-zinc-400');
+            if (countBadge) {
+              countBadge.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+              countBadge.classList.remove('bg-zinc-800', 'text-zinc-400');
+            }
+          } else {
+            b.classList.remove('border-emerald-400', 'text-white', 'font-semibold');
+            b.classList.add('border-transparent', 'text-zinc-400');
+            if (countBadge) {
+              countBadge.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+              countBadge.classList.add('bg-zinc-800', 'text-zinc-400');
+            }
+          }
+        });
+
+        document.querySelectorAll('[data-format-panel]').forEach(panel => {
+          if (panel.getAttribute('data-format-panel') === targetFormat) {
+            panel.classList.remove('hidden');
+          } else {
+            panel.classList.add('hidden');
+          }
+        });
+      });
+    });
+  }
 });

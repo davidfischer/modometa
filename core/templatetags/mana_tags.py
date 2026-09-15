@@ -83,3 +83,27 @@ def mana_cost_filter(cost_str) -> str:
 
     separator = ' <span class="text-zinc-500 font-sans mx-1 text-2xs">//</span> '
     return mark_safe(separator.join(formatted_parts))  # noqa: S308
+
+
+@register.filter(name="oracle_text_format", is_safe=True)
+def oracle_text_format_filter(text) -> str:
+    """Format oracle rules text, replacing mana/tap codes with Mana font icons and preserving line breaks.
+
+    Usage in templates:
+        {{ card.oracle_text|oracle_text_format }}
+    """
+    if not text:
+        return ""
+
+    escaped = html.escape(str(text))
+
+    def _replace_sym(match: re.Match) -> str:
+        return _format_symbol(match.group(1))
+
+    formatted = re.sub(r"\{([^}]+)\}", _replace_sym, escaped)
+    paragraphs = [
+        f'<p class="mt-1.5 first:mt-0 leading-relaxed">{line}</p>'
+        for line in formatted.split("\n")
+        if line.strip()
+    ]
+    return mark_safe("\n".join(paragraphs))  # noqa: S308

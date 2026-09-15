@@ -1,4 +1,13 @@
+from django.conf import settings
+
+from core.pipeline.scryfall import USER_AGENT
 from core.pipeline.scryfall import _calculate_print_rank
+
+
+def test_user_agent_setting():
+    assert hasattr(settings, "USER_AGENT")
+    assert "Modometa" in settings.USER_AGENT
+    assert USER_AGENT == settings.USER_AGENT
 
 
 def test_print_rank_alpha_vs_beta():

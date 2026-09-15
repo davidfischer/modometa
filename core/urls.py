@@ -22,6 +22,9 @@ urlpatterns = [
         views.deck_detail,
         name="deck_detail_disambiguated",
     ),
+    # Card views
+    path("card/<path:card>/og.png", views.card_og_image, name="card_og_image"),
+    path("card/<slug:slug>/", views.card_detail, name="card_detail"),
     # Search API
     path("api/search-index/", views.search_index, name="search_index"),
     # Format views

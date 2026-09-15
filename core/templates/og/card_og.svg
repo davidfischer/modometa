@@ -1,0 +1,75 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="880" y="42" width="260" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1010" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">CARD PROFILE</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Left Column: Scryfall Artwork / Card -->
+  <g transform="translate(70, 118)">
+    <rect x="-2" y="-2" width="314" height="438" rx="18" fill="#18181b" stroke="#27272a" stroke-width="2"/>
+    {% if image_data_uri %}
+      <clipPath id="card-og-img-clip">
+        <rect x="0" y="0" width="310" height="434" rx="16"/>
+      </clipPath>
+      <image href="{{ image_data_uri }}" x="0" y="0" width="310" height="434" clip-path="url(#card-og-img-clip)" preserveAspectRatio="xMidYMid slice"/>
+    {% else %}
+      <rect x="0" y="0" width="310" height="434" rx="16" fill="#121214"/>
+      <text x="155" y="210" font-size="64" text-anchor="middle" fill="#71717a">🎴</text>
+      <text x="155" y="260" class="font-sans" font-size="18" font-weight="600" text-anchor="middle" fill="#a1a1aa">{{ card.name }}</text>
+    {% endif %}
+  </g>
+
+  <!-- Right Column: Card Title, Mana Cost, Stats, and Legalities -->
+  <g transform="translate(420, 0)">
+    <!-- Title & Mana Cost -->
+    <text x="0" y="165" class="font-sans" font-size="38" font-weight="800" fill="#ffffff">{{ card.name }}</text>
+
+    {% if mana_pill %}
+      <g transform="translate({{ mana_pill.x|add:"-420" }}, {{ mana_pill.y }})">
+        <rect x="0" y="0" width="{{ mana_pill.width }}" height="{{ mana_pill.height }}" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+        {% for s in mana_pill.symbols %}
+          <use href="#{{ s.id }}" x="{{ s.x }}" y="{{ s.y }}" width="28" height="28"/>
+        {% endfor %}
+      </g>
+    {% endif %}
+
+    <!-- Type Line & Mana Value -->
+    <text x="0" y="202" class="font-sans" font-size="17" fill="#a1a1aa">{{ card.type_line }}{% if card.cmc is not None %} • Mana Value: {{ card.cmc|floatformat:0 }}{% endif %}</text>
+
+    <!-- Stats Row (3 cards) -->
+    <g transform="translate(0, 225)">
+      <!-- Total Decks -->
+      <rect x="0" y="0" width="220" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+      <text x="16" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">TOTAL COMPETITIVE DECKS</text>
+      <text x="16" y="54" class="font-mono" font-size="24" font-weight="700" fill="#10b981">{{ total_decks }}</text>
+      <text x="125" y="53" class="font-mono" font-size="12" fill="#71717a">last year</text>
+
+      <!-- Legal Formats -->
+      <rect x="240" y="0" width="220" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+      <text x="256" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">LEGAL FORMATS</text>
+      <text x="256" y="54" class="font-mono" font-size="24" font-weight="700" fill="#38bdf8">{{ legal_format_count }}</text>
+      <text x="315" y="53" class="font-mono" font-size="12" fill="#71717a">supported</text>
+
+      <!-- Primary Format -->
+      <rect x="480" y="0" width="220" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+      <text x="496" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">PRIMARY FORMAT</text>
+      <text x="496" y="54" class="font-mono" font-size="22" font-weight="700" fill="#ffffff">{{ top_format_display }}</text>
+    </g>
+
+    <!-- Format Legality Label & Grid -->
+    <text x="0" y="335" class="font-mono" font-size="12" font-weight="600" fill="#71717a" letter-spacing="0.08em">FORMAT LEGALITY</text>
+    <g transform="translate(0, 350)">
+      <rect x="0" y="0" width="700" height="195" rx="14" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+      {% for leg in legalities_display %}
+        <g transform="translate({{ leg.x }}, {{ leg.y }})">
+          <rect x="0" y="0" width="154" height="72" rx="8" fill="#121214" stroke="#27272a" stroke-width="1"/>
+          <text x="14" y="27" class="font-sans" font-size="13" font-weight="600" fill="#ffffff">{{ leg.name }}</text>
+          <rect x="14" y="39" width="76" height="22" rx="11" fill="{{ leg.badge_bg }}"/>
+          <text x="52" y="54" class="font-mono" font-size="10" font-weight="700" fill="{{ leg.badge_color }}" text-anchor="middle">{{ leg.status }}</text>
+        </g>
+      {% endfor %}
+    </g>
+  </g>
+{% endblock %}

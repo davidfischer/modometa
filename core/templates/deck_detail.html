@@ -145,7 +145,7 @@
                       <li class="flex items-center justify-between py-1 border-b border-zinc-800/40 last:border-0 hover:bg-zinc-800/30 px-1 rounded">
                         <div class="flex items-center gap-2">
                           <span class="font-mono text-zinc-500 w-4 text-right">{{ item.count }}</span>
-                          <a href="{{ item.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
+                          <a href="{% url 'core:card_detail' item.slug %}" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
                             {{ item.card }}
                           </a>
                           {% if item.is_banned or item.card in deck.illegal_cards %}
@@ -179,7 +179,7 @@
                 <li class="flex items-center justify-between py-1 border-b border-zinc-800/40 last:border-0 hover:bg-zinc-800/30 px-1 rounded">
                   <div class="flex items-center gap-2">
                     <span class="font-mono text-zinc-500 w-4 text-right">{{ item.count }}</span>
-                    <a href="{{ item.scryfall_url }}" target="_blank" rel="noopener" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
+                    <a href="{% url 'core:card_detail' item.slug %}" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
                       {{ item.card }}
                     </a>
                     {% if item.is_banned or item.card in deck.illegal_cards %}

@@ -18,6 +18,7 @@ class Tournament(models.Model):
     date = models.DateField(db_index=True)
     uri = models.URLField(max_length=512, blank=True, null=True, verbose_name="URI")
     deck_count = models.IntegerField(default=0)
+    player_count = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

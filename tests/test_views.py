@@ -112,9 +112,31 @@ def test_format_overview_view(client):
 
 @pytest.mark.django_db
 def test_tournament_list_view(client):
+    Tournament.objects.create(
+        id="legacy-challenge-test",
+        name="Legacy Challenge 64",
+        format="legacy",
+        event_type="challenge",
+        date=date(2024, 1, 1),
+        player_count=64,
+        deck_count=32,
+    )
+    Tournament.objects.create(
+        id="legacy-league-test",
+        name="Legacy League",
+        format="legacy",
+        event_type="league",
+        date=date(2024, 1, 2),
+        player_count=None,
+        deck_count=15,
+    )
     response = client.get("/legacy/tournaments/")
     assert response.status_code == 200
-    assert b"Legacy Tournaments" in response.content
+    content = response.content.decode()
+    assert "Legacy Tournaments" in content
+    assert ">Players</th>" in content
+    assert "64" in content
+    assert "—" in content
 
 
 @pytest.mark.django_db
@@ -125,6 +147,7 @@ def test_tournament_detail_view(client):
         format="legacy",
         event_type="challenge",
         date=date(2024, 1, 1),
+        player_count=42,
     )
     Deck.objects.create(
         id="legacy-challenge-32-test_testplayer_1",
@@ -146,6 +169,7 @@ def test_tournament_detail_view(client):
     assert b">Deck</th>" in response.content
     assert b">Player</th>" in response.content
     assert b'title="Dimir"' in response.content
+    assert b"42 Players" in response.content
 
 
 @pytest.mark.django_db
@@ -1262,6 +1286,7 @@ def test_faq_view(client):
     assert "Scryfall" in content
     assert "https://github.com/andrewgioia/Mana" in content
     assert "MTG_decklistcache" in content
+    assert "modometa-mtgo-data" in content
     assert "top 32 decks" in content
     assert "Last Chance Qualifiers" in content
     assert "Preliminaries" in content

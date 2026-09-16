@@ -254,3 +254,86 @@ def test_refresh_days_calculates_from_database_latest_date(tmp_path: Path):
     t_older.refresh_from_db()
     assert t_older.decks.count() == 1
     assert not Deck.objects.filter(player="P_Should_Be_Skipped").exists()
+
+
+@pytest.mark.django_db
+def test_ingest_tournament_player_count(tmp_path: Path):
+    """Test that PlayerCount from challenge tournament JSON is saved to the database."""
+    tourn_dir = tmp_path / "Tournaments" / "MTGO"
+    tourn_dir.mkdir(parents=True)
+
+    challenge_file = tourn_dir / "modern-challenge-32-2026-09-10.json"
+    league_file = tourn_dir / "modern-league-2026-09-10.json"
+    malformed_file = tourn_dir / "modern-challenge-32-2026-09-11.json"
+
+    challenge_file.write_text(
+        json.dumps(
+            {
+                "Tournament": {
+                    "Name": "Modern Challenge 32",
+                    "Date": "2026-09-10",
+                    "Uri": "https://www.mtgo.com/1",
+                    "PlayerCount": 93,
+                },
+                "Decks": [
+                    {
+                        "Result": "1st Place",
+                        "AnchorUri": "https://www.mtgo.com/1#deck_1",
+                        "Player": "Alice",
+                        "Mainboard": [{"CardName": "Lightning Bolt", "Count": 4}],
+                        "Sideboard": [],
+                    }
+                ],
+            }
+        )
+    )
+
+    league_file.write_text(
+        json.dumps(
+            {
+                "Tournament": {
+                    "Name": "Modern League",
+                    "Date": "2026-09-10",
+                    "Uri": "https://www.mtgo.com/2",
+                },
+                "Decks": [
+                    {
+                        "Result": "5-0",
+                        "AnchorUri": "https://www.mtgo.com/2#deck_1",
+                        "Player": "Bob",
+                        "Mainboard": [{"CardName": "Lightning Bolt", "Count": 4}],
+                        "Sideboard": [],
+                    }
+                ],
+            }
+        )
+    )
+
+    malformed_file.write_text(
+        json.dumps(
+            {
+                "Tournament": {
+                    "Name": "Modern Challenge 32",
+                    "Date": "2026-09-11",
+                    "Uri": "https://www.mtgo.com/3",
+                    "PlayerCount": "invalid-number",
+                },
+                "Decks": [],
+            }
+        )
+    )
+
+    call_command(
+        "ingest_tournaments",
+        dir=str(tourn_dir),
+        skip_knn=True,
+    )
+
+    t_challenge = Tournament.objects.get(id="modern-challenge-32-2026-09-10")
+    assert t_challenge.player_count == 93
+
+    t_league = Tournament.objects.get(id="modern-league-2026-09-10")
+    assert t_league.player_count is None
+
+    t_malformed = Tournament.objects.get(id="modern-challenge-32-2026-09-11")
+    assert t_malformed.player_count is None

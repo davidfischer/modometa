@@ -8,6 +8,11 @@ on:
     - cron: "24 5 * * *"
   workflow_dispatch:
     inputs:
+      fresh_database:
+        description: "Start with a totally fresh database rather than pulling from R2"
+        required: false
+        type: boolean
+        default: false
       force_ingest:
         description: "Force re-ingest all tournament files"
         required: false
@@ -67,6 +72,7 @@ jobs:
           echo "R2_ENDPOINT=https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" >> $GITHUB_ENV
 
       - name: Pull current database and kNN index from R2
+        if: ${{ !inputs.fresh_database }}
         run: |
           mkdir -p data
           echo "Attempting to download current database from Cloudflare R2..."
@@ -91,18 +97,18 @@ jobs:
         run: uv run modometa migrate --no-input
 
       - name: Sync latest Scryfall card data
-        if: ${{ !inputs.skip_scryfall }}
+        if: ${{ !inputs.skip_scryfall || inputs.fresh_database }}
         run: uv run modometa sync_scryfall
 
-      - name: Shallow clone MTG_decklistcache repository
+      - name: Shallow clone modometa-mtgo-data repository
         run: |
-          rm -rf MTG_decklistcache
-          git clone --depth 1 https://github.com/fbettega/MTG_decklistcache.git MTG_decklistcache
+          rm -rf modometa-mtgo-data
+          git clone --depth 1 https://github.com/davidfischer/modometa-mtgo-data.git modometa-mtgo-data
 
       - name: Ingest tournaments
         run: |
           EXTRA_ARGS=""
-          if [ "${{ inputs.force_ingest }}" = "true" ]; then
+          if [ "${{ inputs.force_ingest }}" = "true" ] || [ "${{ inputs.fresh_database }}" = "true" ]; then
             EXTRA_ARGS="--force"
           elif [ -n "${{ inputs.refresh_days }}" ]; then
             EXTRA_ARGS="--refresh-days ${{ inputs.refresh_days }}"
@@ -110,7 +116,7 @@ jobs:
             EXTRA_ARGS="--refresh-days 8"
           fi
           # Skip kNN here. We'll run it explicitly in the next step
-          uv run modometa ingest_tournaments --skip-knn --dir MTG_decklistcache/Tournaments/MTGO $EXTRA_ARGS
+          uv run modometa ingest_tournaments --skip-knn --dir modometa-mtgo-data/Tournaments/MTGO $EXTRA_ARGS
 
       # Skip kNN here. We'll run it explicitly in the next step
       - name: Reclassify tournament decks

@@ -287,6 +287,13 @@ class IngestionPipeline:
 
             tourn_name = tourn_meta.get("Name") or event_id
             tourn_uri = tourn_meta.get("Uri")
+            raw_player_count = tourn_meta.get("PlayerCount")
+            player_count = None
+            if raw_player_count is not None:
+                try:
+                    player_count = int(raw_player_count)
+                except ValueError, TypeError:
+                    player_count = None
             raw_decks = data.get("Decks") or []
 
             if event_id not in seen_tournaments:
@@ -300,6 +307,7 @@ class IngestionPipeline:
                         date=event_date,
                         uri=tourn_uri,
                         deck_count=len(raw_decks),
+                        player_count=player_count,
                     )
                 )
 

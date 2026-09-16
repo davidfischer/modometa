@@ -108,7 +108,7 @@ MODOMETA_FORMATS = FORMAT_SLUGS
 ACTIVE_FORMAT_SLUGS = ["modern", "legacy", "premodern", "vintage"]
 
 ARCHETYPES_DIR = BASE_DIR / "archetypes"
-DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "MTG_decklistcache" / "Tournaments" / "MTGO"
+DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "modometa-mtgo-data" / "Tournaments" / "MTGO"
 KNN_INDEX_PATH = BASE_DIR / "data" / "knn_index.npz"
 SEARCH_INDEX_PATH = BASE_DIR / "data" / "search_index.json"
 IS_TESTING = False

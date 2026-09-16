@@ -9,7 +9,7 @@
 - **Standard** (WIP)
 - **Pauper** (WIP)
 
-The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/fbettega/MTG_decklistcache). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db
+The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/davidfischer/modometa-mtgo-data). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db
 
 ---
 
@@ -63,7 +63,7 @@ uv run modometa sync_scryfall
 
 # Ingest MTGO tournaments from local cache (supports --format and --limit)
 # For all formats, takes ~1-2 minutes per year of tournaments
-# You must have pulled https://github.com/fbettega/MTG_decklistcache already
+# You must have pulled https://github.com/davidfischer/modometa-mtgo-data already
 uv run modometa ingest_tournaments
 ```
 

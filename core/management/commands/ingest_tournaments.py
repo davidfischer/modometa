@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.db.models import Max
@@ -18,7 +19,7 @@ from core.pipeline.ingest import parse_date
 
 
 class Command(BaseCommand):
-    help = "Ingest MTGO tournament decklists from local MTG_decklistcache"
+    help = "Ingest MTGO tournament decklists from local modometa-mtgo-data"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -212,7 +213,5 @@ class Command(BaseCommand):
                 )
 
         if not options.get("skip_knn"):
-            from django.core.management import call_command
-
             self.stdout.write("\nBuilding kNN similarity index for all tournaments...")
             call_command("build_knn", stdout=self.stdout, stderr=self.stderr)

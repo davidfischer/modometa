@@ -66,7 +66,14 @@ class CardLookupAdmin(admin.ModelAdmin):
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
-    list_display = ("name", "format", "event_type", "date", "deck_count")
+    list_display = (
+        "name",
+        "format",
+        "event_type",
+        "date",
+        "player_count",
+        "deck_count",
+    )
     list_filter = (TimeframeFilter, "format", "event_type")
     search_fields = ("name", "id")
     ordering = ("-date", "id")

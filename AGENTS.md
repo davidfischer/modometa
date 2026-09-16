@@ -44,7 +44,7 @@ modometa/
 │   │   └── legality.py       # LegalityEngine (verifies format bans & deck construction)
 │   ├── pipeline/
 │   │   ├── scryfall.py       # Ingests Scryfall bulk data (default_cards), artwork selection
-│   │   └── ingest.py         # Ingests MTGO tournament JSON from MTG_decklistcache
+│   │   └── ingest.py         # Ingests MTGO tournament JSON from modometa-mtgo-data
 │   ├── engine/
 │   │   ├── knn.py            # TF-IDF & recency-weighted kNN deck similarity
 │   │   └── search_index.py   # Search index generation
@@ -135,7 +135,7 @@ The project uses `core.cli:main` registered as `modometa` in `pyproject.toml`. Y
 | `uv run modometa migrate` | Apply database migrations |
 | `uv run modometa makemigrations` | Generate new database migrations |
 | `uv run modometa sync_scryfall` | Download and sync Scryfall default bulk cards into `Card` & `CardLookup` |
-| `uv run modometa ingest_tournaments` | Ingest MTGO tournament results from `MTG_decklistcache` (supports `--format`, `--limit`) |
+| `uv run modometa ingest_tournaments` | Ingest MTGO tournament results from `modometa-mtgo-data` (supports `--format`, `--limit`) |
 | `uv run modometa reclassify_decks` | Reclassify decks against YAML rules (supports `--format`, `--unclassified`, `--dry-run`, `--skip-knn`) |
 | `uv run modometa classify_deck` | Classify an ad-hoc decklist from file or stdin (pipeable: `cat deck.txt \| uv run modometa classify_deck`) |
 | `uv run modometa discover_archetypes` | Unsupervised clustering (TF-IDF + DBSCAN) to find unclassified archetypes |

@@ -9,6 +9,8 @@ import pytest
 from django.core.management import call_command
 
 from core.models.deck import Deck
+from core.models.match import Match
+from core.models.match import normalize_round_slug
 from core.models.tournament import Tournament
 
 
@@ -337,3 +339,80 @@ def test_ingest_tournament_player_count(tmp_path: Path):
 
     t_malformed = Tournament.objects.get(id="modern-challenge-32-2026-09-11")
     assert t_malformed.player_count is None
+
+
+def test_normalize_round_slug():
+    """Verify round slug normalization for playoff rounds and swiss rounds."""
+    assert normalize_round_slug("Quarterfinals") == "quarterfinals"
+    assert normalize_round_slug("Semifinals") == "semifinals"
+    assert normalize_round_slug("Finals") == "finals"
+    assert normalize_round_slug("Round 1") == "round_01"
+    assert normalize_round_slug("Round 5") == "round_05"
+    assert normalize_round_slug("Round 14") == "round_14"
+    assert normalize_round_slug("round_02") == "round_02"
+    assert normalize_round_slug("") == "round"
+
+
+@pytest.mark.django_db
+def test_ingest_challenge_with_rounds_creates_matches(tmp_path: Path):
+    """Test that ingestion parses Rounds and properly creates Match records."""
+    tourn_dir = tmp_path / "Tournaments" / "MTGO"
+    tourn_dir.mkdir(parents=True)
+
+    today_str = date.today().strftime("%Y-%m-%d")
+    chall_file = tourn_dir / f"modern-challenge-32-{today_str}12345.json"
+
+    data = {
+        "Tournament": {
+            "Name": f"Modern Challenge 32 {today_str}",
+            "Date": today_str,
+            "Uri": f"https://www.mtgo.com/decklist/modern-challenge-{today_str}",
+        },
+        "Decks": [
+            {
+                "Player": "Alice",
+                "Result": "1st Place",
+                "Mainboard": [{"CardName": "Lightning Bolt", "Count": 4}],
+                "Sideboard": [],
+            },
+            {
+                "Player": "Bob",
+                "Result": "2nd Place",
+                "Mainboard": [{"CardName": "Counterspell", "Count": 4}],
+                "Sideboard": [],
+            },
+        ],
+        "Rounds": [
+            {
+                "RoundName": "Finals",
+                "Matches": [
+                    {
+                        "Player1": "Alice",
+                        "Player2": "Bob",
+                        "Result": "2-1-0",
+                    }
+                ],
+            }
+        ],
+    }
+    chall_file.write_text(json.dumps(data))
+
+    call_command("ingest_tournaments", dir=str(tourn_dir), skip_knn=True)
+
+    matches = Match.objects.filter(
+        tournament_id=f"modern-challenge-32-{today_str}12345"
+    )
+    assert matches.count() == 1
+    m = matches.first()
+    assert m.round_name == "Finals"
+    assert m.round_slug == "finals"
+    assert m.player1 == "Alice"
+    assert m.player2 == "Bob"
+    assert m.player1_wins == 2
+    assert m.player2_wins == 1
+    assert m.draws == 0
+    assert m.total_games == 3
+    assert m.player1_deck is not None
+    assert m.player2_deck is not None
+    assert m.player1_deck.player == "Alice"
+    assert m.player2_deck.player == "Bob"

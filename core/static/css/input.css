@@ -85,6 +85,14 @@ html:not(.dark) .text-rose-300 {
   color: #be123c;
 }
 
+html:not(.dark) .text-red-400 {
+  color: #dc2626;
+}
+
+html:not(.dark) .text-red-300 {
+  color: #991b1b;
+}
+
 /* Container, card, and sidebar styles in light mode */
 html:not(.dark) .rounded-xl.border {
   background-color: #ffffff;

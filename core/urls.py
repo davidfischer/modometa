@@ -30,6 +30,11 @@ urlpatterns = [
     # Format views
     path("<str:format>/og.png", views.format_og_image, name="format_og_image"),
     path(
+        "<str:format>/matrix/og.png",
+        views.format_matrix_og_image,
+        name="format_matrix_og_image",
+    ),
+    path(
         "<str:format>/archetype/<str:archetype>/og.png",
         views.archetype_og_image,
         name="archetype_og_image",
@@ -47,5 +52,6 @@ urlpatterns = [
         name="archetype_detail",
     ),
     path("<str:format>/cards/", views.cards_list, name="cards_list"),
+    path("<str:format>/matrix/", views.archetype_matrix, name="archetype_matrix"),
     path("<str:format>/leaderboard/", views.leaderboard, name="leaderboard"),
 ]

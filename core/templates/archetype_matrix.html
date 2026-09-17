@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}{{ format_name }} Archetype Matrix{% endblock %}
+{% block meta_description %}Head-to-head matchup win rates and game win percentages for top MTGO {{ format_name }} archetypes.{% endblock %}
+{% block og_title %}{{ format_name }} Archetype Matrix — {{ SITE_NAME }}{% endblock %}
+{% block og_description %}Head-to-head matchup win rates and game win percentages for top MTGO {{ format_name }} archetypes.{% endblock %}
+{% block twitter_title %}{{ format_name }} Archetype Matrix — {{ SITE_NAME }}{% endblock %}
+{% block twitter_description %}Head-to-head matchup win rates and game win percentages for top MTGO {{ format_name }} archetypes.{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_matrix_og_image' format_slug %}{% endblock %}
+{% block og_image_alt %}{{ format_name }} Archetype Matchup Matrix on {{ SITE_NAME }}{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_matrix_og_image' format_slug %}{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:home' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ format_name }}",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'core:format_overview' format_slug %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Archetype Matrix",
+      "item": "{{ request.build_absolute_uri }}"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="hover:text-white">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <a href="{% url 'core:format_overview' format_slug %}{{ TIMEFRAME_QUERY }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-white">Archetype Matrix</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-semibold uppercase text-emerald-400 border border-emerald-500/30">
+          Matchups
+        </span>
+      </div>
+      <h1 class="mt-2 text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Archetype Matrix</h1>
+      <p class="mt-1 text-sm text-zinc-400">
+        Head-to-head <strong>match win %</strong> for the top {{ archetypes|length }} archetypes based on {{ total_matches }} <span title="Daybreak only publishes the head-to-head matches for the top 8 bracket" class="underline decoration-dotted cursor-help">Challenge Top 8 matches</span> over the last {% include "includes/timeframe_select.html" %}.
+      </p>
+    </div>
+  </div>
+
+  {% if archetypes %}
+    <!-- Scrollable Matrix Table -->
+    <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-xl overflow-hidden">
+      <div class="overflow-auto max-h-[calc(100vh-230px)]">
+        <table class="table-fixed w-max border-separate border-spacing-0 text-left text-xs font-mono">
+          <colgroup>
+            <col class="w-[12rem] min-w-[12rem] max-w-[12rem]">
+            {% for col in archetypes %}
+              <col class="w-[5rem] min-w-[5rem] max-w-[5rem]">
+            {% endfor %}
+            <col class="w-[5rem] min-w-[5rem] max-w-[5rem]">
+          </colgroup>
+          <thead>
+            <tr>
+              <!-- Top-left corner cell (sticky both X and Y) -->
+              <th scope="col" class="sticky top-0 left-0 z-30 bg-zinc-950 px-3 py-3 border-b border-r border-zinc-800 text-2xs uppercase tracking-wider text-zinc-400 font-sans whitespace-nowrap w-[12rem] min-w-[12rem] max-w-[12rem] overflow-hidden">
+                Archetype vs Opponent
+              </th>
+
+              <!-- Column headers (sticky Y) -->
+              {% for col in archetypes %}
+                <th scope="col" class="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur-xs px-1 py-3 border-b border-r border-zinc-800/80 text-center font-sans font-medium text-zinc-300 w-[5rem] min-w-[5rem] max-w-[5rem] overflow-hidden">
+                  <a href="{% url 'core:archetype_detail' format_slug col.slug %}{{ TIMEFRAME_QUERY }}" title="{{ col.name }}" class="block truncate hover:text-emerald-400 text-2xs overflow-hidden">
+                    {{ col.name }}
+                  </a>
+                </th>
+              {% endfor %}
+
+              <!-- Overall column header (sticky Y) -->
+              <th scope="col" class="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur-xs px-1 py-3 border-b border-l-2 border-zinc-700 text-center font-sans font-bold text-zinc-200 w-[5rem] min-w-[5rem] max-w-[5rem] overflow-hidden">
+                Overall
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-800/40 font-mono">
+            {% for row in rows %}
+              <tr class="group hover:bg-zinc-800/20 transition-colors">
+                <!-- Row header (sticky X) -->
+                <th scope="row" class="sticky left-0 z-10 bg-zinc-900/95 group-hover:bg-zinc-850/95 backdrop-blur-xs px-3 py-2 border-b border-r border-zinc-800 font-sans font-medium text-white whitespace-nowrap w-[12rem] min-w-[12rem] max-w-[12rem] overflow-hidden">
+                  <a href="{% url 'core:archetype_detail' format_slug row.archetype_slug %}{{ TIMEFRAME_QUERY }}" title="{{ row.archetype }}" class="block truncate hover:text-emerald-400 text-xs overflow-hidden">
+                    {{ row.archetype }}
+                  </a>
+                </th>
+
+                <!-- Head-to-head cells -->
+                {% for cell in row.cells %}
+                  <td class="border-b border-r border-zinc-800/40 p-0 text-center w-[5rem] min-w-[5rem] max-w-[5rem] overflow-hidden">
+                    {% if cell.has_data %}
+                      <div class="flex flex-col items-center justify-center py-1.5 px-1 leading-tight {{ cell.color_class }} transition-colors">
+                        <span class="w-full text-center font-bold text-xs cursor-default" title="{{ cell.match_tooltip }}">{{ cell.match_win_pct }}</span>
+                        <span class="w-full text-center text-2xs opacity-75 font-normal cursor-default" title="{{ cell.game_tooltip }}">{{ cell.game_win_pct }}</span>
+                      </div>
+                    {% elif cell.is_mirror %}
+                      <div class="flex items-center justify-center py-2 px-1 text-zinc-600 select-none cursor-default" title="{{ cell.tooltip }}">
+                        —
+                      </div>
+                    {% else %}
+                      <div class="flex items-center justify-center py-2 px-1 text-zinc-600 select-none cursor-default" title="No matches recorded">
+                        —
+                      </div>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+
+                <!-- Overall total cell -->
+                <td class="border-b border-l-2 border-zinc-700 p-0 text-center w-[5rem] min-w-[5rem] max-w-[5rem] overflow-hidden">
+                  {% if row.overall.has_data %}
+                    <div class="flex flex-col items-center justify-center py-1.5 px-1 leading-tight {{ row.overall.color_class }} transition-colors font-bold">
+                      <span class="w-full text-center text-xs cursor-default" title="{{ row.overall.match_tooltip }}">{{ row.overall.match_win_pct }}</span>
+                      <span class="w-full text-center text-2xs opacity-75 font-normal cursor-default" title="{{ row.overall.game_tooltip }}">{{ row.overall.game_win_pct }}</span>
+                    </div>
+                  {% else %}
+                    <div class="flex items-center justify-center py-2 px-1 text-zinc-600 bg-zinc-900/20 select-none cursor-default" title="No matches recorded">
+                      —
+                    </div>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-12 text-center text-zinc-400">
+      <p class="text-base font-medium">No challenge playoff matches found for this timeframe.</p>
+      <p class="mt-1 text-xs text-zinc-500">Try selecting a longer timeframe such as 180 or 365 days.</p>
+    </div>
+  {% endif %}
+  <!-- Reference dynamic matrix color classes for Tailwind compiler:
+       bg-emerald-500/25 text-emerald-300 border-emerald-500/35
+       bg-emerald-500/15 text-emerald-400 border-emerald-500/20
+       bg-zinc-800/40 text-zinc-300 border-zinc-700/30
+       bg-red-500/15 text-red-400 border-red-500/20
+       bg-red-500/25 text-red-300 border-red-500/35
+  -->
+</div>
+{% endblock %}

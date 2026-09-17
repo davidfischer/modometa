@@ -16,6 +16,8 @@ from core.formats import Format
 from core.formats import is_valid_format
 from core.models.card import Card
 from core.models.deck import Deck
+from core.models.match import Match
+from core.models.match import normalize_round_slug
 from core.models.tournament import Tournament
 from core.rules.engine import ArchetypeEngine
 from core.rules.legality import LegalityEngine
@@ -39,6 +41,20 @@ def parse_date(date_str: Any) -> datetime.date | None:
         return datetime.strptime(s[:10], "%Y-%m-%d").date()
     except Exception:
         return None
+
+
+def parse_match_result(result_str: str) -> tuple[int, int, int]:
+    """Parse match result string (e.g. '2-1-0', '2-0-0') into (p1_wins, p2_wins, draws)."""
+    if not result_str:
+        return 0, 0, 0
+    parts = str(result_str).strip().split("-")
+    try:
+        p1_w = int(parts[0]) if len(parts) > 0 else 0
+        p2_w = int(parts[1]) if len(parts) > 1 else 0
+        draws = int(parts[2]) if len(parts) > 2 else 0
+        return p1_w, p2_w, draws
+    except ValueError, TypeError:
+        return 0, 0, 0
 
 
 def _consolidate_deck_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -190,9 +206,10 @@ class IngestionPipeline:
         self,
         tournaments: list[Tournament],
         decks: list[Deck],
+        matches: list[Match] | None = None,
         replace_existing: bool = False,
     ) -> None:
-        """Commit batch of tournaments and decks inside a transaction."""
+        """Commit batch of tournaments, decks, and matches inside a transaction."""
         with transaction.atomic():
             if replace_existing and tournaments:
                 tourn_ids = [t.id for t in tournaments]
@@ -201,6 +218,8 @@ class IngestionPipeline:
                 Tournament.objects.bulk_create(tournaments, ignore_conflicts=True)
             if decks:
                 Deck.objects.bulk_create(decks, ignore_conflicts=True)
+            if matches:
+                Match.objects.bulk_create(matches, ignore_conflicts=True)
 
     @property
     def unmatched_cards(self) -> list[str]:
@@ -216,7 +235,7 @@ class IngestionPipeline:
         show_unmatched: bool = False,
         replace_existing: bool = False,
         since_date: datetime.date | None = None,
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, int]:
         """Parse and ingest tournament files into database."""
         if limit:
             files = files[:limit]
@@ -224,9 +243,13 @@ class IngestionPipeline:
         if force:
             replace_existing = True
 
+        existing_ids = set(Tournament.objects.values_list("id", flat=True))
         if not force and not replace_existing:
-            existing_ids = set(Tournament.objects.values_list("id", flat=True))
-            unprocessed = [f for f in files if f.stem not in existing_ids]
+            has_matches = Match.objects.exists()
+            if not has_matches:
+                unprocessed = files
+            else:
+                unprocessed = [f for f in files if f.stem not in existing_ids]
             skipped = len(files) - len(unprocessed)
             if skipped:
                 logger.info(
@@ -237,15 +260,18 @@ class IngestionPipeline:
 
         if not files:
             logger.info("No new tournament files to ingest.")
-            return 0, 0
+            return 0, 0, 0
 
         tournaments_to_save: list[Tournament] = []
         decks_to_save: list[Deck] = []
+        matches_to_save: list[Match] = []
         seen_tournaments: set[str] = set()
         seen_deck_ids: set[str] = set()
+        seen_match_ids: set[str] = set()
         reported_unmatched: set[str] = set()
         total_tournaments_saved = 0
         total_decks_saved = 0
+        total_matches_saved = 0
 
         logger.info("Parsing %d tournament files...", len(files))
 
@@ -295,155 +321,225 @@ class IngestionPipeline:
                 except ValueError, TypeError:
                     player_count = None
             raw_decks = data.get("Decks") or []
+            raw_rounds = data.get("Rounds") or []
 
-            if event_id not in seen_tournaments:
-                seen_tournaments.add(event_id)
-                tournaments_to_save.append(
-                    Tournament(
-                        id=event_id,
-                        name=tourn_name,
-                        format=fmt_slug,
-                        event_type=event_type,
-                        date=event_date,
-                        uri=tourn_uri,
-                        deck_count=len(raw_decks),
-                        player_count=player_count,
+            is_already_in_db = (event_id in existing_ids) and not replace_existing
+            player_deck_map: dict[str, str] = {}
+
+            if not is_already_in_db:
+                if event_id not in seen_tournaments:
+                    seen_tournaments.add(event_id)
+                    tournaments_to_save.append(
+                        Tournament(
+                            id=event_id,
+                            name=tourn_name,
+                            format=fmt_slug,
+                            event_type=event_type,
+                            date=event_date,
+                            uri=tourn_uri,
+                            deck_count=len(raw_decks),
+                            player_count=player_count,
+                        )
                     )
-                )
 
-            # Player index tracker for multiple decks in same dump
-            player_counts: dict[str, int] = {}
+                # Player index tracker for multiple decks in same dump
+                player_counts: dict[str, int] = {}
 
-            for deck_data in raw_decks:
-                player = deck_data.get("Player")
-                if not player:
-                    continue
+                for deck_data in raw_decks:
+                    player = deck_data.get("Player")
+                    if not player:
+                        continue
 
-                player_clean = player.strip()
-                player_lower = player_clean.lower()
-                player_counts[player_lower] = player_counts.get(player_lower, 0) + 1
-                deck_index = player_counts[player_lower]
+                    player_clean = player.strip()
+                    player_lower = player_clean.lower()
+                    player_counts[player_lower] = player_counts.get(player_lower, 0) + 1
+                    deck_index = player_counts[player_lower]
 
-                deck_id = f"{event_id}_{slugify(player_lower)}_{deck_index}"
-                if deck_id in seen_deck_ids:
-                    continue
-                seen_deck_ids.add(deck_id)
+                    deck_id = f"{event_id}_{slugify(player_lower)}_{deck_index}"
+                    if player_lower not in player_deck_map:
+                        player_deck_map[player_lower] = deck_id
 
-                result = deck_data.get("Result") or ""
-                rank, is_top8, is_5_0 = parse_result_and_rank(result)
-                anchor_uri = deck_data.get("AnchorUri")
+                    if deck_id in seen_deck_ids:
+                        continue
+                    seen_deck_ids.add(deck_id)
 
-                # Format mainboard and sideboard with canonical card names
-                mainboard_raw = []
-                for card_entry in deck_data.get("Mainboard") or []:
-                    c_name = card_entry.get("CardName") or card_entry.get("name")
-                    c_cnt = card_entry.get("Count") or card_entry.get("count") or 1
-                    if c_name:
-                        resolved = self.legality_engine.resolve_card(c_name)
-                        canonical = resolved.name if resolved else c_name.strip()
-                        mainboard_raw.append({"card": canonical, "count": int(c_cnt)})
+                    result = deck_data.get("Result") or ""
+                    rank, is_top8, is_5_0 = parse_result_and_rank(result)
+                    anchor_uri = deck_data.get("AnchorUri")
 
-                sideboard_raw = []
-                for card_entry in deck_data.get("Sideboard") or []:
-                    c_name = card_entry.get("CardName") or card_entry.get("name")
-                    c_cnt = card_entry.get("Count") or card_entry.get("count") or 1
-                    if c_name:
-                        resolved = self.legality_engine.resolve_card(c_name)
-                        canonical = resolved.name if resolved else c_name.strip()
-                        sideboard_raw.append({"card": canonical, "count": int(c_cnt)})
-
-                # Consolidate copies of the same canonical card
-                mainboard = _consolidate_deck_entries(mainboard_raw)
-                sideboard = _consolidate_deck_entries(sideboard_raw)
-
-                # Classify Archetype and Colors
-                (
-                    arch_name,
-                    arch_slug,
-                    colors_code,
-                    color_name,
-                    is_fallback,
-                    _,
-                ) = self.archetype_engine.classify(
-                    mainboard,
-                    fmt_slug,
-                    card_colors_map=self._card_colors,
-                    sideboard_cards=sideboard,
-                )
-
-                # Validate legality today
-                is_legal, _, illegal_cards = self.legality_engine.validate_deck(
-                    mainboard, sideboard, fmt_slug
-                )
-
-                if show_unmatched:
-                    raw_entries = (deck_data.get("Mainboard") or []) + (
-                        deck_data.get("Sideboard") or []
-                    )
-                    for card_entry in raw_entries:
-                        raw_name = (
-                            card_entry.get("CardName") or card_entry.get("name") or ""
-                        ).strip()
-                        if (
-                            raw_name in self.legality_engine.unmatched_cards
-                            and raw_name not in reported_unmatched
-                        ):
-                            reported_unmatched.add(raw_name)
-                            pbar.write(
-                                f"  [Unmatched card] '{raw_name}' (first seen in {filename})"
+                    # Format mainboard and sideboard with canonical card names
+                    mainboard_raw = []
+                    for card_entry in deck_data.get("Mainboard") or []:
+                        c_name = card_entry.get("CardName") or card_entry.get("name")
+                        c_cnt = card_entry.get("Count") or card_entry.get("count") or 1
+                        if c_name:
+                            resolved = self.legality_engine.resolve_card(c_name)
+                            canonical = resolved.name if resolved else c_name.strip()
+                            mainboard_raw.append(
+                                {"card": canonical, "count": int(c_cnt)}
                             )
 
-                decks_to_save.append(
-                    Deck(
-                        id=deck_id,
-                        tournament_id=event_id,
-                        format=fmt_slug,
-                        player=player_clean,
-                        player_lower=player_lower,
-                        result=result,
-                        rank=rank,
-                        is_top8=is_top8,
-                        is_5_0=is_5_0,
-                        archetype=arch_name,
-                        archetype_slug=arch_slug,
-                        is_auto_classified=is_fallback,
-                        colors=colors_code,
-                        color_name=color_name,
-                        mainboard=mainboard,
-                        sideboard=sideboard,
-                        anchor_uri=anchor_uri,
-                        is_legal_today=is_legal,
-                        illegal_cards=illegal_cards,
+                    sideboard_raw = []
+                    for card_entry in deck_data.get("Sideboard") or []:
+                        c_name = card_entry.get("CardName") or card_entry.get("name")
+                        c_cnt = card_entry.get("Count") or card_entry.get("count") or 1
+                        if c_name:
+                            resolved = self.legality_engine.resolve_card(c_name)
+                            canonical = resolved.name if resolved else c_name.strip()
+                            sideboard_raw.append(
+                                {"card": canonical, "count": int(c_cnt)}
+                            )
+
+                    # Consolidate copies of the same canonical card
+                    mainboard = _consolidate_deck_entries(mainboard_raw)
+                    sideboard = _consolidate_deck_entries(sideboard_raw)
+
+                    # Classify Archetype and Colors
+                    (
+                        arch_name,
+                        arch_slug,
+                        colors_code,
+                        color_name,
+                        is_fallback,
+                        _,
+                    ) = self.archetype_engine.classify(
+                        mainboard,
+                        fmt_slug,
+                        card_colors_map=self._card_colors,
+                        sideboard_cards=sideboard,
                     )
-                )
+
+                    # Validate legality today
+                    is_legal, _, illegal_cards = self.legality_engine.validate_deck(
+                        mainboard, sideboard, fmt_slug
+                    )
+
+                    if show_unmatched:
+                        raw_entries = (deck_data.get("Mainboard") or []) + (
+                            deck_data.get("Sideboard") or []
+                        )
+                        for card_entry in raw_entries:
+                            raw_name = (
+                                card_entry.get("CardName")
+                                or card_entry.get("name")
+                                or ""
+                            ).strip()
+                            if (
+                                raw_name in self.legality_engine.unmatched_cards
+                                and raw_name not in reported_unmatched
+                            ):
+                                reported_unmatched.add(raw_name)
+                                pbar.write(
+                                    f"  [Unmatched card] '{raw_name}' (first seen in {filename})"
+                                )
+
+                    decks_to_save.append(
+                        Deck(
+                            id=deck_id,
+                            tournament_id=event_id,
+                            format=fmt_slug,
+                            player=player_clean,
+                            player_lower=player_lower,
+                            result=result,
+                            rank=rank,
+                            is_top8=is_top8,
+                            is_5_0=is_5_0,
+                            archetype=arch_name,
+                            archetype_slug=arch_slug,
+                            is_auto_classified=is_fallback,
+                            colors=colors_code,
+                            color_name=color_name,
+                            mainboard=mainboard,
+                            sideboard=sideboard,
+                            anchor_uri=anchor_uri,
+                            is_legal_today=is_legal,
+                            illegal_cards=illegal_cards,
+                        )
+                    )
+            else:
+                # Tournament and decks are already in DB; extract player -> deck mapping for matches
+                player_counts = {}
+                for deck_data in raw_decks:
+                    player = deck_data.get("Player")
+                    if not player:
+                        continue
+                    player_lower = player.strip().lower()
+                    player_counts[player_lower] = player_counts.get(player_lower, 0) + 1
+                    if player_lower not in player_deck_map:
+                        player_deck_map[player_lower] = (
+                            f"{event_id}_{slugify(player_lower)}_{player_counts[player_lower]}"
+                        )
+
+            # Process Matches from Rounds
+            for round_idx, round_info in enumerate(raw_rounds):
+                round_name = round_info.get("RoundName") or f"Round {round_idx + 1}"
+                round_slug = normalize_round_slug(round_name)
+                for match_idx, match_data in enumerate(round_info.get("Matches") or []):
+                    p1 = (match_data.get("Player1") or "").strip()
+                    p2 = (match_data.get("Player2") or "").strip()
+                    if not p1 or not p2:
+                        continue
+
+                    match_id = f"{event_id}_{round_slug}_{match_idx}"
+                    if match_id in seen_match_ids:
+                        continue
+                    seen_match_ids.add(match_id)
+
+                    result = (match_data.get("Result") or "").strip()
+                    p1_wins, p2_wins, draws = parse_match_result(result)
+                    p1_deck_id = player_deck_map.get(p1.lower())
+                    p2_deck_id = player_deck_map.get(p2.lower())
+
+                    matches_to_save.append(
+                        Match(
+                            id=match_id,
+                            tournament_id=event_id,
+                            round_name=round_name,
+                            round_slug=round_slug,
+                            player1=p1,
+                            player2=p2,
+                            player1_deck_id=p1_deck_id,
+                            player2_deck_id=p2_deck_id,
+                            player1_wins=p1_wins,
+                            player2_wins=p2_wins,
+                            draws=draws,
+                        )
+                    )
 
             # Flush in batches to keep RAM usage constant and save incrementally
-            if len(decks_to_save) >= batch_size:
+            if len(decks_to_save) >= batch_size or len(matches_to_save) >= batch_size:
                 self._flush_batch(
                     tournaments_to_save,
                     decks_to_save,
+                    matches_to_save,
                     replace_existing=replace_existing,
                 )
                 total_tournaments_saved += len(tournaments_to_save)
                 total_decks_saved += len(decks_to_save)
+                total_matches_saved += len(matches_to_save)
                 tournaments_to_save.clear()
                 decks_to_save.clear()
+                matches_to_save.clear()
 
         # Final flush for remaining items
-        if tournaments_to_save or decks_to_save:
+        if tournaments_to_save or decks_to_save or matches_to_save:
             self._flush_batch(
                 tournaments_to_save,
                 decks_to_save,
+                matches_to_save,
                 replace_existing=replace_existing,
             )
             total_tournaments_saved += len(tournaments_to_save)
             total_decks_saved += len(decks_to_save)
+            total_matches_saved += len(matches_to_save)
             tournaments_to_save.clear()
             decks_to_save.clear()
+            matches_to_save.clear()
 
         logger.info(
-            "Ingestion complete. Saved %d tournaments and %d decks.",
+            "Ingestion complete. Saved %d tournaments, %d decks, and %d matches.",
             total_tournaments_saved,
             total_decks_saved,
+            total_matches_saved,
         )
-        return total_tournaments_saved, total_decks_saved
+        return total_tournaments_saved, total_decks_saved, total_matches_saved

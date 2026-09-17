@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}{{ format_name }} Leaderboard{% endblock %}
 {% block meta_description %}Top MTGO {{ format_name }} pilots ranked by Challenge Top 8s, League 5-0 trophies, conversion rates, and favorite archetypes.{% endblock %}
@@ -97,18 +98,18 @@
                 </a>
               </td>
               <td class="py-3 px-4 text-right text-emerald-400 font-bold text-sm">
-                {{ p.top8_count }}
+                {{ p.top8_count|intcomma }}
               </td>
               <td class="py-3 px-4 text-right text-zinc-300">
-                {{ p.challenge_appearances }}
+                {{ p.challenge_appearances|intcomma }}
               </td>
-              <td class="py-3 px-4 text-right" title="{{ p.top8_count }}/{{ p.challenge_appearances }}">
+              <td class="py-3 px-4 text-right" title="{{ p.top8_count|intcomma }}/{{ p.challenge_appearances|intcomma }}">
                 <span class="rounded px-2 py-0.5 text-2xs font-semibold {% if p.conversion_rate >= 30 %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% elif p.conversion_rate >= 15 %}bg-sky-500/20 text-sky-300{% else %}text-zinc-400{% endif %}">
                   {{ p.conversion_rate }}%
                 </span>
               </td>
               <td class="py-3 px-4 text-right text-sky-400 font-semibold">
-                {{ p.league_count }}
+                {{ p.league_count|intcomma }}
               </td>
               <td class="py-3 px-4 font-sans">
                 {% if p.top_archetype %}

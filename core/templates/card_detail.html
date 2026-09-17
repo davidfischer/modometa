@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load mana_tags %}
+{% load humanize mana_tags %}
 
 {% block title %}{{ card.name }} — MTGO Metagame & Decks{% endblock %}
 {% block meta_description %}View competitive MTGO decklists with {{ card.name }}, format legalities, printings, and metagame statistics across Magic: The Gathering Online tournaments.{% endblock %}
@@ -225,7 +225,7 @@
       </div>
       {% if printings %}
         <span class="text-2xs font-mono text-zinc-400 bg-zinc-800/80 border border-zinc-700/50 px-2.5 py-1 rounded-full">
-          {{ printings|length }} shown
+          {{ printings|length|intcomma }} shown
         </span>
       {% endif %}
     </div>
@@ -365,7 +365,7 @@
             >
               <span>{{ fd.format_name }}</span>
               <span class="rounded-full px-2 py-0.5 text-2xs font-mono {% if forloop.first %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-zinc-800 text-zinc-400 group-hover:text-zinc-300{% endif %}">
-                {{ fd.count }}
+                {{ fd.count|intcomma }}
               </span>
             </button>
           {% endfor %}

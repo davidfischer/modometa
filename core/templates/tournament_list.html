@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}{{ format_name }} Tournaments{% endblock %}
 {% block meta_description %}Explore {{ format_name }} tournament results on Magic Online. Browse recent Challenges, Preliminaries, and League 5-0 finishes.{% endblock %}
@@ -38,9 +39,9 @@
 
 {% block breadcrumbs %}
 <div class="text-sm font-medium text-zinc-400">
-  <a href="{% url 'core:home' %}{{ TIMEFRAME_QUERY }}" class="hover:text-white">Home</a>
+  <a href="{% url 'core:home' %}" class="hover:text-white">Home</a>
   <span class="mx-2 text-zinc-600">/</span>
-  <a href="{% url 'core:format_overview' format_slug %}{{ TIMEFRAME_QUERY }}" class="hover:text-white capitalize">{{ format_name }}</a>
+  <a href="{% url 'core:format_overview' format_slug %}" class="hover:text-white capitalize">{{ format_name }}</a>
   <span class="mx-2 text-zinc-600">/</span>
   <span class="text-white">Tournaments</span>
 </div>
@@ -51,18 +52,18 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h1 class="text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Tournaments</h1>
-      <p class="mt-1 text-sm text-zinc-400">Competitive leagues, challenges, and qualifiers recorded over the last {% include "includes/timeframe_select.html" %}.</p>
+      <p class="mt-1 text-sm text-zinc-400">Competitive leagues, challenges, and qualifiers recorded on Magic Online.</p>
     </div>
 
     <!-- Event Filter Pills -->
     <div class="flex items-center gap-1.5 rounded-lg bg-zinc-900 p-1 border border-zinc-800 text-xs">
-      <a href="{% url 'core:tournament_list' format_slug %}{{ TIMEFRAME_QUERY }}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if not active_type %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% url 'core:tournament_list' format_slug %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if not active_type %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         All
       </a>
-      <a href="{% querystring days=TIMEFRAME_QUERY_PARAM type='challenge' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'challenge' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% querystring days=None type='challenge' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'challenge' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         Challenges
       </a>
-      <a href="{% querystring days=TIMEFRAME_QUERY_PARAM type='league' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'league' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
+      <a href="{% querystring days=None type='league' page=None %}" class="rounded px-2.5 py-1 font-semibold transition-colors {% if active_type == 'league' %}bg-emerald-500 text-white{% else %}text-zinc-400 hover:text-white{% endif %}">
         Leagues
       </a>
     </div>
@@ -93,12 +94,12 @@
               <td class="py-3 px-4 uppercase text-2xs text-zinc-400">{{ t.event_type }}</td>
               <td class="py-3 px-4 text-right text-zinc-400">
                 {% if t.player_count %}
-                  {{ t.player_count }}
+                  {{ t.player_count|intcomma }}
                 {% else %}
                   <span class="text-zinc-600">—</span>
                 {% endif %}
               </td>
-              <td class="py-3 px-4 text-right text-emerald-400 font-semibold">{{ t.deck_count }}</td>
+              <td class="py-3 px-4 text-right text-emerald-400 font-semibold">{{ t.deck_count|intcomma }}</td>
             </tr>
           {% empty %}
             <tr>
@@ -114,16 +115,16 @@
   {% if page_obj.has_other_pages %}
     <div class="flex items-center justify-between text-xs text-zinc-400 pt-4">
       <div>
-        {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} tournaments
+        {{ page_obj.start_index|intcomma }}–{{ page_obj.end_index|intcomma }} of {{ page_obj.paginator.count|intcomma }} tournaments
       </div>
       <div class="flex items-center gap-2">
         {% if page_obj.has_previous %}
-          <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.previous_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+          <a href="{% querystring days=None page=page_obj.previous_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
             ← Previous
           </a>
         {% endif %}
         {% if page_obj.has_next %}
-          <a href="{% querystring days=TIMEFRAME_QUERY_PARAM page=page_obj.next_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
+          <a href="{% querystring days=None page=page_obj.next_page_number %}" class="rounded bg-zinc-900 px-3 py-1.5 border border-zinc-800 hover:text-white">
             Next →
           </a>
         {% endif %}

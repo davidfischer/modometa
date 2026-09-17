@@ -22,9 +22,12 @@ from core.engine.knn import set_global_knn_index
 from core.models import Card
 from core.models import CardLookup
 from core.models import Deck
+from core.models import Match
 from core.models import Tournament
 from core.pipeline.scryfall import _extract_mana_cost
+from core.views import _get_matrix_color_class
 from core.views import classify_card_type
+from core.views import get_archetype_matrix_data
 from core.views import get_dataset_min_date
 from core.views import get_dataset_start_year
 from core.views import get_reference_date
@@ -2025,6 +2028,7 @@ def test_timeframe_navigation_clean_urls_and_preservation(client):
     assert 'href="/legacy/?days=30"' in html_30
     assert 'href="/legacy/tournaments/?days=30"' in html_30
     assert 'href="/legacy/cards/?days=30"' in html_30
+    assert 'href="/legacy/matrix/?days=30"' in html_30
     assert 'href="/legacy/leaderboard/?days=30"' in html_30
 
     # When visiting /legacy/?days=180 (explicit 180d):
@@ -2032,6 +2036,7 @@ def test_timeframe_navigation_clean_urls_and_preservation(client):
     assert resp_180.status_code == 200
     html_180 = resp_180.content.decode()
     assert 'href="/legacy/?days=180"' in html_180
+    assert 'href="/legacy/matrix/?days=180"' in html_180
     assert 'href="/legacy/cards/?days=180"' in html_180
 
     # Cards filter pills and querystring tag behavior:
@@ -2055,3 +2060,451 @@ def test_timeframe_navigation_clean_urls_and_preservation(client):
     assert 'href="/legacy/cards/?days=180"' in cards_180_html
     assert 'href="?days=180&amp;type=challenge"' in cards_180_html
     assert 'href="?days=180&amp;type=league"' in cards_180_html
+
+
+@pytest.mark.django_db
+def test_archetype_matrix_view_basic(client):
+    """Verify archetype matrix route renders with breadcrumbs and template context."""
+    response = client.get("/modern/matrix/")
+    assert response.status_code == 200
+    assert b"Modern Archetype Matrix" in response.content
+    assert "archetypes" in response.context
+    assert "rows" in response.context
+    assert "total_matches" in response.context
+
+
+@pytest.mark.django_db
+def test_archetype_matrix_invalid_format(client):
+    """Verify requesting matrix for invalid format returns 404."""
+    response = client.get("/not-a-format/matrix/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_archetype_matrix_calculations_and_coloring(client):
+    """Verify pairwise match win %, game win %, coloring, and tooltips."""
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="modern-matrix-test-event",
+        name="Modern Test Challenge",
+        format="modern",
+        event_type="challenge",
+        date=today,
+    )
+
+    deck_burn = Deck.objects.create(
+        id="deck_burn_1",
+        tournament=tourn,
+        format="modern",
+        player="BurnPlayer",
+        player_lower="burnplayer",
+        result="1st Place",
+        archetype="Burn",
+        archetype_slug="burn",
+    )
+    deck_delver = Deck.objects.create(
+        id="deck_delver_1",
+        tournament=tourn,
+        format="modern",
+        player="DelverPlayer",
+        player_lower="delverplayer",
+        result="2nd Place",
+        archetype="Delver",
+        archetype_slug="delver",
+    )
+
+    # Match 1: Burn wins 2-0
+    Match.objects.create(
+        id="match_test_1",
+        tournament=tourn,
+        round_name="Quarterfinals",
+        round_slug="quarterfinals",
+        player1="BurnPlayer",
+        player2="DelverPlayer",
+        player1_deck=deck_burn,
+        player2_deck=deck_delver,
+        player1_wins=2,
+        player2_wins=0,
+        draws=0,
+    )
+    # Match 2: Delver wins 2-1
+    Match.objects.create(
+        id="match_test_2",
+        tournament=tourn,
+        round_name="Semifinals",
+        round_slug="semifinals",
+        player1="BurnPlayer",
+        player2="DelverPlayer",
+        player1_deck=deck_burn,
+        player2_deck=deck_delver,
+        player1_wins=1,
+        player2_wins=2,
+        draws=0,
+    )
+    # Match 3: Burn wins 2-1
+    Match.objects.create(
+        id="match_test_3",
+        tournament=tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="BurnPlayer",
+        player2="DelverPlayer",
+        player1_deck=deck_burn,
+        player2_deck=deck_delver,
+        player1_wins=2,
+        player2_wins=1,
+        draws=0,
+    )
+
+    resp = client.get("/modern/matrix/?days=30")
+    assert resp.status_code == 200
+    rows = {r["archetype_slug"]: r for r in resp.context["rows"]}
+    assert "burn" in rows
+    assert "delver" in rows
+
+    burn_row = rows["burn"]
+    delver_row = rows["delver"]
+
+    # Burn cells: mirror cell against Burn, matchup cell against Delver
+    burn_cells = {
+        resp.context["archetypes"][idx]["slug"]: c
+        for idx, c in enumerate(burn_row["cells"])
+    }
+    assert burn_cells["burn"]["is_mirror"] is True
+
+    burn_vs_delver = burn_cells["delver"]
+    assert burn_vs_delver["has_data"] is True
+    # 2 out of 3 matches = 66.7% (green), 5 out of 8 games
+    assert burn_vs_delver["matches_won"] == 2
+    assert burn_vs_delver["total_matches"] == 3
+    assert burn_vs_delver["match_tooltip"] == "2/3"
+    assert burn_vs_delver["game_tooltip"] == "5/8"
+    assert burn_vs_delver["tooltip"] == "2/3"
+    assert burn_vs_delver["color_class"] == (
+        "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    )
+    assert burn_row["overall"]["color_class"] == (
+        "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    )
+
+    # Delver vs Burn: 1 out of 3 matches = 33.3% (deep red), 3 out of 8 games
+    delver_cells = {
+        resp.context["archetypes"][idx]["slug"]: c
+        for idx, c in enumerate(delver_row["cells"])
+    }
+    delver_vs_burn = delver_cells["burn"]
+    assert delver_vs_burn["has_data"] is True
+    assert delver_vs_burn["matches_won"] == 1
+    assert delver_vs_burn["total_matches"] == 3
+    assert delver_vs_burn["match_tooltip"] == "1/3"
+    assert delver_vs_burn["game_tooltip"] == "3/8"
+    assert delver_vs_burn["tooltip"] == "1/3"
+    assert delver_vs_burn["color_class"] == (
+        "bg-red-500/25 text-red-300 border border-red-500/35"
+    )
+    assert delver_row["overall"]["color_class"] == (
+        "bg-red-500/25 text-red-300 border border-red-500/35"
+    )
+
+
+def test_archetype_matrix_color_tiers():
+    """Verify 5 color gradation tiers for matchup matrix win rates."""
+    # > 60%: Deep green
+    assert _get_matrix_color_class(60.1) == (
+        "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    )
+    assert _get_matrix_color_class(75.0) == (
+        "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    )
+    assert _get_matrix_color_class(100.0) == (
+        "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    )
+
+    # 55% to 60%: Green
+    assert _get_matrix_color_class(60.0) == (
+        "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+    )
+    assert _get_matrix_color_class(58.5) == (
+        "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+    )
+    assert _get_matrix_color_class(55.1) == (
+        "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+    )
+
+    # 45% to 55%: Neutral
+    assert _get_matrix_color_class(55.0) == (
+        "bg-zinc-800/40 text-zinc-300 border border-zinc-700/30"
+    )
+    assert _get_matrix_color_class(50.0) == (
+        "bg-zinc-800/40 text-zinc-300 border border-zinc-700/30"
+    )
+    assert _get_matrix_color_class(45.0) == (
+        "bg-zinc-800/40 text-zinc-300 border border-zinc-700/30"
+    )
+
+    # 40% to 45%: Red
+    assert _get_matrix_color_class(44.9) == (
+        "bg-red-500/15 text-red-400 border border-red-500/20"
+    )
+    assert _get_matrix_color_class(42.0) == (
+        "bg-red-500/15 text-red-400 border border-red-500/20"
+    )
+    assert _get_matrix_color_class(40.0) == (
+        "bg-red-500/15 text-red-400 border border-red-500/20"
+    )
+
+    # < 40%: Deep red
+    assert _get_matrix_color_class(39.9) == (
+        "bg-red-500/25 text-red-300 border border-red-500/35"
+    )
+    assert _get_matrix_color_class(25.0) == (
+        "bg-red-500/25 text-red-300 border border-red-500/35"
+    )
+    assert _get_matrix_color_class(0.0) == (
+        "bg-red-500/25 text-red-300 border border-red-500/35"
+    )
+
+
+@pytest.mark.django_db
+def test_get_archetype_matrix_data_helper():
+    """Verify get_archetype_matrix_data computes shared matrix stats."""
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="test-matrix-helper-tourn",
+        name="Helper Challenge",
+        format="modern",
+        event_type="challenge",
+        date=today,
+    )
+    d1 = Deck.objects.create(
+        id="helper_deck_1",
+        tournament=tourn,
+        format="modern",
+        player="P1",
+        player_lower="p1",
+        archetype="Affinity",
+        archetype_slug="affinity",
+    )
+    d2 = Deck.objects.create(
+        id="helper_deck_2",
+        tournament=tourn,
+        format="modern",
+        player="P2",
+        player_lower="p2",
+        archetype="Burn",
+        archetype_slug="burn",
+    )
+    Match.objects.create(
+        id="helper_match_1",
+        tournament=tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="P1",
+        player2="P2",
+        player1_deck=d1,
+        player2_deck=d2,
+        player1_wins=2,
+        player2_wins=1,
+    )
+    data = get_archetype_matrix_data("modern", today - timedelta(days=7), today)
+    assert data["has_data"] is True
+    assert data["total_matches"] == 1
+    assert data["sorted_slugs"] == ["affinity", "burn"]
+    assert data["archetype_names"] == {"affinity": "Affinity", "burn": "Burn"}
+    assert data["matrix_stats"]["affinity"]["burn"]["matches_won"] == 1
+    assert data["matrix_stats"]["affinity"]["burn"]["total_matches"] == 1
+    assert data["matrix_stats"]["burn"]["affinity"]["matches_won"] == 0
+    assert data["matrix_stats"]["burn"]["affinity"]["total_matches"] == 1
+
+
+@pytest.mark.django_db
+def test_archetype_matrix_alphabetical_sorting(client):
+    """Verify that selected top archetypes are sorted alphabetically in rows and columns."""
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="modern-matrix-sort-test",
+        name="Modern Sort Challenge",
+        format="modern",
+        event_type="challenge",
+        date=today,
+    )
+    d_zoo = Deck.objects.create(
+        id="deck_zoo_1",
+        tournament=tourn,
+        format="modern",
+        player="ZooPlayer",
+        player_lower="zooplayer",
+        result="1st Place",
+        archetype="Zoo",
+        archetype_slug="zoo",
+    )
+    d_burn = Deck.objects.create(
+        id="deck_burn_sort",
+        tournament=tourn,
+        format="modern",
+        player="BurnPlayer",
+        player_lower="burnplayer",
+        result="2nd Place",
+        archetype="Burn",
+        archetype_slug="burn",
+    )
+    d_affinity = Deck.objects.create(
+        id="deck_affinity_sort",
+        tournament=tourn,
+        format="modern",
+        player="AffinityPlayer",
+        player_lower="affinityplayer",
+        result="3rd Place",
+        archetype="Affinity",
+        archetype_slug="affinity",
+    )
+
+    # Zoo plays 2 matches against Burn and 1 against Affinity
+    # Matches count: Zoo (3), Burn (2), Affinity (1)
+    # Alphabetical order: Affinity, Burn, Zoo
+    Match.objects.create(
+        id="match_sort_1",
+        tournament=tourn,
+        round_name="Quarterfinals",
+        round_slug="quarterfinals",
+        player1="ZooPlayer",
+        player2="BurnPlayer",
+        player1_deck=d_zoo,
+        player2_deck=d_burn,
+        player1_wins=2,
+        player2_wins=1,
+    )
+    Match.objects.create(
+        id="match_sort_2",
+        tournament=tourn,
+        round_name="Semifinals",
+        round_slug="semifinals",
+        player1="ZooPlayer",
+        player2="BurnPlayer",
+        player1_deck=d_zoo,
+        player2_deck=d_burn,
+        player1_wins=2,
+        player2_wins=0,
+    )
+    Match.objects.create(
+        id="match_sort_3",
+        tournament=tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="ZooPlayer",
+        player2="AffinityPlayer",
+        player1_deck=d_zoo,
+        player2_deck=d_affinity,
+        player1_wins=2,
+        player2_wins=1,
+    )
+
+    resp = client.get("/modern/matrix/?days=30")
+    assert resp.status_code == 200
+
+    col_names = [a["name"] for a in resp.context["archetypes"]]
+    row_names = [r["archetype"] for r in resp.context["rows"]]
+
+    # Both columns and rows must be alphabetically sorted (A-Z)
+    assert col_names == ["Affinity", "Burn", "Zoo"]
+    assert row_names == ["Affinity", "Burn", "Zoo"]
+
+
+@pytest.mark.django_db
+def test_archetype_matrix_timeframe_filtering(client):
+    """Verify matches outside timeframe cutoff are excluded."""
+    today = date.today()
+    old_date = today - timedelta(days=120)
+
+    # Recent tournament establishes today as the reference date
+    recent_tourn = Tournament.objects.create(
+        id="modern-matrix-recent-event",
+        name="Modern Recent Challenge",
+        format="modern",
+        event_type="challenge",
+        date=today,
+    )
+    dr1 = Deck.objects.create(
+        id="deck_recent_1",
+        tournament=recent_tourn,
+        format="modern",
+        player="RecentP1",
+        player_lower="recentp1",
+        result="1st Place",
+        archetype="RecentArch",
+        archetype_slug="recent-arch",
+    )
+    dr2 = Deck.objects.create(
+        id="deck_recent_2",
+        tournament=recent_tourn,
+        format="modern",
+        player="RecentP2",
+        player_lower="recentp2",
+        result="2nd Place",
+        archetype="RecentArch2",
+        archetype_slug="recent-arch-2",
+    )
+    Match.objects.create(
+        id="match_recent_1",
+        tournament=recent_tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="RecentP1",
+        player2="RecentP2",
+        player1_deck=dr1,
+        player2_deck=dr2,
+        player1_wins=2,
+        player2_wins=1,
+    )
+
+    old_tourn = Tournament.objects.create(
+        id="modern-matrix-old-event",
+        name="Modern Old Challenge",
+        format="modern",
+        event_type="challenge",
+        date=old_date,
+    )
+    d1 = Deck.objects.create(
+        id="deck_old_1",
+        tournament=old_tourn,
+        format="modern",
+        player="OldPlayer1",
+        player_lower="oldplayer1",
+        result="1st Place",
+        archetype="ArchetypeA",
+        archetype_slug="archetype-a",
+    )
+    d2 = Deck.objects.create(
+        id="deck_old_2",
+        tournament=old_tourn,
+        format="modern",
+        player="OldPlayer2",
+        player_lower="oldplayer2",
+        result="2nd Place",
+        archetype="ArchetypeB",
+        archetype_slug="archetype-b",
+    )
+    Match.objects.create(
+        id="match_old_1",
+        tournament=old_tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="OldPlayer1",
+        player2="OldPlayer2",
+        player1_deck=d1,
+        player2_deck=d2,
+        player1_wins=2,
+        player2_wins=0,
+    )
+
+    # 30 days window: should not include this match
+    resp_30 = client.get("/modern/matrix/?days=30")
+    assert resp_30.status_code == 200
+    arch_slugs_30 = [a["slug"] for a in resp_30.context["archetypes"]]
+    assert "archetype-a" not in arch_slugs_30
+
+    # 180 days window: should include this match
+    resp_180 = client.get("/modern/matrix/?days=180")
+    assert resp_180.status_code == 200
+    arch_slugs_180 = [a["slug"] for a in resp_180.context["archetypes"]]
+    assert "archetype-a" in arch_slugs_180

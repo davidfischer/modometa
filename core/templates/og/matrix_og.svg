@@ -1,0 +1,43 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="880" y="42" width="260" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1010" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">MATCHUP MATRIX</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Main Title & Subtitle -->
+  <text x="60" y="142" class="font-sans" font-size="44" font-weight="800" fill="#ffffff">{{ format_name }} Matchup Matrix</text>
+  <text x="60" y="174" class="font-sans" font-size="16" fill="#a1a1aa">Head-to-head match win rates from {{ total_matches }} Challenge Top 8 playoff matches over the last {{ days }} days</text>
+
+  <!-- Infographic Card Container -->
+  <rect x="60" y="200" width="1080" height="365" rx="16" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+  {% if matrix.has_data %}
+    <!-- Header row: Top-left label and Column Headers -->
+    <text x="80" y="228" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">ARCHETYPE</text>
+
+    {% for col in matrix.col_headers %}
+      <text x="{{ col.center_x }}" y="228" class="font-sans" font-size="10.5" font-weight="700" fill="#d4d4d8" text-anchor="middle">{{ col.short_name }}</text>
+    {% endfor %}
+
+    <!-- Matrix Rows -->
+    {% for row in matrix.rows %}
+      <!-- Row header -->
+      <text x="80" y="{{ row.label_y }}" class="font-sans" font-size="11.5" font-weight="600" fill="#ffffff">{{ row.short_name }}</text>
+
+      <!-- Head-to-head cells -->
+      {% for cell in row.cells %}
+        <rect x="{{ cell.x }}" y="{{ cell.y }}" width="{{ cell.width }}" height="{{ cell.height }}" rx="5" fill="{{ cell.bg_fill }}" fill-opacity="{{ cell.bg_opacity }}" stroke="{{ cell.border_stroke }}" stroke-opacity="{{ cell.border_opacity }}" stroke-width="1"/>
+        {% if cell.has_data %}
+          <text x="{{ cell.center_x }}" y="{{ cell.top_text_y }}" class="font-mono" font-size="12" font-weight="700" fill="{{ cell.text_fill }}" text-anchor="middle">{{ cell.match_win_pct }}</text>
+          <text x="{{ cell.center_x }}" y="{{ cell.bottom_text_y }}" class="font-mono" font-size="9" fill="{{ cell.subtext_fill }}" text-anchor="middle">{{ cell.record }}</text>
+        {% else %}
+          <text x="{{ cell.center_x }}" y="{{ cell.center_y }}" class="font-mono" font-size="13" fill="{{ cell.text_fill }}" text-anchor="middle">—</text>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  {% else %}
+    <text x="600" y="380" class="font-sans" font-size="18" fill="#71717a" text-anchor="middle">No Challenge Top 8 playoff matches found in this timeframe</text>
+  {% endif %}
+{% endblock %}

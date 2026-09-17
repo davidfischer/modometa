@@ -40,6 +40,7 @@ from core.models.card import get_gatherer_url
 from core.models.card import get_scryfall_url
 from core.models.card import normalize_card_name
 from core.models.deck import Deck
+from core.models.match import Match
 from core.models.tournament import Tournament
 from core.templatetags.mana_tags import COLOR_ORDER
 
@@ -2201,6 +2202,360 @@ def leaderboard(request, format):
     )
 
 
+def _get_matrix_color_class(pct: float) -> str:
+    """Return Tailwind styling based on 5 win-rate tiers.
+
+    - > 60%: Deep green
+    - 55% to 60%: Green
+    - 45% to 55%: Neutral
+    - 40% to 45%: Red
+    - < 40%: Deep red
+    """
+    if pct > 60.0:
+        return "bg-emerald-500/25 text-emerald-300 border border-emerald-500/35"
+    elif pct > 55.0:
+        return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+    elif pct < 40.0:
+        return "bg-red-500/25 text-red-300 border border-red-500/35"
+    elif pct < 45.0:
+        return "bg-red-500/15 text-red-400 border border-red-500/20"
+    else:
+        return "bg-zinc-800/40 text-zinc-300 border border-zinc-700/30"
+
+
+def get_archetype_matrix_data(
+    format_slug: str,
+    cutoff_date: date,
+    ref_date: date,
+    limit: int = 20,
+) -> dict:
+    """Fetch matches and compute head-to-head records and overall stats for top archetypes.
+
+    Returns a dict containing:
+        - has_data: bool
+        - total_matches: int (count of valid matches in the timeframe)
+        - sorted_slugs: list of archetype slugs sorted alphabetically
+        - archetype_names: dict mapping slug to display name
+        - matrix_stats: pairwise match and game records
+        - overall_stats: aggregate records per archetype
+    """
+    tourns_qs = Tournament.objects.filter(
+        format=format_slug,
+        date__gte=cutoff_date,
+        date__lte=ref_date,
+    )
+
+    matches = (
+        Match.objects.filter(tournament__in=tourns_qs)
+        .select_related("player1_deck", "player2_deck")
+        .defer(
+            "player1_deck__mainboard",
+            "player1_deck__sideboard",
+            "player1_deck__illegal_cards",
+            "player2_deck__mainboard",
+            "player2_deck__sideboard",
+            "player2_deck__illegal_cards",
+        )
+    )
+
+    archetype_match_counts = Counter()
+    archetype_names = {}
+    valid_matches = []
+
+    for m in matches:
+        d1 = m.player1_deck
+        d2 = m.player2_deck
+        if not d1 or not d2:
+            continue
+        s1 = d1.archetype_slug
+        s2 = d2.archetype_slug
+        if not s1 or not s2:
+            continue
+        archetype_match_counts[s1] += 1
+        archetype_match_counts[s2] += 1
+        archetype_names[s1] = d1.archetype
+        archetype_names[s2] = d2.archetype
+        valid_matches.append((s1, s2, m.player1_wins, m.player2_wins, m.draws))
+
+    if not valid_matches or not archetype_match_counts:
+        return {
+            "has_data": False,
+            "total_matches": 0,
+            "sorted_slugs": [],
+            "archetype_names": {},
+            "matrix_stats": {},
+            "overall_stats": {},
+        }
+
+    # Select top archetypes by match appearances in Top 8 playoffs
+    top_slugs = sorted(
+        archetype_match_counts.keys(),
+        key=lambda s: (-archetype_match_counts[s], archetype_names.get(s, "").lower()),
+    )[:limit]
+
+    # Sort selected archetypes alphabetically by display name
+    sorted_slugs = sorted(
+        top_slugs,
+        key=lambda s: archetype_names.get(s, s).lower(),
+    )
+    top_slugs_set = set(sorted_slugs)
+
+    # Accumulate pairwise head-to-head match & game stats
+    matrix_stats = {
+        s1: {
+            s2: {
+                "matches_won": 0,
+                "matches_lost": 0,
+                "matches_drawn": 0,
+                "total_matches": 0,
+                "games_won": 0,
+                "games_lost": 0,
+                "games_drawn": 0,
+                "total_games": 0,
+            }
+            for s2 in sorted_slugs
+        }
+        for s1 in sorted_slugs
+    }
+
+    # Overall totals per archetype across all matches in the timeframe
+    overall_stats = {
+        s: {
+            "matches_won": 0,
+            "matches_lost": 0,
+            "matches_drawn": 0,
+            "total_matches": 0,
+            "games_won": 0,
+            "games_lost": 0,
+            "total_games": 0,
+        }
+        for s in sorted_slugs
+    }
+
+    for s1, s2, p1_w, p2_w, draws in valid_matches:
+        if p1_w > p2_w:
+            m1_won, m2_won = 1, 0
+            m1_lost, m2_lost = 0, 1
+            m_draw = 0
+        elif p2_w > p1_w:
+            m1_won, m2_won = 0, 1
+            m1_lost, m2_lost = 1, 0
+            m_draw = 0
+        else:
+            m1_won, m2_won = 0, 0
+            m1_lost, m2_lost = 0, 0
+            m_draw = 1
+
+        # Track pairwise stats if both are in top archetypes
+        if s1 in top_slugs_set and s2 in top_slugs_set:
+            if s1 == s2:
+                # Mirror match
+                matrix_stats[s1][s2]["total_matches"] += 1
+                matrix_stats[s1][s2]["total_games"] += p1_w + p2_w + draws
+            else:
+                st1 = matrix_stats[s1][s2]
+                st1["matches_won"] += m1_won
+                st1["matches_lost"] += m1_lost
+                st1["matches_drawn"] += m_draw
+                st1["total_matches"] += 1
+                st1["games_won"] += p1_w
+                st1["games_lost"] += p2_w
+                st1["games_drawn"] += draws
+                st1["total_games"] += p1_w + p2_w + draws
+
+                st2 = matrix_stats[s2][s1]
+                st2["matches_won"] += m2_won
+                st2["matches_lost"] += m2_lost
+                st2["matches_drawn"] += m_draw
+                st2["total_matches"] += 1
+                st2["games_won"] += p2_w
+                st2["games_lost"] += p1_w
+                st2["games_drawn"] += draws
+                st2["total_games"] += p1_w + p2_w + draws
+
+        # Update overall stats
+        if s1 in top_slugs_set:
+            ov1 = overall_stats[s1]
+            ov1["matches_won"] += m1_won
+            ov1["matches_lost"] += m1_lost
+            ov1["matches_drawn"] += m_draw
+            ov1["total_matches"] += 1
+            ov1["games_won"] += p1_w
+            ov1["games_lost"] += p2_w
+            ov1["total_games"] += p1_w + p2_w
+
+        if s2 in top_slugs_set:
+            ov2 = overall_stats[s2]
+            ov2["matches_won"] += m2_won
+            ov2["matches_lost"] += m2_lost
+            ov2["matches_drawn"] += m_draw
+            ov2["total_matches"] += 1
+            ov2["games_won"] += p2_w
+            ov2["games_lost"] += p1_w
+            ov2["total_games"] += p2_w + p1_w
+
+    return {
+        "has_data": True,
+        "total_matches": len(valid_matches),
+        "sorted_slugs": sorted_slugs,
+        "archetype_names": archetype_names,
+        "matrix_stats": matrix_stats,
+        "overall_stats": overall_stats,
+    }
+
+
+@public_cache(cdn_seconds=3600, browser_seconds=180)
+def archetype_matrix(request, format):
+    """Archetype Matchup Matrix view: Head-to-head win rates for top 20 archetypes."""
+    fmt_slug = format.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404("Format not supported")
+
+    days = parse_timeframe(request)
+    cutoff, ref_date = get_timeframe_cutoff(days)
+
+    matrix_data = get_archetype_matrix_data(fmt_slug, cutoff, ref_date, limit=20)
+    sorted_archetype_slugs = matrix_data["sorted_slugs"]
+    archetype_names = matrix_data["archetype_names"]
+    matrix_stats = matrix_data["matrix_stats"]
+    overall_stats = matrix_data["overall_stats"]
+
+    archetypes = [
+        {"slug": slug, "name": archetype_names.get(slug, slug)}
+        for slug in sorted_archetype_slugs
+    ]
+
+    # Construct rows and cells for the template
+    rows = []
+    for s1 in sorted_archetype_slugs:
+        cells = []
+        for s2 in sorted_archetype_slugs:
+            if s1 == s2:
+                mirror_matches = matrix_stats[s1][s2]["total_matches"]
+                cells.append(
+                    {
+                        "is_mirror": True,
+                        "has_data": False,
+                        "mirror_matches": mirror_matches,
+                        "color_class": "bg-zinc-950/60 text-zinc-600",
+                        "tooltip": (
+                            f"{mirror_matches} mirror matches"
+                            if mirror_matches > 0
+                            else "Mirror match"
+                        ),
+                    }
+                )
+            else:
+                st = matrix_stats[s1][s2]
+                m_tot = st["total_matches"]
+                m_won = st["matches_won"]
+                g_won = st["games_won"]
+                g_lost = st["games_lost"]
+                g_tot = g_won + g_lost
+
+                if m_tot > 0:
+                    m_pct = (m_won / m_tot) * 100
+                    g_pct = (g_won / g_tot) * 100 if g_tot > 0 else 0.0
+
+                    color_class = _get_matrix_color_class(m_pct)
+
+                    cells.append(
+                        {
+                            "is_mirror": False,
+                            "has_data": True,
+                            "match_win_pct": (
+                                f"{m_pct:.0f}%"
+                                if m_pct.is_integer()
+                                else f"{m_pct:.1f}%"
+                            ),
+                            "game_win_pct": (
+                                f"{g_pct:.0f}%"
+                                if g_pct.is_integer()
+                                else f"{g_pct:.1f}%"
+                            ),
+                            "matches_won": m_won,
+                            "total_matches": m_tot,
+                            "games_won": g_won,
+                            "total_games": g_tot,
+                            "color_class": color_class,
+                            "match_tooltip": f"{m_won}/{m_tot}",
+                            "game_tooltip": f"{g_won}/{g_tot}",
+                            "tooltip": f"{m_won}/{m_tot}",
+                        }
+                    )
+                else:
+                    cells.append(
+                        {
+                            "is_mirror": False,
+                            "has_data": False,
+                            "color_class": "bg-zinc-900/30 text-zinc-600",
+                            "tooltip": "No matches",
+                        }
+                    )
+
+        # Calculate overall record for this archetype
+        ov = overall_stats[s1]
+        ov_m_tot = ov["total_matches"]
+        ov_m_won = ov["matches_won"]
+        ov_g_tot = ov["total_games"]
+        ov_g_won = ov["games_won"]
+
+        if ov_m_tot > 0:
+            ov_m_pct = (ov_m_won / ov_m_tot) * 100
+            ov_g_pct = (ov_g_won / ov_g_tot) * 100 if ov_g_tot > 0 else 0.0
+            ov_color = _get_matrix_color_class(ov_m_pct)
+
+            overall_cell = {
+                "has_data": True,
+                "match_win_pct": (
+                    f"{ov_m_pct:.0f}%" if ov_m_pct.is_integer() else f"{ov_m_pct:.1f}%"
+                ),
+                "game_win_pct": (
+                    f"{ov_g_pct:.0f}%" if ov_g_pct.is_integer() else f"{ov_g_pct:.1f}%"
+                ),
+                "matches_won": ov_m_won,
+                "total_matches": ov_m_tot,
+                "games_won": ov_g_won,
+                "total_games": ov_g_tot,
+                "color_class": ov_color,
+                "match_tooltip": f"{ov_m_won}/{ov_m_tot}",
+                "game_tooltip": f"{ov_g_won}/{ov_g_tot}",
+                "tooltip": f"{ov_m_won}/{ov_m_tot}",
+            }
+        else:
+            overall_cell = {
+                "has_data": False,
+                "color_class": "bg-zinc-900/30 text-zinc-600",
+                "tooltip": "No matches",
+            }
+
+        rows.append(
+            {
+                "archetype": archetype_names.get(s1, s1),
+                "archetype_slug": s1,
+                "cells": cells,
+                "overall": overall_cell,
+            }
+        )
+
+    format_name = (
+        FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
+    )
+
+    return render(
+        request,
+        "archetype_matrix.html",
+        {
+            "format_slug": fmt_slug,
+            "format_name": format_name,
+            "archetypes": archetypes,
+            "rows": rows,
+            "total_matches": matrix_data["total_matches"],
+            "days": days,
+        },
+    )
+
+
 @public_cache(cdn_seconds=3600, browser_seconds=3600)
 def faq(request):
     """FAQ view explaining data sources, tournament coverage, and acknowledgments."""
@@ -2292,6 +2647,209 @@ def format_og_image(request, format):
             "format_name": fmt_slug.capitalize(),
             "bump_chart": bump_chart,
             "total_decks": f"{total_decks:,}",
+        },
+        request=request,
+    )
+
+
+def _get_og_matrix_cell_style(
+    pct: float | None, is_mirror: bool = False, has_data: bool = True
+) -> dict:
+    """Return SVG fill, stroke, and text colors for matrix OG image cells."""
+    if is_mirror:
+        return {
+            "bg_fill": "#18181b",
+            "bg_opacity": "0.5",
+            "border_stroke": "#27272a",
+            "border_opacity": "0.4",
+            "text_fill": "#52525b",
+            "subtext_fill": "#3f3f46",
+        }
+    if not has_data or pct is None:
+        return {
+            "bg_fill": "#18181b",
+            "bg_opacity": "0.3",
+            "border_stroke": "#27272a",
+            "border_opacity": "0.2",
+            "text_fill": "#3f3f46",
+            "subtext_fill": "#27272a",
+        }
+    if pct > 60.0:
+        return {
+            "bg_fill": "#064e3b",
+            "bg_opacity": "0.75",
+            "border_stroke": "#10b981",
+            "border_opacity": "0.6",
+            "text_fill": "#6ee7b7",
+            "subtext_fill": "#a7f3d0",
+        }
+    elif pct > 55.0:
+        return {
+            "bg_fill": "#064e3b",
+            "bg_opacity": "0.4",
+            "border_stroke": "#10b981",
+            "border_opacity": "0.4",
+            "text_fill": "#34d399",
+            "subtext_fill": "#6ee7b7",
+        }
+    elif pct < 40.0:
+        return {
+            "bg_fill": "#450a0a",
+            "bg_opacity": "0.75",
+            "border_stroke": "#ef4444",
+            "border_opacity": "0.6",
+            "text_fill": "#fca5a5",
+            "subtext_fill": "#fecaca",
+        }
+    elif pct < 45.0:
+        return {
+            "bg_fill": "#450a0a",
+            "bg_opacity": "0.4",
+            "border_stroke": "#ef4444",
+            "border_opacity": "0.4",
+            "text_fill": "#f87171",
+            "subtext_fill": "#fca5a5",
+        }
+    else:
+        return {
+            "bg_fill": "#27272a",
+            "bg_opacity": "0.7",
+            "border_stroke": "#3f3f46",
+            "border_opacity": "0.5",
+            "text_fill": "#e4e4e7",
+            "subtext_fill": "#a1a1aa",
+        }
+
+
+def build_matrix_og_data(
+    format_slug: str, cutoff_date: date, ref_date: date, max_archetypes: int = 8
+) -> dict:
+    """Build pre-calculated layout and cell data for the archetype matrix OG image."""
+    matrix_raw = get_archetype_matrix_data(
+        format_slug, cutoff_date, ref_date, limit=max_archetypes
+    )
+    if not matrix_raw["has_data"]:
+        return {"has_data": False, "total_matches": 0}
+
+    sorted_slugs = matrix_raw["sorted_slugs"]
+    archetype_names = matrix_raw["archetype_names"]
+    matrix_stats = matrix_raw["matrix_stats"]
+    n = len(sorted_slugs)
+
+    # Geometry calculations for SVG
+    # Card container width: 1080px (x=60 to 1140), height: 365px (y=200 to 565)
+    cols = n
+    table_x = 80
+    row_label_width = 160
+    columns_start_x = table_x + row_label_width + 12
+    available_width = 1120 - columns_start_x
+    gap_x = 6
+    cell_width = min(120, int((available_width - (cols - 1) * gap_x) / cols))
+
+    available_height = 310
+    gap_y = 4
+    cell_height = min(40, int((available_height - (n - 1) * gap_y) / n))
+
+    def _truncate(name: str, max_chars: int) -> str:
+        return (name[: max_chars - 1] + "…") if len(name) > max_chars else name
+
+    col_headers = []
+    for j, s in enumerate(sorted_slugs):
+        cx = columns_start_x + j * (cell_width + gap_x)
+        full_name = archetype_names.get(s, s)
+        col_headers.append(
+            {
+                "x": cx,
+                "center_x": cx + cell_width // 2,
+                "width": cell_width,
+                "name": full_name,
+                "short_name": _truncate(full_name, 13),
+            }
+        )
+
+    rows_data = []
+    row_start_y = 242
+    for i, s1 in enumerate(sorted_slugs):
+        ry = row_start_y + i * (cell_height + gap_y)
+        full_name = archetype_names.get(s1, s1)
+        row_label_y = ry + cell_height // 2 + 4
+
+        cells = []
+        for j, s2 in enumerate(sorted_slugs):
+            cx = columns_start_x + j * (cell_width + gap_x)
+            is_mirror = s1 == s2
+            st = matrix_stats[s1][s2]
+            m_tot = st["total_matches"]
+            m_won = st["matches_won"]
+            has_data = not is_mirror and m_tot > 0
+            pct = (m_won / m_tot * 100) if has_data else None
+
+            style = _get_og_matrix_cell_style(
+                pct, is_mirror=is_mirror, has_data=has_data
+            )
+            pct_str = f"{pct:.0f}%" if pct is not None else ""
+            rec_str = f"{m_won}/{m_tot}" if has_data else ""
+
+            cells.append(
+                {
+                    "x": cx,
+                    "y": ry,
+                    "width": cell_width,
+                    "height": cell_height,
+                    "center_x": cx + cell_width // 2,
+                    "top_text_y": ry + 15,
+                    "bottom_text_y": ry + 28,
+                    "center_y": ry + cell_height // 2 + 4,
+                    "is_mirror": is_mirror,
+                    "has_data": has_data,
+                    "match_win_pct": pct_str,
+                    "record": rec_str,
+                    **style,
+                }
+            )
+
+        rows_data.append(
+            {
+                "slug": s1,
+                "name": full_name,
+                "short_name": _truncate(full_name, 18),
+                "label_y": row_label_y,
+                "cells": cells,
+            }
+        )
+
+    return {
+        "has_data": True,
+        "col_headers": col_headers,
+        "rows": rows_data,
+        "total_matches": matrix_raw["total_matches"],
+    }
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def format_matrix_og_image(request, format):
+    """Serve dynamic Open Graph PNG image for a format archetype matchup matrix."""
+    fmt_slug = format.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404(f"Format '{format}' not found.")
+
+    days = parse_timeframe(request, default=90)
+    cutoff, ref_date = get_timeframe_cutoff(days)
+
+    matrix_data = build_matrix_og_data(fmt_slug, cutoff, ref_date, max_archetypes=8)
+
+    format_name = (
+        FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
+    )
+
+    return render_og_png(
+        "og/matrix_og.svg",
+        {
+            "format_slug": fmt_slug,
+            "format_name": format_name,
+            "matrix": matrix_data,
+            "total_matches": f"{matrix_data.get('total_matches', 0):,}",
+            "days": days,
         },
         request=request,
     )

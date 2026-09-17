@@ -161,7 +161,7 @@ class Command(BaseCommand):
 
             replace_existing = True
 
-        tourn_count, deck_count = pipeline.ingest_files(
+        tourn_count, deck_count, match_count = pipeline.ingest_files(
             files_to_process,
             limit=limit,
             force=force or bool(since_date) or bool(refresh_days is not None),
@@ -179,6 +179,7 @@ class Command(BaseCommand):
         if (
             tourn_count == 0
             and deck_count == 0
+            and match_count == 0
             and not force
             and not since_date
             and refresh_days is None
@@ -191,7 +192,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Successfully ingested {tourn_count} tournaments and {deck_count} decks!"
+                    f"Successfully ingested {tourn_count} tournaments, {deck_count} decks, and {match_count} matches!"
                 )
             )
 

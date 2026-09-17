@@ -9,8 +9,11 @@ from django.template.loader import render_to_string
 from django.test import Client
 
 from core.models import Deck
+from core.models import Match
 from core.models import Tournament
+from core.views import _get_og_matrix_cell_style
 from core.views import build_mana_pill
+from core.views import build_matrix_og_data
 from core.views import render_og_png
 
 
@@ -333,3 +336,160 @@ def test_render_og_png_font_resolution():
     assert response["Content-Type"] == "image/png"
     assert response.content[:4] == b"\x89PNG"
     assert len(response.content) > 5000
+
+
+@pytest.mark.django_db
+def test_format_matrix_og_image_view(client):
+    """Test format archetype matrix PNG OG image view and meta tags."""
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="modern_matrix_og_tourn",
+        format="modern",
+        event_type="challenge",
+        name="Modern Challenge 32",
+        date=today,
+    )
+    d_burn = Deck.objects.create(
+        id="d_burn_og",
+        tournament=tourn,
+        format="modern",
+        player="BurnPlayer",
+        player_lower="burnplayer",
+        archetype="Burn",
+        archetype_slug="burn",
+    )
+    d_delver = Deck.objects.create(
+        id="d_delver_og",
+        tournament=tourn,
+        format="modern",
+        player="DelverPlayer",
+        player_lower="delverplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+    )
+    Match.objects.create(
+        id="match_og_1",
+        tournament=tourn,
+        round_name="Finals",
+        round_slug="finals",
+        player1="BurnPlayer",
+        player2="DelverPlayer",
+        player1_deck=d_burn,
+        player2_deck=d_delver,
+        player1_wins=2,
+        player2_wins=1,
+    )
+
+    # 1. Test matrix OG PNG response
+    response = client.get("/modern/matrix/og.png")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/png"
+    assert response.content[:4] == b"\x89PNG"
+    assert len(response.content) > 1000
+
+    # 2. Test invalid format returns 404
+    resp_invalid = client.get("/nonexistent_format/matrix/og.png")
+    assert resp_invalid.status_code == 404
+
+    # 3. Test matrix HTML page meta tags point to matrix og.png
+    matrix_resp = client.get("/modern/matrix/")
+    assert matrix_resp.status_code == 200
+    assert (
+        'property="og:image" content="http://testserver/modern/matrix/og.png"'
+        in matrix_resp.content.decode()
+    )
+    assert (
+        'name="twitter:image" content="http://testserver/modern/matrix/og.png"'
+        in matrix_resp.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_format_matrix_og_image_empty_data(client):
+    """Test matrix OG image renders empty placeholder when no matches exist."""
+    response = client.get("/vintage/matrix/og.png")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/png"
+    assert response.content[:4] == b"\x89PNG"
+
+
+def test_og_matrix_cell_style_tiers():
+    """Verify SVG color and opacity tiers for OG matrix cells."""
+    # Mirror cell
+    m_style = _get_og_matrix_cell_style(None, is_mirror=True)
+    assert m_style["text_fill"] == "#52525b"
+
+    # No data cell
+    nd_style = _get_og_matrix_cell_style(None, is_mirror=False, has_data=False)
+    assert nd_style["text_fill"] == "#3f3f46"
+
+    # Deep green (> 60%)
+    dg = _get_og_matrix_cell_style(65.0)
+    assert dg["text_fill"] == "#6ee7b7"
+    assert dg["bg_fill"] == "#064e3b"
+
+    # Green (55% - 60%)
+    g = _get_og_matrix_cell_style(58.0)
+    assert g["text_fill"] == "#34d399"
+
+    # Neutral (45% - 55%)
+    neu = _get_og_matrix_cell_style(50.0)
+    assert neu["text_fill"] == "#e4e4e7"
+    assert neu["bg_fill"] == "#27272a"
+
+    # Red (40% - 45%)
+    r = _get_og_matrix_cell_style(42.0)
+    assert r["text_fill"] == "#f87171"
+
+    # Deep red (< 40%)
+    dr = _get_og_matrix_cell_style(30.0)
+    assert dr["text_fill"] == "#fca5a5"
+    assert dr["bg_fill"] == "#450a0a"
+
+
+@pytest.mark.django_db
+def test_build_matrix_og_data_eight_archetypes():
+    """Verify build_matrix_og_data defaults to 8 archetypes and formats an 8x8 grid."""
+    tourn = Tournament.objects.create(
+        id="modern_tourn_eight",
+        format="modern",
+        event_type="challenge",
+        name="Modern Challenge",
+        date=date(2026, 2, 1),
+    )
+    # Create 9 distinct archetypes
+    decks = []
+    for i in range(9):
+        name = f"Archetype {chr(65 + i)}"
+        d = Deck.objects.create(
+            id=f"deck_arch_{i}",
+            tournament=tourn,
+            format="modern",
+            player=f"Player{i}",
+            player_lower=f"player{i}",
+            archetype=name,
+            archetype_slug=f"archetype-{chr(97 + i)}",
+        )
+        decks.append(d)
+
+    # Create matches between consecutive decks so each has matches
+    for i in range(8):
+        Match.objects.create(
+            id=f"match_eight_{i}",
+            tournament=tourn,
+            round_name="Quarterfinals",
+            round_slug="quarterfinals",
+            player1=decks[i].player,
+            player2=decks[i + 1].player,
+            player1_deck=decks[i],
+            player2_deck=decks[i + 1],
+            player1_wins=2,
+            player2_wins=1,
+        )
+
+    data = build_matrix_og_data("modern", date(2026, 1, 1), date(2026, 3, 1))
+    assert data["has_data"] is True
+    assert len(data["col_headers"]) == 8
+    assert len(data["rows"]) == 8
+    for row in data["rows"]:
+        assert len(row["cells"]) == 8

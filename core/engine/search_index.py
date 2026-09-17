@@ -58,12 +58,24 @@ def build_search_index_data(formats: Iterable[str] | None = None) -> dict:
     ]
 
     target_formats = [fmt.lower() for fmt in getattr(settings, "MODOMETA_FORMATS", [])]
-    card_objs = Card.objects.order_by("name").values("name", "slug", "legalities")
-    cards = [
-        {"name": c["name"], "slug": c["slug"]}
-        for c in card_objs
-        if c["name"] and is_card_legal(c["legalities"], target_formats)
-    ]
+    card_objs = Card.objects.order_by("name").values(
+        "name", "slug", "legalities", "card_faces"
+    )
+    cards = []
+    for c in card_objs:
+        if not c["name"] or not is_card_legal(c["legalities"], target_formats):
+            continue
+        entry = {"name": c["name"], "slug": c["slug"]}
+        faces = c.get("card_faces") or []
+        if len(faces) > 1:
+            subnames = [
+                f["name"]
+                for f in faces[1:]
+                if f.get("name") and f["name"].lower() != c["name"].lower()
+            ]
+            if subnames:
+                entry["subnames"] = subnames
+        cards.append(entry)
 
     return {
         "archetypes": archetypes,

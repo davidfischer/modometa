@@ -304,6 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
         c.norm = normalizeSearch(cName);
         c.lower = cName.toLowerCase();
         c.noSpace = c.norm.replace(/\s+/g, '');
+        c.subnames = c.subnames || [];
+        c.subnamesLower = c.subnames.map(s => (s || '').toLowerCase());
+        c.subnamesNorm = c.subnames.map(s => normalizeSearch(s || ''));
+        c.combinedNorm = [c.norm, ...c.subnamesNorm].join(' ');
         data.cards[i] = c;
       }
 
@@ -452,8 +456,71 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
+        let subnameScore = 0;
+        let matchedSubname = null;
+        if (c.subnames && c.subnames.length > 0) {
+          for (let sIdx = 0; sIdx < c.subnames.length; sIdx++) {
+            const sLower = c.subnamesLower[sIdx];
+            const sNorm = c.subnamesNorm[sIdx];
+            let sScore = 0;
+            if (sLower === rawQ || sNorm === qNorm) {
+              sScore = 300;
+            } else if (sLower.startsWith(rawQ) || sNorm.startsWith(qNorm)) {
+              sScore = 220;
+            } else if (sLower.includes(rawQ) || sNorm.includes(qNorm)) {
+              sScore = 150;
+            } else if (qTokens.length > 1) {
+              let inOrder = true;
+              let lastIdx = -1;
+              for (const tok of qTokens) {
+                const idx = sNorm.indexOf(tok, lastIdx + 1);
+                if (idx === -1) {
+                  inOrder = false;
+                  break;
+                }
+                lastIdx = idx;
+              }
+              if (inOrder) {
+                sScore = 80;
+              } else if (qTokens.every(tok => sNorm.includes(tok))) {
+                sScore = 60;
+              }
+            }
+            if (sScore > subnameScore) {
+              subnameScore = sScore;
+              matchedSubname = c.subnames[sIdx];
+            }
+          }
+
+          if (subnameScore > score) {
+            score = subnameScore;
+          } else if (qTokens.length > 1 && subnameScore < 100 && score < 100 && c.combinedNorm) {
+            let inOrder = true;
+            let lastIdx = -1;
+            for (const tok of qTokens) {
+              const idx = c.combinedNorm.indexOf(tok, lastIdx + 1);
+              if (idx === -1) {
+                inOrder = false;
+                break;
+              }
+              lastIdx = idx;
+            }
+            if (inOrder && score < 85) {
+              score = 85;
+              matchedSubname = c.subnames[0];
+            } else if (qTokens.every(tok => c.combinedNorm.includes(tok)) && score < 65) {
+              score = 65;
+              matchedSubname = c.subnames[0];
+            } else {
+              matchedSubname = null;
+            }
+          } else {
+            matchedSubname = null;
+          }
+        }
+
         if (score > 0) {
-          matchedCards.push({ ...c, score });
+          matchedCards.push({ ...c, score, matchedSubname });
         }
       }
       matchedCards.sort((a, b) => b.score - a.score || a.name.length - b.name.length || a.name.localeCompare(b.name));
@@ -533,11 +600,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const c of topCards) {
           const cardSlug = c.slug || c.name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '') || 'card';
           const url = `/card/${encodeURIComponent(cardSlug)}/`;
+          const subnameHtml = c.matchedSubname ? ` <span class="text-2xs text-zinc-400 font-normal shrink-0">(${escapeHtml(c.matchedSubname)})</span>` : '';
           html += `
             <a href="${url}" data-search-item class="flex items-center justify-between px-3.5 py-2 text-xs text-zinc-200 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer" role="option">
               <div class="flex items-center gap-2 truncate min-w-0 pr-2">
                 <span class="text-emerald-400 text-xs shrink-0">🃏</span>
-                <span class="font-medium truncate text-white">${escapeHtml(c.name)}</span>
+                <span class="font-medium truncate text-white">${escapeHtml(c.name)}</span>${subnameHtml}
               </div>
             </a>
           `;

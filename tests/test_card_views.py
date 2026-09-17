@@ -13,9 +13,12 @@ from django.test import Client
 
 from core.engine.search_index import build_search_index_data
 from core.models import Card
+from core.models import CardLookup
 from core.models import Deck
 from core.models import Tournament
 from core.templatetags.mana_tags import oracle_text_format_filter
+from core.views import classify_card_type
+from core.views import get_cards_map
 
 
 @pytest.fixture
@@ -586,3 +589,199 @@ def test_card_og_image_top_format_and_deck_count(client, sample_card):
         ctx = mock_render.call_args[0][1]
         assert ctx["total_decks"] == "8"
         assert ctx["top_format_display"] == "Modern"
+
+
+@pytest.mark.django_db
+def test_search_index_includes_subnames():
+    Card.objects.create(
+        id="test-brazen-borrower",
+        oracle_id="test-oracle-brazen",
+        name="Brazen Borrower",
+        slug="brazen-borrower",
+        mana_cost="{1}{U}{U}",
+        type_line="Creature — Faerie Rogue",
+        legalities={"modern": "legal"},
+        card_faces=[
+            {
+                "name": "Brazen Borrower",
+                "mana_cost": "{1}{U}{U}",
+                "type_line": "Creature — Faerie Rogue",
+            },
+            {
+                "name": "Petty Theft",
+                "mana_cost": "{1}{U}",
+                "type_line": "Instant — Adventure",
+            },
+        ],
+    )
+    data = build_search_index_data(formats=["modern"])
+    bb_entry = next((c for c in data["cards"] if c["name"] == "Brazen Borrower"), None)
+    assert bb_entry is not None
+    assert bb_entry["slug"] == "brazen-borrower"
+    assert "subnames" in bb_entry
+    assert "Petty Theft" in bb_entry["subnames"]
+
+
+@pytest.mark.django_db
+def test_card_detail_multi_face_rendering_and_flip_button(client):
+    card = Card.objects.create(
+        id="test-boggart-trawler",
+        oracle_id="test-oracle-boggart",
+        name="Boggart Trawler",
+        slug="boggart-trawler",
+        mana_cost="{2}{B}",
+        type_line="Creature — Goblin Assassin",
+        oracle_text="When Boggart Trawler enters, exile graveyard.\n//\nBoggart Bog enters tapped.",
+        image_uri="https://cards.scryfall.io/front/trawler.jpg",
+        legalities={"modern": "legal"},
+        card_faces=[
+            {
+                "name": "Boggart Trawler",
+                "mana_cost": "{2}{B}",
+                "type_line": "Creature — Goblin Assassin",
+                "oracle_text": "When Boggart Trawler enters, exile graveyard.",
+                "power": "2",
+                "toughness": "3",
+                "image_uri": "https://cards.scryfall.io/front/trawler.jpg",
+            },
+            {
+                "name": "Boggart Bog",
+                "mana_cost": "",
+                "type_line": "Land",
+                "oracle_text": "Boggart Bog enters tapped. {T}: Add {B}.",
+                "power": None,
+                "toughness": None,
+                "image_uri": "https://cards.scryfall.io/back/bog.jpg",
+            },
+        ],
+    )
+    response = client.get(f"/card/{card.slug}/")
+    assert response.status_code == 200
+    content = response.content.decode("utf-8")
+
+    # Front face title as H1
+    assert "Boggart Trawler</h1>" in content
+    # Card Faces section present
+    assert "Card Faces</h2>" in content
+    assert "Boggart Bog</h3>" in content
+    assert "Creature — Goblin Assassin" in content
+    assert "Land" in content
+    assert "2/3" in content
+    assert "When Boggart Trawler enters, exile graveyard." in content
+    assert "Boggart Bog enters tapped." in content
+    # Turn Over button present because back image exists
+    assert "turn-over-card-btn" in content
+    assert 'data-back-src="https://cards.scryfall.io/back/bog.jpg"' in content
+
+
+@pytest.mark.django_db
+def test_card_detail_prepare_rendering(client):
+    card = Card.objects.create(
+        id="test-emeritus-woe",
+        oracle_id="test-oracle-emeritus-woe",
+        name="Emeritus of Woe",
+        slug="emeritus-of-woe",
+        mana_cost="{3}{B}",
+        type_line="Creature — Vampire Warlock",
+        oracle_text="This creature enters prepared.\n//\nSearch your library for a card.",
+        image_uri="https://cards.scryfall.io/front/emeritus.jpg",
+        legalities={"legacy": "legal"},
+        card_faces=[
+            {
+                "name": "Emeritus of Woe",
+                "mana_cost": "{3}{B}",
+                "type_line": "Creature — Vampire Warlock",
+                "oracle_text": "This creature enters prepared.",
+                "power": "5",
+                "toughness": "4",
+                "image_uri": None,
+            },
+            {
+                "name": "Demonic Tutor",
+                "mana_cost": "{1}{B}",
+                "type_line": "Sorcery",
+                "oracle_text": "Search your library for a card.",
+                "power": None,
+                "toughness": None,
+                "image_uri": None,
+            },
+        ],
+    )
+    response = client.get(f"/card/{card.slug}/")
+    assert response.status_code == 200
+    content = response.content.decode("utf-8")
+
+    assert "Emeritus of Woe</h1>" in content
+    assert "Demonic Tutor</h3>" in content
+    assert "5/4" in content
+    assert "This creature enters prepared." in content
+    assert "Search your library for a card." in content
+    # No Turn Over button since prepare card is single-sided
+    assert "turn-over-card-btn" not in content
+
+
+@pytest.mark.django_db
+def test_get_cards_map_prioritizes_playable_cards_over_art_series():
+    real_brainstorm = Card.objects.create(
+        id="brainstorm-real",
+        oracle_id="brainstorm-oracle",
+        name="Brainstorm",
+        slug="brainstorm",
+        normalized_name="brainstorm",
+        mana_cost="{U}",
+        cmc=1.0,
+        type_line="Instant",
+        oracle_text="Draw three cards, then put two cards from your hand on top of your library in any order.",
+        legalities={"legacy": "legal", "vintage": "restricted"},
+    )
+    art_brainstorm = Card.objects.create(
+        id="brainstorm-art",
+        oracle_id="brainstorm-art-oracle",
+        name="Brainstorm",
+        slug="brainstorm-1",
+        normalized_name="brainstorm",
+        type_line="Card",
+        legalities={},
+    )
+    CardLookup.objects.create(
+        lookup_name="brainstorm",
+        canonical_name="Brainstorm",
+        card=real_brainstorm,
+        priority=110,
+    )
+    CardLookup.objects.create(
+        lookup_name="brainstorm-art",
+        canonical_name="Brainstorm",
+        card=art_brainstorm,
+        priority=0,
+    )
+
+    cards_map = get_cards_map(["Brainstorm"])
+    assert cards_map["Brainstorm"].id == real_brainstorm.id
+    assert cards_map["Brainstorm"].type_line == "Instant"
+    assert classify_card_type(cards_map["Brainstorm"]) == "instant"
+
+
+@pytest.mark.django_db
+def test_get_cards_map_tiebreaker_without_lookup():
+    real_card = Card.objects.create(
+        id="mana-drain-real",
+        oracle_id="mana-drain-oracle",
+        name="Mana Drain",
+        slug="mana-drain",
+        normalized_name="mana drain",
+        type_line="Instant",
+    )
+    Card.objects.create(
+        id="mana-drain-art",
+        oracle_id="mana-drain-art-oracle",
+        name="Mana Drain",
+        slug="mana-drain-1",
+        normalized_name="mana drain",
+        type_line="Card",
+    )
+
+    cards_map = get_cards_map(["Mana Drain"])
+    assert cards_map["Mana Drain"].id == real_card.id
+    assert cards_map["Mana Drain"].type_line == "Instant"
+    assert classify_card_type(cards_map["Mana Drain"]) == "instant"

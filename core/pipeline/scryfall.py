@@ -160,6 +160,86 @@ def _extract_image_uri(item: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_card_name_and_type(item: dict[str, Any]) -> tuple[str, str]:
+    """Determine the canonical card name and type line.
+
+    For split cards (layout == 'split'), the combined name (e.g. 'Fire // Ice')
+    and combined type line are used because MTG rules define the card by both halves.
+
+    For all other multi-faced layouts (modal_dfc, adventure, transform, prepare,
+    reversible_card, flip, etc.), MTG rules define the card outside the stack
+    by its front face (e.g. 'Boggart Trawler', 'Brazen Borrower').
+    """
+    raw_name = item.get("name", "")
+    layout = item.get("layout", "")
+    raw_faces = item.get("card_faces") or []
+
+    if layout != "split" and raw_faces:
+        front_face = raw_faces[0]
+        name = front_face.get("name") or raw_name
+        type_line = front_face.get("type_line") or item.get("type_line", "")
+        return name, type_line
+
+    return raw_name, item.get("type_line", "")
+
+
+def _extract_card_faces(item: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract structured face data for multi-faced cards."""
+    raw_faces = item.get("card_faces") or []
+    faces = []
+    for f in raw_faces:
+        face_img = None
+        if "image_uris" in f and f["image_uris"]:
+            face_img = f["image_uris"].get("normal") or f["image_uris"].get("small")
+
+        faces.append(
+            {
+                "name": f.get("name", ""),
+                "mana_cost": f.get("mana_cost", ""),
+                "type_line": f.get("type_line", ""),
+                "oracle_text": f.get("oracle_text", ""),
+                "colors": f.get("colors", []),
+                "power": f.get("power"),
+                "toughness": f.get("toughness"),
+                "loyalty": f.get("loyalty"),
+                "defense": f.get("defense"),
+                "image_uri": face_img,
+            }
+        )
+    return faces
+
+
+def _extract_oracle_text(item: dict[str, Any]) -> str:
+    """Extract oracle text from item or join face oracle texts."""
+    text = item.get("oracle_text")
+    if text is not None:
+        return text
+    if "card_faces" in item and item["card_faces"]:
+        texts = [
+            f.get("oracle_text", "").strip()
+            for f in item["card_faces"]
+            if f.get("oracle_text") and f.get("oracle_text").strip()
+        ]
+        if texts:
+            return "\n//\n".join(texts)
+    return ""
+
+
+def _extract_colors(item: dict[str, Any]) -> list[str]:
+    """Extract colors from item or combine face colors (for transform cards / MDFCs)."""
+    colors = item.get("colors")
+    if colors is not None:
+        return list(colors)
+    if "card_faces" in item and item["card_faces"]:
+        comb: list[str] = []
+        for f in item["card_faces"]:
+            for c in f.get("colors", []):
+                if c not in comb:
+                    comb.append(c)
+        return comb
+    return []
+
+
 def _extract_mana_cost(item: dict[str, Any]) -> str | None:
     """Extract mana cost from item or card faces (for MDFCs and transform cards)."""
     cost = item.get("mana_cost")
@@ -187,6 +267,17 @@ SPECIAL_FRAME_EFFECTS = {
     "spellslinger",
 }
 
+NON_PLAYABLE_LAYOUTS = {
+    "art_series",
+    "token",
+    "double_faced_token",
+    "emblem",
+    "planar",
+    "scheme",
+    "vanguard",
+    "front_card",
+}
+
 NON_STANDARD_LAYOUTS = {
     "art_series",
     "token",
@@ -198,7 +289,14 @@ NON_STANDARD_LAYOUTS = {
     "reversible_card",
 }
 
+PENALIZED_SETS = {
+    "lea",  # Limited Edition Alpha (harsh corner cuts; prefer Beta or later)
+    "om1",  # Through the Omenpaths (MTGO-only reskins; prefer original IP printings)
+    "omb",  # Through the Omenpaths Bonus Sheet (MTGO-only reskins)
+}
+
 WORST_PRINT_RANK = (
+    1,
     "9999-99-99",
     1,
     1,
@@ -210,8 +308,8 @@ def _calculate_print_rank(item: dict[str, Any]) -> tuple:
     """Calculate printing priority rank for card images.
 
     Preferences:
+    - Non-penalized sets over penalized sets (e.g. lea, om1, omb).
     - Earliest release date first.
-    - If the earliest printing is Alpha (lea), prefer Beta (leb) instead.
     - If there are multiple printings in the earliest set, prefer the 'regular'
       version over promos (prerelease, promo pack), full-art, showcase,
       extended art, or borderless variants.
@@ -223,17 +321,11 @@ def _calculate_print_rank(item: dict[str, Any]) -> tuple:
     set_code = item.get("set", "").lower()
     released_at = item.get("released_at") or "9999-99-99"
 
-    # 1. Alpha vs Beta: map Alpha to right after Beta so Beta wins
-    if set_code == "lea":
-        effective_date = "1993-10-05"
-        is_reprint = 0
-    elif set_code == "leb":
-        effective_date = "1993-10-04"
-        is_reprint = 0
-    else:
-        effective_date = released_at
-        is_reprint = 1 if item.get("reprint", True) else 0
+    # 1. Set penalty: deprioritize sets like Alpha (lea) and Through the Omenpaths (om1/omb)
+    set_penalty = 1 if set_code in PENALIZED_SETS else 0
 
+    effective_date = released_at
+    is_reprint = 1 if item.get("reprint", True) else 0
     is_digital = 1 if item.get("digital", False) else 0
 
     # 2. Promo / Prerelease penalty:
@@ -318,7 +410,7 @@ def _calculate_print_rank(item: dict[str, Any]) -> tuple:
         cn_num,
     )
 
-    return (effective_date, is_reprint, is_digital, regularity_penalty)
+    return (set_penalty, effective_date, is_reprint, is_digital, regularity_penalty)
 
 
 def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int, int]:
@@ -363,9 +455,20 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                 continue
 
             card_id = item.get("id")
-            oracle_id = item.get("oracle_id") or card_id
-            name = item.get("name", "")
-            if not card_id or not name:
+            oracle_id = item.get("oracle_id")
+            if not oracle_id and item.get("card_faces"):
+                oracle_id = item["card_faces"][0].get("oracle_id")
+            oracle_id = oracle_id or card_id
+            raw_name = item.get("name", "")
+            if not card_id or not raw_name:
+                continue
+
+            layout = item.get("layout", "")
+            if layout in NON_PLAYABLE_LAYOUTS:
+                continue
+
+            name, type_line = _extract_card_name_and_type(item)
+            if type_line.strip() in ("Card", "Card // Card", ""):
                 continue
 
             # Extract image URI
@@ -373,9 +476,9 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
             print_rank = _calculate_print_rank(item)
 
             norm_name = normalize_card_name(name)
-            type_line = item.get("type_line", "")
             is_land = "Land" in type_line
             is_basic = "Basic" in type_line and is_land
+            card_faces = _extract_card_faces(item)
 
             # Calculate legality bonus for priority
             is_legal_any = any(
@@ -397,14 +500,15 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                     "mana_cost": _extract_mana_cost(item),
                     "cmc": float(item.get("cmc", 0.0)),
                     "type_line": type_line,
-                    "oracle_text": item.get("oracle_text"),
-                    "colors": item.get("colors", []),
+                    "oracle_text": _extract_oracle_text(item),
+                    "colors": _extract_colors(item),
                     "color_identity": item.get("color_identity", []),
                     "image_uri": img,
                     "legalities": item.get("legalities", {}),
                     "is_land": is_land,
                     "is_basic_land": is_basic,
                     "best_rank": print_rank if img else WORST_PRINT_RANK,
+                    "card_faces": card_faces,
                 }
             else:
                 rec = cards_by_oracle[oracle_id]
@@ -413,6 +517,8 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                     rec["id"] = card_id
                     rec["image_uri"] = img
                     rec["best_rank"] = print_rank
+                    if card_faces:
+                        rec["card_faces"] = card_faces
 
             # Track printing data
             prices = item.get("prices") or {}
@@ -445,6 +551,16 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                 (norm_name, canonical_name, base_priority + 10)
             ]
 
+            # Raw full name alias if different from canonical name (e.g. "Boggart Trawler // Boggart Bog")
+            if raw_name and raw_name != canonical_name:
+                aliases.append(
+                    (
+                        normalize_card_name(raw_name),
+                        canonical_name,
+                        base_priority + 10,
+                    )
+                )
+
             # Printed name (Through the Omenpaths / Universes Within)
             if item.get("printed_name"):
                 aliases.append(
@@ -466,8 +582,8 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                 )
 
             # Split card faces: e.g. "Fire // Ice" -> "fire" and "ice"
-            if " // " in name:
-                faces = [f.strip() for f in name.split("//")]
+            if " // " in raw_name:
+                faces = [f.strip() for f in raw_name.split("//")]
                 if faces:
                     aliases.append(
                         (
@@ -489,7 +605,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
                 for i, face in enumerate(item["card_faces"]):
                     face_name = face.get("name", "")
                     if face_name:
-                        prio = base_priority + (5 if i == 0 else 0)
+                        prio = base_priority + (10 if i == 0 else 5)
                         aliases.append(
                             (normalize_card_name(face_name), canonical_name, prio)
                         )
@@ -557,6 +673,7 @@ def ingest_scryfall_cards(json_path: Path, batch_size: int = 2000) -> tuple[int,
             is_land=d["is_land"],
             is_basic_land=d["is_basic_land"],
             printings=d["printings"],
+            card_faces=d.get("card_faces", []),
         )
         for d in cards_by_oracle.values()
     ]

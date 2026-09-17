@@ -90,42 +90,69 @@ def public_cache(cdn_seconds: int = 3600, browser_seconds: int = 300):
 def get_cards_map(card_names: Iterable[str]) -> dict[str, Card]:
     """Resolve a collection of card names to Card model instances.
 
-    Tries exact name match first, then falls back to CardLookup (for DFCs,
-    split cards, aliases), and finally to Card.normalized_name.
+    Uses CardLookup (ordered by priority ascending so highest priority wins)
+    first to map canonical names, DFCs, split cards, and aliases to their
+    canonical Card instance. Falls back to direct Card matching by exact name
+    and normalized name, prioritizing playable cards over placeholder/art cards.
     Defers the heavy printings JSONField to avoid unnecessary payload/memory overhead.
     Returns a dict mapping original card names to Card instances.
     """
     names_set = set(card_names)
-    cards_map = {
-        c.name: c for c in Card.objects.filter(name__in=names_set).defer("printings")
-    }
-    missing = [n for n in names_set if n not in cards_map]
-    if missing:
+    if not names_set:
+        return {}
+
+    cards_map: dict[str, Card] = {}
+
+    # Map normalized names to original name strings (preserving user case/spelling)
+    norm_to_origs: dict[str, list[str]] = {}
+    for n in names_set:
+        norm = normalize_card_name(n)
+        if norm:
+            norm_to_origs.setdefault(norm, []).append(n)
+
+    # 1. Resolve via CardLookup ordered by priority ascending (highest priority wins)
+    if norm_to_origs:
         lookups = (
-            CardLookup.objects.filter(
-                lookup_name__in=[normalize_card_name(n) for n in missing]
-            )
+            CardLookup.objects.filter(lookup_name__in=list(norm_to_origs.keys()))
             .select_related("card")
             .defer("card__printings")
+            .order_by("priority")
         )
-        lookup_dict = {cl.lookup_name: cl.card for cl in lookups if cl.card}
-        for n in missing:
-            norm = normalize_card_name(n)
-            if norm in lookup_dict:
-                cards_map[n] = lookup_dict[norm]
+        for cl in lookups:
+            if cl.card and cl.card.type_line not in ("Card", "Card // Card", ""):
+                for orig in norm_to_origs.get(cl.lookup_name, []):
+                    cards_map[orig] = cl.card
 
+    # 2. For any names still missing, try exact Card.name
+    missing = [n for n in names_set if n not in cards_map]
+    if missing:
+        cards = Card.objects.filter(name__in=missing).defer("printings")
+        for c in cards:
+            if c.name not in cards_map or (
+                cards_map[c.name].type_line in ("Card", "Card // Card", "")
+                and c.type_line not in ("Card", "Card // Card", "")
+            ):
+                cards_map[c.name] = c
+
+    # 3. For any names still missing, try Card.normalized_name
     still_missing = [n for n in names_set if n not in cards_map]
     if still_missing:
-        norm_to_card = {
-            c.normalized_name: c
-            for c in Card.objects.filter(
-                normalized_name__in=[normalize_card_name(n) for n in still_missing]
-            ).defer("printings")
-        }
+        missing_norms: dict[str, list[str]] = {}
         for n in still_missing:
             norm = normalize_card_name(n)
-            if norm in norm_to_card:
-                cards_map[n] = norm_to_card[norm]
+            if norm:
+                missing_norms.setdefault(norm, []).append(n)
+
+        cards = Card.objects.filter(
+            normalized_name__in=list(missing_norms.keys())
+        ).defer("printings")
+        for c in cards:
+            for orig in missing_norms.get(c.normalized_name, []):
+                if orig not in cards_map or (
+                    cards_map[orig].type_line in ("Card", "Card // Card", "")
+                    and c.type_line not in ("Card", "Card // Card", "")
+                ):
+                    cards_map[orig] = c
 
     return cards_map
 
@@ -679,7 +706,17 @@ def card_detail(request, slug):
     active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
     legal_active = [slug for slug in active_slugs if card_obj.is_legal_in(slug)]
 
-    quoted_name = f'"{card_obj.name}"'
+    target_names = {card_obj.name}
+    if card_obj.card_faces and len(card_obj.card_faces) > 1:
+        composite = " // ".join(f["name"] for f in card_obj.card_faces if f.get("name"))
+        if composite:
+            target_names.add(composite)
+
+    name_q = Q()
+    for t_name in target_names:
+        quoted = f'"{t_name}"'
+        name_q |= Q(mainboard__icontains=quoted) | Q(sideboard__icontains=quoted)
+
     format_decks = []
     decks_to_show = 50
     cutoff, _ = get_timeframe_cutoff(365)
@@ -693,8 +730,7 @@ def card_detail(request, slug):
             # otherwise all decks need to be scanned where a card is legal but unplayed
             Deck.objects.filter(tournament__format=fmt_slug)
             .filter(
-                Q(mainboard__icontains=quoted_name)
-                | Q(sideboard__icontains=quoted_name),
+                name_q,
                 tournament__date__gte=cutoff,
             )
             .select_related("tournament")
@@ -705,12 +741,12 @@ def card_detail(request, slug):
             mb_cnt = sum(
                 item.get("count", 1)
                 for item in d.mainboard
-                if item.get("card") == card_obj.name
+                if item.get("card") in target_names
             )
             sb_cnt = sum(
                 item.get("count", 1)
                 for item in d.sideboard
-                if item.get("card") == card_obj.name
+                if item.get("card") in target_names
             )
             parts = []
             if mb_cnt > 0:
@@ -2482,11 +2518,21 @@ def card_og_image(request, card):
         except Exception:
             image_data_uri = None
 
-    quoted_name = f'"{card_obj.name}"'
+    target_names = {card_obj.name}
+    if card_obj.card_faces and len(card_obj.card_faces) > 1:
+        composite = " // ".join(f["name"] for f in card_obj.card_faces if f.get("name"))
+        if composite:
+            target_names.add(composite)
+
+    name_q = Q()
+    for t_name in target_names:
+        quoted = f'"{t_name}"'
+        name_q |= Q(mainboard__icontains=quoted) | Q(sideboard__icontains=quoted)
+
     cutoff, _ = get_timeframe_cutoff(365)
     format_counts_qs = (
         Deck.objects.filter(
-            Q(mainboard__icontains=quoted_name) | Q(sideboard__icontains=quoted_name),
+            name_q,
             tournament__date__gte=cutoff,
         )
         .order_by()

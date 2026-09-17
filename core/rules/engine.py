@@ -141,12 +141,21 @@ class ArchetypeEngine:
                     if norm:
                         mandatory[norm] = min_cnt
 
-                signatures = {
-                    normalize_card_name(c) for c in r.get("signatures", []) if c
-                }
-                anti_signatures = {
-                    normalize_card_name(c) for c in r.get("anti_signatures", []) if c
-                }
+                signatures = set()
+                for c in r.get("signatures", []):
+                    if c:
+                        norm = normalize_card_name(c)
+                        signatures.add(norm)
+                        if " // " in norm:
+                            signatures.add(norm.split(" // ")[0].strip())
+
+                anti_signatures = set()
+                for c in r.get("anti_signatures", []):
+                    if c:
+                        norm = normalize_card_name(c)
+                        anti_signatures.add(norm)
+                        if " // " in norm:
+                            anti_signatures.add(norm.split(" // ")[0].strip())
                 min_sig = r.get("min_signatures", max(1, min(2, len(signatures))))
                 priority = r.get("priority", 50)
                 category = r.get("category", "Midrange")
@@ -215,7 +224,13 @@ class ArchetypeEngine:
             # Check mandatory cards: each must meet minimum quantity
             if rule["mandatory"]:
                 if any(
-                    total_counts.get(req_card, 0) < min_cnt
+                    max(
+                        total_counts.get(req_card, 0),
+                        total_counts.get(req_card.split(" // ")[0].strip(), 0)
+                        if " // " in req_card
+                        else 0,
+                    )
+                    < min_cnt
                     for req_card, min_cnt in rule["mandatory"].items()
                 ):
                     continue

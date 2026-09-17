@@ -363,3 +363,49 @@ def test_card_pricing_properties():
     assert "https://www.tcgplayer.com/product/1289" in card.tcgplayer_url
     assert "https://www.cardhoarder.com/cards/200" in card.cardhoarder_url
     assert "cardmarket.com" in card.cardmarket_url
+
+
+def test_card_model_card_faces_and_back_image_uri():
+    # Single-face card has no back_image_uri
+    single = Card(
+        id="single-1",
+        name="Lightning Bolt",
+        image_uri="https://cards.scryfall.io/normal/front/bolt.jpg",
+    )
+    assert single.back_image_uri is None
+
+    # Multi-face card with distinct back image
+    mdfc = Card(
+        id="mdfc-1",
+        name="Boggart Trawler",
+        image_uri="https://cards.scryfall.io/normal/front/trawler.jpg",
+        card_faces=[
+            {
+                "name": "Boggart Trawler",
+                "image_uri": "https://cards.scryfall.io/normal/front/trawler.jpg",
+            },
+            {
+                "name": "Boggart Bog",
+                "image_uri": "https://cards.scryfall.io/normal/back/bog.jpg",
+            },
+        ],
+    )
+    assert mdfc.back_image_uri == "https://cards.scryfall.io/normal/back/bog.jpg"
+
+    # Multi-face card without separate back image (e.g. Prepare card)
+    prep = Card(
+        id="prep-1",
+        name="Emeritus of Woe",
+        image_uri="https://cards.scryfall.io/normal/front/emeritus.jpg",
+        card_faces=[
+            {
+                "name": "Emeritus of Woe",
+                "image_uri": None,
+            },
+            {
+                "name": "Demonic Tutor",
+                "image_uri": None,
+            },
+        ],
+    )
+    assert prep.back_image_uri is None

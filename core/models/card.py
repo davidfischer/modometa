@@ -159,6 +159,7 @@ class Card(models.Model):
     is_land = models.BooleanField(default=False, db_index=True)
     is_basic_land = models.BooleanField(default=False)
     printings = models.JSONField(default=list, blank=True)
+    card_faces = models.JSONField(default=list, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -256,6 +257,15 @@ class Card(models.Model):
     def get_gatherer_url(self) -> str:
         """URL to the card on Gatherer."""
         return self.gatherer_url
+
+    @property
+    def back_image_uri(self) -> str | None:
+        """First distinct image URI for the back face of a multi-faced card if available."""
+        if self.card_faces and len(self.card_faces) > 1:
+            back_img = self.card_faces[1].get("image_uri")
+            if back_img and back_img != self.image_uri:
+                return back_img
+        return None
 
     def is_legal_in(self, format_name: str) -> bool:
         """Check legality in target format ('legal' or 'restricted' in Vintage)."""

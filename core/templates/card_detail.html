@@ -32,11 +32,30 @@
         <div class="relative w-full max-w-xs mx-auto">
           {% if card.image_uri %}
             <img
+              id="card-detail-img"
               src="{{ card.image_uri }}"
               alt="{{ card.name }}"
               class="w-full h-auto rounded-2xl border border-zinc-700/60 shadow-2xl transition-transform hover:scale-[1.01]"
               loading="eager"
             >
+            {% if card.back_image_uri %}
+              <div class="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  id="turn-over-card-btn"
+                  data-front-src="{{ card.image_uri }}"
+                  data-back-src="{{ card.back_image_uri }}"
+                  data-showing="front"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/80 hover:bg-zinc-800 text-xs font-medium text-zinc-300 hover:text-white transition-colors cursor-pointer shadow-sm"
+                >
+                  <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                  </svg>
+                  <span id="turn-over-label">Turn Over</span>
+                </button>
+              </div>
+            {% endif %}
           {% else %}
             <div class="aspect-[5/7] w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 flex flex-col items-center justify-center p-6 text-center shadow-lg">
               <span class="text-4xl mb-3">🎴</span>
@@ -66,16 +85,59 @@
         </div>
 
         <!-- Oracle Rules Text -->
-        <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 space-y-3">
-          <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500">Oracle Text</h2>
-          {% if card.oracle_text %}
-            <div class="text-sm font-sans text-zinc-200 leading-relaxed font-normal">
-              {{ card.oracle_text|oracle_text_format }}
-            </div>
-          {% else %}
-            <p class="text-xs text-zinc-500 italic">No rules text (vanilla card or basic land).</p>
-          {% endif %}
-        </div>
+        {% if card.card_faces|length > 1 %}
+          <div class="space-y-4">
+            <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500 px-1">Card Faces</h2>
+            {% for face in card.card_faces %}
+              <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+                  <div>
+                    <h3 class="text-base font-bold text-white tracking-tight">{{ face.name }}</h3>
+                    <div class="mt-0.5 text-xs text-zinc-400 font-sans">
+                      {{ face.type_line }}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    {% if face.power is not None and face.toughness is not None %}
+                      <span class="font-mono text-xs font-bold text-zinc-200 bg-zinc-900 border border-zinc-700/80 rounded px-2 py-0.5">
+                        {{ face.power }}/{{ face.toughness }}
+                      </span>
+                    {% elif face.loyalty %}
+                      <span class="font-mono text-xs font-bold text-amber-300 bg-zinc-900 border border-zinc-700/80 rounded px-2 py-0.5">
+                        Loyalty: {{ face.loyalty }}
+                      </span>
+                    {% elif face.defense %}
+                      <span class="font-mono text-xs font-bold text-orange-300 bg-zinc-900 border border-zinc-700/80 rounded px-2 py-0.5">
+                        Defense: {{ face.defense }}
+                      </span>
+                    {% endif %}
+                    {% if face.mana_cost %}
+                      <div class="text-sm">{{ face.mana_cost|mana_cost }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if face.oracle_text %}
+                  <div class="text-sm font-sans text-zinc-200 leading-relaxed font-normal">
+                    {{ face.oracle_text|oracle_text_format }}
+                  </div>
+                {% else %}
+                  <p class="text-xs text-zinc-500 italic">No rules text.</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 space-y-3">
+            <h2 class="text-2xs font-bold uppercase tracking-wider text-zinc-500">Oracle Text</h2>
+            {% if card.oracle_text %}
+              <div class="text-sm font-sans text-zinc-200 leading-relaxed font-normal">
+                {{ card.oracle_text|oracle_text_format }}
+              </div>
+            {% else %}
+              <p class="text-xs text-zinc-500 italic">No rules text (vanilla card or basic land).</p>
+            {% endif %}
+          </div>
+        {% endif %}
 
         <!-- Format Legalities & External Links -->
         <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 divide-y divide-zinc-800/80 overflow-hidden">
@@ -394,6 +456,32 @@
       </div>
     {% endif %}
   </div>
+
+  {% if card.back_image_uri %}
+  <script>
+    (function() {
+      const turnBtn = document.getElementById('turn-over-card-btn');
+      const cardImg = document.getElementById('card-detail-img');
+      const turnLabel = document.getElementById('turn-over-label');
+      if (turnBtn && cardImg) {
+        turnBtn.addEventListener('click', function() {
+          const isFront = turnBtn.getAttribute('data-showing') === 'front';
+          const frontSrc = turnBtn.getAttribute('data-front-src');
+          const backSrc = turnBtn.getAttribute('data-back-src');
+          if (isFront) {
+            cardImg.src = backSrc;
+            turnBtn.setAttribute('data-showing', 'back');
+            if (turnLabel) turnLabel.textContent = 'Show Front';
+          } else {
+            cardImg.src = frontSrc;
+            turnBtn.setAttribute('data-showing', 'front');
+            if (turnLabel) turnLabel.textContent = 'Turn Over';
+          }
+        });
+      }
+    })();
+  </script>
+  {% endif %}
 
 </div>
 {% endblock %}

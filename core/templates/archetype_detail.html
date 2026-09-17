@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load mana_tags %}
+{% load mana_tags humanize %}
 
 {% block title %}{{ archetype_name }} ({{ format_name }}){% endblock %}
 {% block meta_description %}{{ archetype_name }} archetype breakdown in MTGO {{ format_name }}. Matchup performance, league 5-0 trophies, tournament Top 8 finishes, core card choices, and recent decklists.{% endblock %}
@@ -75,22 +75,22 @@
 
     <!-- Metagame Performance Metrics (30d vs 90d) -->
     <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 pt-6 border-t border-zinc-800">
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.league_5_0_count }}/{{ stats.total_5_0s }}">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.league_5_0_count|intcomma }}/{{ stats.total_5_0s|intcomma }}">
         <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">League Share</div>
         <div class="mt-1 text-2xl font-bold font-mono text-sky-400">{{ stats.league_share }}%</div>
-        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.league_5_0_count }} trophies</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.league_5_0_count|intcomma }} trophies</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.challenge_appearances }}/{{ stats.total_chall_decks }}">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.challenge_appearances|intcomma }}/{{ stats.total_chall_decks|intcomma }}">
         <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Share</div>
         <div class="mt-1 text-2xl font-bold font-mono text-white">{{ stats.challenge_share }}%</div>
-        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.challenge_appearances }} entries</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.challenge_appearances|intcomma }} entries</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count }}/{{ stats.total_top8_slots }}">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count|intcomma }}/{{ stats.total_top8_slots|intcomma }}">
         <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Top 8 Share</div>
         <div class="mt-1 text-2xl font-bold font-mono text-emerald-400">{{ stats.top8_share }}%</div>
-        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.top8_count }} Top 8s</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.top8_count|intcomma }} Top 8s</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count }}/{{ stats.challenge_appearances }}">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count|intcomma }}/{{ stats.challenge_appearances|intcomma }}">
         <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Conversion</div>
         <div class="mt-1 text-2xl font-bold font-mono {% if stats.conversion_rate >= 20 %}text-emerald-400{% else %}text-zinc-300{% endif %}">
           {{ stats.conversion_rate }}%
@@ -107,7 +107,7 @@
   <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
     <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
       <h2 class="text-base font-bold text-white">Recent Tournament Finishes</h2>
-      <span class="text-2xs text-zinc-500 font-mono">{{ total_decks }} finish{{ total_decks|pluralize:"es" }} last {{ days }} days</span>
+      <span class="text-2xs text-zinc-500 font-mono">{{ total_decks|intcomma }} finish{{ total_decks|pluralize:"es" }} last {{ days }} days</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -148,7 +148,7 @@
               <td class="py-3 px-4">
                 {% if d.is_top8 %}
                   <span class="inline-flex items-center rounded bg-emerald-500/20 px-2 py-0.5 text-2xs font-bold text-emerald-400 border border-emerald-500/30">
-                    ★ {{ d.result }}
+                    {{ d.result }}
                   </span>
                 {% elif d.is_5_0 %}
                   <span class="inline-flex items-center rounded bg-sky-500/20 px-2 py-0.5 text-2xs font-bold text-sky-400 border border-sky-500/30">
@@ -172,7 +172,7 @@
     {% if page_obj.has_other_pages %}
       <div class="flex items-center justify-between text-xs text-zinc-400 p-4 border-t border-zinc-800 bg-zinc-950/20">
         <div>
-          {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} finishes
+          {{ page_obj.start_index|intcomma }}–{{ page_obj.end_index|intcomma }} of {{ page_obj.paginator.count|intcomma }} finishes
         </div>
         <div class="flex items-center gap-2">
           {% if page_obj.has_previous %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load mana_tags %}
+{% load mana_tags humanize %}
 
 {% block title %}{{ tournament.name }}{% endblock %}
 {% block meta_description %}Results, Top 8 standings, and decklists from {{ tournament.name }} ({{ tournament.date|date:"F j, Y" }}). View player records and archetype standings.{% endblock %}
@@ -84,13 +84,13 @@
         </span>
         {% if tournament.player_count %}
           <span class="rounded bg-zinc-800 px-2 py-0.5 text-2xs font-semibold text-zinc-300">
-            {{ tournament.player_count }} Players
+            {{ tournament.player_count|intcomma }} Players
           </span>
         {% endif %}
       </div>
       <h1 class="mt-2 text-2xl font-bold text-white sm:text-3xl">{{ tournament.name }}</h1>
       <p class="mt-1 text-xs text-zinc-500 font-mono">
-        Event Date: {{ tournament.date|date:"Y-m-d" }}{% if tournament.player_count %} • {{ tournament.player_count }} Players{% endif %} • {{ decks|length }} Decks Published
+        Event Date: {{ tournament.date|date:"Y-m-d" }}{% if tournament.player_count %} • {{ tournament.player_count|intcomma }} Players{% endif %} • {{ decks|length|intcomma }} Decks Published
       </p>
     </div>
 
@@ -119,7 +119,7 @@
               <td class="py-3 px-4">
                 {% if d.is_top8 %}
                   <span class="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-400 border border-emerald-500/30">
-                    ★ {{ d.result }}
+                    {{ d.result }}
                   </span>
                 {% elif d.is_5_0 %}
                   <span class="inline-flex items-center gap-1 rounded bg-sky-500/20 px-2 py-0.5 text-xs font-bold text-sky-400 border border-sky-500/30">

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load mana_tags %}
+{% load mana_tags humanize %}
 
 {% block title %}Most Played Cards in {{ format_name }}{% endblock %}
 {% block meta_description %}Explore the most played cards and format staples in MTGO {{ format_name }}. Mainboard inclusion, sideboard rates, and average copies per deck.{% endblock %}
@@ -53,7 +53,7 @@
     <div>
       <h1 class="text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Cards</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Most commonly played cards across {{ total_decks }} {% if active_type == 'challenge' %}Challenge{% elif active_type == 'league' %}League{% else %}League and Challenge{% endif %} decks in {{ format_name }} over the last {% include "includes/timeframe_select.html" %}.
+        Most commonly played cards across {{ total_decks|intcomma }} {% if active_type == 'challenge' %}Challenge{% elif active_type == 'league' %}League{% else %}League and Challenge{% endif %} decks in {{ format_name }} over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
 
@@ -100,9 +100,9 @@
                 {% endif %}
               </td>
               <td class="py-3 px-4 text-zinc-400 font-sans text-2xs">{{ c.type_line }}</td>
-              <td class="py-3 px-4 text-right font-bold text-emerald-400 whitespace-nowrap" title="{{ c.any_count }}/{{ total_decks }}">{{ c.adoption_pct }}%</td>
-              <td class="py-3 px-4 text-right text-zinc-300 whitespace-nowrap" title="{{ c.mb_count }}/{{ total_decks }}">{{ c.mb_pct }}%</td>
-              <td class="py-3 px-4 text-right text-zinc-400 whitespace-nowrap" title="{{ c.sb_count }}/{{ total_decks }}">{{ c.sb_pct }}%</td>
+              <td class="py-3 px-4 text-right font-bold text-emerald-400 whitespace-nowrap" title="{{ c.any_count|intcomma }}/{{ total_decks|intcomma }}">{{ c.adoption_pct }}%</td>
+              <td class="py-3 px-4 text-right text-zinc-300 whitespace-nowrap" title="{{ c.mb_count|intcomma }}/{{ total_decks|intcomma }}">{{ c.mb_pct }}%</td>
+              <td class="py-3 px-4 text-right text-zinc-400 whitespace-nowrap" title="{{ c.sb_count|intcomma }}/{{ total_decks|intcomma }}">{{ c.sb_pct }}%</td>
               <td class="py-3 px-4 text-right text-zinc-400">{{ c.avg_copies }}x</td>
               <td class="py-3 px-4 text-right font-sans whitespace-nowrap">
                 <a href="{{ c.gatherer_url }}" target="_blank" rel="noopener" class="text-zinc-500 hover:text-zinc-300 text-2xs mr-2 whitespace-nowrap">
@@ -127,7 +127,7 @@
   {% if page_obj.has_other_pages %}
     <div class="flex items-center justify-between text-xs text-zinc-400 pt-4">
       <div>
-        {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} cards
+        {{ page_obj.start_index|intcomma }}–{{ page_obj.end_index|intcomma }} of {{ page_obj.paginator.count|intcomma }} cards
       </div>
       <div class="flex items-center gap-2">
         {% if page_obj.has_previous %}

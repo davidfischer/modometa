@@ -259,7 +259,7 @@ def test_format_og_image_view(client, sample_data):
         },
     )
     assert (
-        "1 decks recorded across leagues and challenges over the previous year across competitive Legacy events on MTGO"
+        "1 league and challenge decks over the previous year across competitive Legacy events on MTGO"
         in svg_content
     )
     assert '<use href="#shield-logo"' in svg_content
@@ -267,6 +267,37 @@ def test_format_og_image_view(client, sample_data):
     # Test invalid format returns 404
     resp_invalid = client.get("/nonexistent_format/og.png")
     assert resp_invalid.status_code == 404
+
+    # Verify template renders top archetypes when bump chart has data
+    svg_with_data = render_to_string(
+        "og/format_og.svg",
+        {
+            "format_name": "Legacy",
+            "total_decks": "100",
+            "bump_chart": {
+                "has_data": True,
+                "month_labels": [],
+                "rank_lines": [],
+                "tracks": [],
+                "top_archetypes": [
+                    {
+                        "rank": 1,
+                        "slug": "storm",
+                        "name": "Storm",
+                        "display_name": "Storm",
+                        "count": 50,
+                        "count_formatted": "50",
+                        "share": 50.0,
+                        "color": "#f97316",
+                        "y_offset": 0,
+                    }
+                ],
+            },
+        },
+    )
+    assert "TOP ARCHETYPES" in svg_with_data
+    assert "Storm" in svg_with_data
+    assert "50 Top 8s" in svg_with_data
 
 
 @pytest.mark.django_db

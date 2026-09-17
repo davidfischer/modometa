@@ -316,18 +316,17 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
         tournament__in=tourns_qs,
     )
 
-    decks = list(decks_qs.values("mainboard", "sideboard"))
-    total_decks = len(decks)
-    denom = max(1, total_decks)
-
     mb_counts = Counter()
     sb_counts = Counter()
     total_copies = Counter()
     any_counts = Counter()
+    total_decks = 0
 
-    for d in decks:
+    # Chunking by 2k avoids issues on large formats over longer timeframes
+    for d in decks_qs.values("mainboard", "sideboard").iterator(chunk_size=2000):
+        total_decks += 1
         deck_mb = set()
-        for item in d.get("mainboard", []):
+        for item in d.get("mainboard") or []:
             name = item.get("card", "")
             cnt = item.get("count", 1)
             if name:
@@ -338,7 +337,7 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
             any_counts[c] += 1
 
         deck_sb = set()
-        for item in d.get("sideboard", []):
+        for item in d.get("sideboard") or []:
             name = item.get("card", "")
             cnt = item.get("count", 1)
             if name:
@@ -349,6 +348,7 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
             if c not in deck_mb:
                 any_counts[c] += 1
 
+    denom = max(1, total_decks)
     sorted_cards = any_counts.most_common()
     card_names = [c[0] for c in sorted_cards]
     cards_map = get_cards_map(card_names)
@@ -361,7 +361,6 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
             {
                 "name": name,
                 "slug": slug,
-                "card": card,
                 "mana_cost": card.mana_cost if card and card.mana_cost else "",
                 "type_line": card.type_line if card else "Card",
                 "image_uri": card.image_uri if card else None,
@@ -1324,7 +1323,7 @@ def assign_archetype_colors(
     return color_map
 
 
-def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
+def build_format_bump_chart(fmt_slug: str, ref_date: date, step_y: int = 16) -> dict:
     """Build a 52-week Top 10 rank evolution bump chart for a format by T8 share."""
     monday_offset = ref_date.weekday()
     current_week_monday = ref_date - timedelta(days=monday_offset)
@@ -1343,7 +1342,7 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
     X_OFFSET = 18
     STEP_X = 15
     Y_OFFSET = 24
-    STEP_Y = 16
+    STEP_Y = step_y
     x_start = X_OFFSET - 8
     x_end = X_OFFSET + (total_weeks - 1) * STEP_X + 8
     SVG_WIDTH = X_OFFSET + (total_weeks - 1) * STEP_X + 18  # 801
@@ -1440,6 +1439,7 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
             "month_labels": month_labels,
             "rank_lines": rank_lines,
             "tracks": [],
+            "top_archetypes": [],
         }
 
     # Count overall T8s across the 26 weeks
@@ -1555,6 +1555,26 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
     # Sort so non-featured are drawn first, featured tracks on top
     tracks.sort(key=lambda t: (1 if t["is_featured"] else 0, overall_t8[t["slug"]]))
 
+    total_t8_all = sum(overall_t8.values())
+    top_archetypes = []
+    for rank, (slug, count) in enumerate(overall_t8.most_common(5), start=1):
+        share = round((count / total_t8_all) * 100, 1) if total_t8_all > 0 else 0.0
+        name = slug_to_name.get(slug, slug)
+        display_name = (name[:18] + "…") if len(name) > 19 else name
+        top_archetypes.append(
+            {
+                "rank": rank,
+                "slug": slug,
+                "name": name,
+                "display_name": display_name,
+                "count": count,
+                "count_formatted": f"{count:,}",
+                "share": share,
+                "color": color_map.get(slug, "#71717a"),
+                "y_offset": (rank - 1) * 48,
+            }
+        )
+
     return {
         "has_data": has_data,
         "svg_width": SVG_WIDTH,
@@ -1564,6 +1584,7 @@ def build_format_bump_chart(fmt_slug: str, ref_date: date) -> dict:
         "month_labels": month_labels,
         "rank_lines": rank_lines,
         "tracks": tracks,
+        "top_archetypes": top_archetypes,
     }
 
 
@@ -1986,9 +2007,11 @@ def archetype_detail(request, format, archetype):
     card_counts = Counter()
     card_total_copies = Counter()
     color_counts = Counter()
-    for d in decks_qs.values("mainboard", "colors", "color_name"):
+    for d in decks_qs.values("mainboard", "colors", "color_name").iterator(
+        chunk_size=2000
+    ):
         d_cards = set()
-        for item in d.get("mainboard", []):
+        for item in d.get("mainboard") or []:
             name = item.get("card", "")
             cnt = item.get("count", 1)
             if name:
@@ -2633,7 +2656,7 @@ def format_og_image(request, format):
         raise Http404(f"Format '{format}' not found.")
 
     cutoff, ref_date = get_timeframe_cutoff(365)
-    bump_chart = build_format_bump_chart(fmt_slug, ref_date)
+    bump_chart = build_format_bump_chart(fmt_slug, ref_date, step_y=23)
     total_decks = Deck.objects.filter(
         format=fmt_slug,
         tournament__date__gte=cutoff,

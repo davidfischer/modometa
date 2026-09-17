@@ -2024,9 +2024,9 @@ def test_timeframe_navigation_clean_urls_and_preservation(client):
     assert resp_30.status_code == 200
     html_30 = resp_30.content.decode()
 
-    # Sidebar and subnavigation links preserve ?days=30
+    # Sidebar and subnavigation links preserve ?days=30 (except tournaments which is all-time)
     assert 'href="/legacy/?days=30"' in html_30
-    assert 'href="/legacy/tournaments/?days=30"' in html_30
+    assert 'href="/legacy/tournaments/"' in html_30
     assert 'href="/legacy/cards/?days=30"' in html_30
     assert 'href="/legacy/matrix/?days=30"' in html_30
     assert 'href="/legacy/leaderboard/?days=30"' in html_30
@@ -2508,3 +2508,37 @@ def test_archetype_matrix_timeframe_filtering(client):
     assert resp_180.status_code == 200
     arch_slugs_180 = [a["slug"] for a in resp_180.context["archetypes"]]
     assert "archetype-a" in arch_slugs_180
+
+
+@pytest.mark.django_db
+def test_intcomma_formatting_in_views(client):
+    """Verify that intcomma filter formats counts with thousands separators."""
+    t = Tournament.objects.create(
+        id="tourn_intcomma",
+        format="modern",
+        name="Modern Challenge 32",
+        event_type="challenge",
+        date=date.today(),
+        player_count=1234,
+    )
+    Deck.objects.create(
+        id="deck_intcomma",
+        tournament=t,
+        format="modern",
+        player="CommaPlayer",
+        player_lower="commaplayer",
+        result="1st Place",
+        archetype="BigDeck",
+        archetype_slug="bigdeck",
+    )
+
+    # Tournament list: player_count and deck_count
+    resp = client.get("/modern/tournaments/")
+    assert resp.status_code == 200
+    html = resp.content.decode()
+    assert "1,234" in html
+
+    # Tournament detail: player_count
+    resp = client.get(f"/modern/tournaments/{t.id}/")
+    assert resp.status_code == 200
+    assert "1,234 Players" in resp.content.decode()

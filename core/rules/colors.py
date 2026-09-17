@@ -77,6 +77,7 @@ PSEUDO_COLORED_CARDS = {
         "act of aggression": {"R"},
         "marrow shards": {"W"},
         "pith driller": {"B"},
+        "phyrexian metamorph": {"U"},
         # Discard / Exile from hand for effect (not cast)
         "faerie macabre": {"B"},
         "simian spirit guide": {"R"},

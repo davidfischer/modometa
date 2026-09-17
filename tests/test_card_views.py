@@ -546,6 +546,48 @@ def test_card_og_image_top_format_and_deck_count(client, sample_card):
         sideboard=[],
     )
 
+    # 1 Legacy deck older than 90 days (should be excluded)
+    t_90d_old = Tournament.objects.create(
+        id="tourn-old-90d",
+        name="90d Old Legacy Challenge",
+        format="legacy",
+        date=date.today() - timedelta(days=100),
+        event_type="challenge",
+    )
+    Deck.objects.create(
+        id="deck-old-90d",
+        tournament=t_90d_old,
+        format="legacy",
+        player="PlayerOld90d",
+        player_lower="playerold90d",
+        result="1st",
+        colors="R",
+        color_name="Mono-Red",
+        mainboard=bolt_mb,
+        sideboard=[],
+    )
+
+    # 1 Standard deck (card is not legal in standard, should be excluded)
+    t_standard = Tournament.objects.create(
+        id="tourn-std-1",
+        name="Standard Challenge",
+        format="standard",
+        date=date.today(),
+        event_type="challenge",
+    )
+    Deck.objects.create(
+        id="deck-std-1",
+        tournament=t_standard,
+        format="standard",
+        player="PlayerStd1",
+        player_lower="playerstd1",
+        result="1st",
+        colors="R",
+        color_name="Mono-Red",
+        mainboard=bolt_mb,
+        sideboard=[],
+    )
+
     # 1 Legacy deck older than 365 days (should be excluded)
     Deck.objects.create(
         id="deck-old-1",

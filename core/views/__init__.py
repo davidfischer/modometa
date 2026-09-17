@@ -218,21 +218,19 @@ def home(request):
         fmt_name = (
             FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
         )
-        # Query decks in window
-        decks_qs = Deck.objects.filter(
-            format=fmt_slug,
-            tournament__date__gte=cutoff,
-            tournament__date__lte=ref_date,
-        )
-        total_decks = decks_qs.count()
-
-        # Count tournaments
+        # Tournaments in window
         tourn_qs = Tournament.objects.filter(
             format=fmt_slug, date__gte=cutoff, date__lte=ref_date
         )
         challenge_count = tourn_qs.filter(event_type="challenge").count()
-        league_count = tourn_qs.filter(event_type="league").count()
         total_top8_slots = max(1, challenge_count * 8)
+
+        # Query decks in window
+        decks_qs = Deck.objects.filter(
+            format=fmt_slug,
+            tournament__in=tourn_qs,
+        )
+        total_decks = decks_qs.count()
 
         # Top archetypes
         arch_counts = (
@@ -279,7 +277,6 @@ def home(request):
                 "format_name": fmt_name,
                 "total_decks": total_decks,
                 "challenge_count": challenge_count,
-                "league_count": league_count,
                 "total_top8_slots": total_top8_slots,
                 "top_archetypes": top_archetypes,
             }
@@ -307,13 +304,16 @@ def get_format_card_stats(fmt_slug: str, days: int = 90, active_type: str = "") 
         return cached_data
 
     cutoff, ref_date = get_timeframe_cutoff(days)
-    decks_qs = Deck.objects.filter(
-        format=fmt_slug,
-        tournament__date__gte=cutoff,
-        tournament__date__lte=ref_date,
+    tourns_qs = Tournament.objects.filter(
+        format=fmt_slug, date__gte=cutoff, date__lte=ref_date
     )
     if active_type:
-        decks_qs = decks_qs.filter(tournament__event_type=active_type)
+        tourns_qs = tourns_qs.filter(event_type=active_type)
+
+    decks_qs = Deck.objects.filter(
+        format=fmt_slug,
+        tournament__in=tourns_qs,
+    )
 
     decks = list(decks_qs.values("mainboard", "sideboard"))
     total_decks = len(decks)
@@ -393,24 +393,28 @@ def format_overview(request, format):
     days = parse_timeframe(request)
     cutoff, ref_date = get_timeframe_cutoff(days)
 
-    decks_qs = Deck.objects.filter(
-        format=fmt_slug,
-        tournament__date__gte=cutoff,
-        tournament__date__lte=ref_date,
-    )
-    total_decks = decks_qs.count()
-
     tourns_qs = Tournament.objects.filter(
         format=fmt_slug, date__gte=cutoff, date__lte=ref_date
     )
     challenge_count = tourns_qs.filter(event_type="challenge").count()
     league_count = tourns_qs.filter(event_type="league").count()
-    league_5_0_count = decks_qs.filter(
-        tournament__event_type="league", is_5_0=True
+
+    decks_qs = Deck.objects.filter(
+        format=fmt_slug,
+        tournament__in=tourns_qs,
+    )
+    total_decks = decks_qs.count()
+
+    league_tourns = tourns_qs.filter(event_type="league")
+    league_5_0_count = Deck.objects.filter(
+        format=fmt_slug, tournament__in=league_tourns, is_5_0=True
     ).count()
     player_count = decks_qs.values("player_lower").distinct().count()
 
-    raw_chall_decks = decks_qs.filter(tournament__event_type="challenge").count()
+    chall_tourns = tourns_qs.filter(event_type="challenge")
+    raw_chall_decks = Deck.objects.filter(
+        format=fmt_slug, tournament__in=chall_tourns
+    ).count()
     total_chall_decks = max(1, raw_chall_decks)
     raw_top8_slots = challenge_count * 8
     total_top8_slots = max(1, raw_top8_slots)
@@ -430,24 +434,15 @@ def format_overview(request, format):
         .order_by("-top8_count", "-total_count")
     )
 
-    arch_colors = (
-        decks_qs.values("archetype_slug", "colors", "color_name")
-        .annotate(cnt=Count("id"))
-        .order_by("archetype_slug", "-cnt")
-    )
-    colors_map = {}
-    for ac in arch_colors:
-        slug = ac["archetype_slug"]
-        if slug not in colors_map:
-            colors_map[slug] = (ac["colors"], ac["color_name"])
-
     # Calculate previous period for T8 Momentum (e.g. recent 90d vs previous 90d)
     prev_cutoff = cutoff - timedelta(days=days)
+    prev_tourns = Tournament.objects.filter(
+        format=fmt_slug, date__gte=prev_cutoff, date__lt=cutoff
+    )
     prev_t8_qs = (
         Deck.objects.filter(
             format=fmt_slug,
-            tournament__date__gte=prev_cutoff,
-            tournament__date__lt=cutoff,
+            tournament__in=prev_tourns,
             is_top8=True,
         )
         .values("archetype_slug")
@@ -465,7 +460,6 @@ def format_overview(request, format):
             else 0.0
         )
         league_share = round((a["league_5_0_count"] / total_5_0s) * 100, 1)
-        colors, color_name = colors_map.get(a["archetype_slug"], ("", ""))
         prev_top8 = prev_t8_map.get(a["archetype_slug"], 0)
         t8_momentum = a["top8_count"] - prev_top8
 
@@ -473,8 +467,6 @@ def format_overview(request, format):
             {
                 "name": a["archetype"],
                 "slug": a["archetype_slug"],
-                "colors": colors,
-                "color_name": color_name,
                 "total_count": a["total_count"],
                 "top8_count": a["top8_count"],
                 "prev_top8_count": prev_top8,
@@ -488,6 +480,29 @@ def format_overview(request, format):
             }
         )
 
+    paginator = Paginator(archetypes, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    # Fetch colors only for the 25 archetypes on the current page
+    page_slugs = [a["slug"] for a in page_obj]
+    arch_colors = (
+        decks_qs.filter(archetype_slug__in=page_slugs)
+        .values("archetype_slug", "colors", "color_name")
+        .annotate(cnt=Count("id"))
+        .order_by("archetype_slug", "-cnt")
+    )
+    colors_map = {}
+    for ac in arch_colors:
+        slug = ac["archetype_slug"]
+        if slug not in colors_map:
+            colors_map[slug] = (ac["colors"], ac["color_name"])
+
+    for a in page_obj:
+        colors, color_name = colors_map.get(a["slug"], ("", ""))
+        a["colors"] = colors
+        a["color_name"] = color_name
+
     card_stats = get_format_card_stats(fmt_slug, days=days, active_type="")
     common_cards = card_stats["card_rows"][:10]
 
@@ -496,10 +511,6 @@ def format_overview(request, format):
     )[:6]
 
     bump_chart = build_format_bump_chart(fmt_slug, ref_date)
-
-    paginator = Paginator(archetypes, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
 
     active_slugs = getattr(settings, "ACTIVE_FORMAT_SLUGS", settings.MODOMETA_FORMATS)
     is_supported_format = fmt_slug in active_slugs
@@ -2518,6 +2529,20 @@ def card_og_image(request, card):
         except Exception:
             image_data_uri = None
 
+    supported_slugs = getattr(settings, "MODOMETA_FORMATS", FORMAT_SLUGS)
+    choices_dict = dict(FORMAT_CHOICES)
+    supported_formats = [
+        (slug, choices_dict.get(slug, slug.capitalize()))
+        for slug in supported_slugs
+        if slug in choices_dict
+    ]
+    legal_formats = [
+        f_name for f_slug, f_name in supported_formats if card_obj.is_legal_in(f_slug)
+    ]
+    legal_slugs = [
+        f_slug for f_slug, _ in supported_formats if card_obj.is_legal_in(f_slug)
+    ]
+
     target_names = {card_obj.name}
     if card_obj.card_faces and len(card_obj.card_faces) > 1:
         composite = " // ".join(f["name"] for f in card_obj.card_faces if f.get("name"))
@@ -2529,29 +2554,23 @@ def card_og_image(request, card):
         quoted = f'"{t_name}"'
         name_q |= Q(mainboard__icontains=quoted) | Q(sideboard__icontains=quoted)
 
-    cutoff, _ = get_timeframe_cutoff(365)
-    format_counts_qs = (
-        Deck.objects.filter(
-            name_q,
-            tournament__date__gte=cutoff,
+    format_counts = {}
+    if legal_slugs:
+        cutoff, _ = get_timeframe_cutoff(90)
+        tourns_qs = Tournament.objects.filter(format__in=legal_slugs, date__gte=cutoff)
+        format_counts_qs = (
+            Deck.objects.filter(
+                format__in=legal_slugs,
+                tournament__in=tourns_qs,
+            )
+            .filter(name_q)
+            .order_by()
+            .values("format")
+            .annotate(cnt=Count("id"))
         )
-        .order_by()
-        .values("format")
-        .annotate(cnt=Count("id"))
-    )
-    format_counts = {item["format"]: item["cnt"] for item in format_counts_qs}
-    total_decks = sum(format_counts.values())
+        format_counts = {item["format"]: item["cnt"] for item in format_counts_qs}
 
-    supported_slugs = getattr(settings, "MODOMETA_FORMATS", FORMAT_SLUGS)
-    choices_dict = dict(FORMAT_CHOICES)
-    supported_formats = [
-        (slug, choices_dict.get(slug, slug.capitalize()))
-        for slug in supported_slugs
-        if slug in choices_dict
-    ]
-    legal_formats = [
-        f_name for f_slug, f_name in supported_formats if card_obj.is_legal_in(f_slug)
-    ]
+    total_decks = sum(format_counts.values())
 
     total_fmts = len(supported_formats)
     row0_count = min(4, total_fmts)

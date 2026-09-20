@@ -130,7 +130,7 @@ def sample_deck_with_card(db, sample_card):
         format="modern",
         name="Modern Challenge 32",
         event_type="challenge",
-        date="2026-03-01",
+        date=date.today(),
     )
     deck = Deck.objects.create(
         id="test-deck-card-1",

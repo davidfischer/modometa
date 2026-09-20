@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.management import call_command
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.test import Client
 from django.test import RequestFactory
 from django.test import override_settings
@@ -26,6 +27,7 @@ from core.models import Match
 from core.models import Tournament
 from core.pipeline.scryfall import _extract_mana_cost
 from core.views import _get_matrix_color_class
+from core.views import build_format_bump_chart
 from core.views import classify_card_type
 from core.views import get_archetype_matrix_data
 from core.views import get_dataset_min_date
@@ -303,38 +305,44 @@ def test_get_dataset_start_year():
 
 @pytest.mark.django_db
 def test_player_detail_pagination(client):
-    tourn = Tournament.objects.first()
-    if tourn:
-        player_name = "PaginationTestPlayer"
-        decks = [
-            Deck(
-                tournament=tourn,
-                player=player_name,
-                player_lower=player_name.lower(),
-                format="legacy",
-                archetype="Delver",
-                archetype_slug="delver",
-                result="5-0",
-                is_5_0=True,
-                is_top8=False,
-                mainboard=[{"card": "Brainstorm", "count": 4}],
-                sideboard=[],
-            )
-            for _ in range(105)
-        ]
-        Deck.objects.bulk_create(decks)
+    tourn = Tournament.objects.create(
+        id="tourn_pagination_test",
+        name="Legacy League",
+        format="legacy",
+        date=date.today(),
+        event_type="league",
+    )
+    player_name = "PaginationTestPlayer"
+    decks = [
+        Deck(
+            id=f"page_deck_{i}",
+            tournament=tourn,
+            player=player_name,
+            player_lower=player_name.lower(),
+            format="legacy",
+            archetype="Delver",
+            archetype_slug="delver",
+            result="5-0",
+            is_5_0=True,
+            is_top8=False,
+            mainboard=[{"card": "Brainstorm", "count": 4}],
+            sideboard=[],
+        )
+        for i in range(105)
+    ]
+    Deck.objects.bulk_create(decks)
 
-        resp_p1 = client.get(f"/player/{player_name}/")
-        assert resp_p1.status_code == 200
-        assert len(resp_p1.context["decks"]) == 100
-        assert resp_p1.context["page_obj"].paginator.num_pages == 2
-        assert "1–100 of 105 events".encode() in resp_p1.content
-        assert "Next →".encode() in resp_p1.content
+    resp_p1 = client.get(f"/player/{player_name}/")
+    assert resp_p1.status_code == 200
+    assert len(resp_p1.context["decks"]) == 100
+    assert resp_p1.context["page_obj"].paginator.num_pages == 2
+    assert "1–100 of 105 events".encode() in resp_p1.content
+    assert "Next →".encode() in resp_p1.content
 
-        resp_p2 = client.get(f"/player/{player_name}/?page=2")
-        assert resp_p2.status_code == 200
-        assert len(resp_p2.context["decks"]) == 5
-        assert "← Previous".encode() in resp_p2.content
+    resp_p2 = client.get(f"/player/{player_name}/?page=2")
+    assert resp_p2.status_code == 200
+    assert len(resp_p2.context["decks"]) == 5
+    assert "← Previous".encode() in resp_p2.content
 
 
 @pytest.mark.django_db
@@ -564,85 +572,123 @@ def test_deck_detail_mainboard_sections(client):
 
 @pytest.mark.django_db
 def test_archetype_detail_view(client):
-    deck = Deck.objects.filter(format="legacy").first()
-    if deck:
-        response = client.get(f"/legacy/archetype/{deck.archetype_slug}/")
-        assert response.status_code == 200
-        stats = response.context["stats"]
-        assert "total_top8_slots" in stats
-        assert "total_chall_decks" in stats
-        assert "total_5_0s" in stats
+    t_chall = Tournament.objects.create(
+        id="legacy_chall_detail_test",
+        format="legacy",
+        name="Legacy Challenge",
+        event_type="challenge",
+        date=date.today(),
+    )
+    t_league = Tournament.objects.create(
+        id="legacy_league_detail_test",
+        format="legacy",
+        name="Legacy League",
+        event_type="league",
+        date=date.today(),
+    )
+    Card.objects.create(name="Brainstorm", mana_cost="{U}")
+    deck = Deck.objects.create(
+        id="legacy_deck_detail_test_1",
+        tournament=t_chall,
+        format="legacy",
+        player="DetailTester",
+        player_lower="detailtester",
+        archetype="Dimir Tempo",
+        archetype_slug="dimir-tempo",
+        result="1st Place",
+        is_top8=True,
+        mainboard=[{"card": "Brainstorm", "count": 4}],
+        sideboard=[],
+    )
+    Deck.objects.create(
+        id="legacy_deck_detail_test_2",
+        tournament=t_league,
+        format="legacy",
+        player="DetailTester2",
+        player_lower="detailtester2",
+        archetype="Dimir Tempo",
+        archetype_slug="dimir-tempo",
+        result="5-0",
+        is_5_0=True,
+        mainboard=[{"card": "Brainstorm", "count": 4}],
+        sideboard=[],
+    )
 
-        content = response.content
-        assert b"League Share" in content
-        assert b"League 5-0 Share" not in content
-        assert b"Challenge Share" in content
-        assert b"Challenge Top 8 Share" in content
-        assert b"Challenge Conversion" in content
+    response = client.get(f"/legacy/archetype/{deck.archetype_slug}/")
+    assert response.status_code == 200
+    stats = response.context["stats"]
+    assert "total_top8_slots" in stats
+    assert "total_chall_decks" in stats
+    assert "total_5_0s" in stats
 
-        # Check stat card ordering
-        pos_ls = content.find(b"League Share")
-        pos_cs = content.find(b"Challenge Share")
-        pos_t8 = content.find(b"Challenge Top 8 Share")
-        pos_cc = content.find(b"Challenge Conversion")
-        assert pos_ls < pos_cs < pos_t8 < pos_cc
+    content = response.content
+    assert b"League Share" in content
+    assert b"League 5-0 Share" not in content
+    assert b"Challenge Share" in content
+    assert b"Challenge Top 8 Share" in content
+    assert b"Challenge Conversion" in content
 
-        # Check tooltips
-        ls_tt = f'title="{stats["league_5_0_count"]}/{stats["total_5_0s"]}"'.encode()
-        cs_tt = f'title="{stats["challenge_appearances"]}/{stats["total_chall_decks"]}"'.encode()
-        t8_tt = f'title="{stats["top8_count"]}/{stats["total_top8_slots"]}"'.encode()
-        cc_tt = (
-            f'title="{stats["top8_count"]}/{stats["challenge_appearances"]}"'.encode()
-        )
-        assert ls_tt in content
-        assert cs_tt in content
-        assert t8_tt in content
-        assert cc_tt in content
+    # Check stat card ordering
+    pos_ls = content.find(b"League Share")
+    pos_cs = content.find(b"Challenge Share")
+    pos_t8 = content.find(b"Challenge Top 8 Share")
+    pos_cc = content.find(b"Challenge Conversion")
+    assert pos_ls < pos_cs < pos_t8 < pos_cc
 
-        # Verify Deck column is present with deck link and date is plain text
-        assert b">Deck</th>" in content
-        assert b">Date</th>" in content
-        assert b"View \xe2\x86\x92" not in content
-        if response.context["finishes"]:
-            finish = response.context["finishes"][0]
-            finish_link = f"/player/{finish.player}/deck/{finish.tournament_id}/{finish.deck_index}/".encode()
-            assert finish_link in content
-            date_str = finish.tournament.date.strftime("%Y-%m-%d").encode()
-            assert f">{date_str.decode()}</a>".encode() not in content
+    # Check tooltips
+    ls_tt = f'title="{stats["league_5_0_count"]}/{stats["total_5_0s"]}"'.encode()
+    cs_tt = f'title="{stats["challenge_appearances"]}/{stats["total_chall_decks"]}"'.encode()
+    t8_tt = f'title="{stats["top8_count"]}/{stats["total_top8_slots"]}"'.encode()
+    cc_tt = f'title="{stats["top8_count"]}/{stats["challenge_appearances"]}"'.encode()
+    assert ls_tt in content
+    assert cs_tt in content
+    assert t8_tt in content
+    assert cc_tt in content
 
-        # Verify number of finishes in timeframe is shown
-        assert "total_decks" in response.context
-        assert (
-            f"{response.context['total_decks']} finishes last {response.context['days']} days".encode()
-            in content
-        )
+    # Verify Deck column is present with deck link and date is plain text
+    assert b">Deck</th>" in content
+    assert b">Date</th>" in content
+    assert b"View \xe2\x86\x92" not in content
+    if response.context["finishes"]:
+        finish = response.context["finishes"][0]
+        finish_link = f"/player/{finish.player}/deck/{finish.tournament_id}/{finish.deck_index}/".encode()
+        assert finish_link in content
+        date_str = finish.tournament.date.strftime("%Y-%m-%d").encode()
+        assert f">{date_str.decode()}</a>".encode() not in content
 
-        # Verify Recent Tournament Finishes appears before Core Cards
-        pos_finishes = content.find(b"Recent Tournament Finishes")
-        pos_core = content.find(b"Core Cards")
-        assert pos_finishes != -1 and pos_core != -1
-        assert pos_finishes < pos_core
+    # Verify number of finishes in timeframe is shown
+    assert "total_decks" in response.context
+    assert (
+        f"{response.context['total_decks']} finishes last {response.context['days']} days".encode()
+        in content
+    )
 
-        # Verify Activity Heatmap appears after Challenge Conversion and before Recent Tournament Finishes
-        pos_heatmap = content.find(b"Activity Heatmap")
-        assert pos_heatmap != -1
-        assert pos_cc < pos_heatmap < pos_finishes
+    # Verify Recent Tournament Finishes appears before Core Cards
+    pos_finishes = content.find(b"Recent Tournament Finishes")
+    pos_core = content.find(b"Core Cards")
+    assert pos_finishes != -1 and pos_core != -1
+    assert pos_finishes < pos_core
 
-        # Verify heatmap context
-        assert "heatmap" in response.context
-        heatmap = response.context["heatmap"]
-        assert len(heatmap["weeks"]) == 53
-        assert len(heatmap["weeks"][0]["days"]) == 7
-        assert heatmap["weeks"][0]["days"][0]["date"].weekday() == 0  # Monday
-        assert heatmap["weeks"][0]["days"][6]["date"].weekday() == 6  # Sunday
-        assert "active_days_count" in heatmap
-        assert "total_leagues" in heatmap
-        assert "total_challenges" in heatmap
+    # Verify Activity Heatmap appears after Challenge Conversion and before Recent Tournament Finishes
+    pos_heatmap = content.find(b"Activity Heatmap")
+    assert pos_heatmap != -1
+    assert pos_cc < pos_heatmap < pos_finishes
 
-        # Verify Core Cards has mana_cost
-        if response.context["core_cards"]:
-            first_core = response.context["core_cards"][0]
-            assert "mana_cost" in first_core
+    # Verify heatmap context
+    assert "heatmap" in response.context
+    heatmap = response.context["heatmap"]
+    assert len(heatmap["weeks"]) == 53
+    assert len(heatmap["weeks"][0]["days"]) == 7
+    assert heatmap["weeks"][0]["days"][0]["date"].weekday() == 0  # Monday
+    assert heatmap["weeks"][0]["days"][6]["date"].weekday() == 6  # Sunday
+    assert "active_days_count" in heatmap
+    assert "total_leagues" in heatmap
+    assert "total_challenges" in heatmap
+
+    # Verify Core Cards has mana_cost
+    if response.context["core_cards"]:
+        first_core = response.context["core_cards"][0]
+        assert "mana_cost" in first_core
 
 
 @pytest.mark.django_db
@@ -1171,45 +1217,118 @@ def test_deck_detail_missing_knn_index_warning(client, settings):
     set_global_knn_index(None, loaded=False)
     settings.KNN_INDEX_PATH = "/tmp/non_existent_knn_index.npz"
 
-    deck = Deck.objects.first()
-    if deck:
-        with warnings.catch_warnings(record=True) as recorded:
-            warnings.simplefilter("always")
-            response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/")
-            assert response.status_code == 200
-            assert any("kNN index file not found" in str(w.message) for w in recorded)
-            assert b"Mainboard" in response.content
+    t = Tournament.objects.create(
+        id="tourn_knn_warn",
+        name="Modern Event",
+        format="modern",
+        date=date.today(),
+    )
+    deck = Deck.objects.create(
+        id="deck_knn_warn",
+        tournament=t,
+        format="modern",
+        player="KnnTester",
+        player_lower="knntester",
+        mainboard=[{"card": "Lightning Bolt", "count": 4}],
+        sideboard=[],
+    )
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/")
+        assert response.status_code == 200
+        assert any("kNN index file not found" in str(w.message) for w in recorded)
+        assert b"Mainboard" in response.content
 
 
 @pytest.mark.django_db
 def test_deck_detail_banned_card_badge(client):
-    deck = Deck.objects.filter(player_lower="univerce").first()
-    if deck:
-        response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/1/")
-        assert response.status_code == 200
-        content = response.content.decode()
-        assert "Banned" in content
-        assert "Historical / Not Legal Today" not in content
-        assert "Banned / Illegal cards in current" not in content
+    t = Tournament.objects.create(
+        id="tourn_banned_badge",
+        name="Modern Event",
+        format="modern",
+        date=date.today(),
+    )
+    deck = Deck.objects.create(
+        id="deck_banned_badge",
+        tournament=t,
+        format="modern",
+        player="Univerce",
+        player_lower="univerce",
+        illegal_cards=["Fury"],
+        mainboard=[{"card": "Fury", "count": 4}],
+        sideboard=[],
+    )
+    response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/1/")
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Banned" in content
+    assert "Historical / Not Legal Today" not in content
+    assert "Banned / Illegal cards in current" not in content
 
 
 @pytest.mark.django_db
 def test_deck_detail_similar_decks_mana_symbols(client):
-    set_global_knn_index(None, loaded=False)
-    deck = Deck.objects.filter(player="Rexplosion").first() or Deck.objects.first()
-    if deck:
-        response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/1/")
+    t = Tournament.objects.create(
+        id="tourn_similar_mana",
+        name="Legacy Event",
+        format="legacy",
+        date=date.today(),
+    )
+    d1 = Deck.objects.create(
+        id="deck_similar_mana_1",
+        tournament=t,
+        format="legacy",
+        player="Rexplosion",
+        player_lower="rexplosion",
+        archetype="Storm",
+        archetype_slug="storm",
+        mainboard=[{"card": "Brainstorm", "count": 4}],
+        sideboard=[],
+    )
+    d2 = Deck.objects.create(
+        id="deck_similar_mana_2",
+        tournament=t,
+        format="legacy",
+        player="NeighborPlayer",
+        player_lower="neighborplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+        colors="UR",
+        color_name="Izzet",
+        mainboard=[{"card": "Lightning Bolt", "count": 4}],
+        sideboard=[],
+    )
+    mock_index = MagicMock()
+    mock_index.vector_from_decklist.return_value = MagicMock()
+    mock_index.query.side_effect = [
+        [
+            {
+                "deck_id": d2.id,
+                "player": "NeighborPlayer",
+                "archetype": "Delver",
+                "colors": "UR",
+                "color_name": "Izzet",
+                "format": "legacy",
+                "date": date.today(),
+                "raw_similarity": 0.99,
+                "recency_weight": 1.0,
+                "score": 0.99,
+            }
+        ],
+        [],
+    ]
+    set_global_knn_index(mock_index, loaded=True)
+    try:
+        response = client.get(f"/player/{d1.player}/deck/{t.id}/1/")
         assert response.status_code == 200
         format_neighbors = response.context.get("format_neighbors", [])
-        cross_format_neighbors = response.context.get("cross_format_neighbors", [])
-        if format_neighbors:
-            assert "colors" in format_neighbors[0]
-            assert "color_name" in format_neighbors[0]
-            if format_neighbors[0]["colors"]:
-                assert "ms ms-" in response.content.decode()
-        if cross_format_neighbors:
-            assert "colors" in cross_format_neighbors[0]
-            assert "color_name" in cross_format_neighbors[0]
+        assert len(format_neighbors) == 1
+        assert format_neighbors[0]["colors"] == "UR"
+        assert format_neighbors[0]["color_name"] == "Izzet"
+        assert "ms ms-u" in response.content.decode()
+        assert "ms ms-r" in response.content.decode()
+    finally:
+        set_global_knn_index(None, loaded=False)
 
 
 @pytest.mark.django_db
@@ -1883,7 +2002,8 @@ def test_format_overview_bump_chart_and_momentum(client):
     assert 'viewBox="0 0 801 184"' in content
     assert ">#1</text>" not in content
     assert ">#5</text>" not in content
-    assert 'text-anchor="end"' in content
+    if any(m.get("anchor") == "end" for m in bump_chart["month_labels"]):
+        assert 'text-anchor="end"' in content
     for m in bump_chart["month_labels"]:
         if m.get("anchor") == "end":
             assert m["x"] <= bump_chart["x_end"]
@@ -1923,6 +2043,23 @@ def test_format_overview_bump_chart_and_momentum(client):
     assert arch_dict_30["kuldotha-red"]["t8_momentum"] == 3
     # Bump chart retains 52 weeks of data regardless of ?days=30
     assert resp_30.context["bump_chart"]["has_data"] is True
+
+
+@pytest.mark.django_db
+def test_format_bump_chart_right_edge_anchor():
+    """Test that bump chart sets anchor='end' and SVG renders text-anchor='end' when month boundary is near right edge."""
+    # On 2026-09-03, Sep 1 falls in week 51, where col_x + 24 > x_end
+    chart = build_format_bump_chart("pauper", date(2026, 9, 3))
+    end_labels = [m for m in chart["month_labels"] if m.get("anchor") == "end"]
+    assert len(end_labels) == 1
+    assert end_labels[0]["name"] == "Sep"
+    assert end_labels[0]["x"] == chart["x_end"]
+
+    rendered = render_to_string(
+        "includes/format_bump_chart.html",
+        {"bump_chart": chart, "format_name": "Pauper"},
+    )
+    assert 'text-anchor="end"' in rendered
 
 
 @pytest.mark.django_db

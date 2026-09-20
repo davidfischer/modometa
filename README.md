@@ -65,6 +65,11 @@ uv run modometa sync_scryfall
 # For all formats, takes ~1-2 minutes per year of tournaments
 # You must have pulled https://github.com/davidfischer/modometa-mtgo-data already
 uv run modometa ingest_tournaments
+
+# Ingest community MTGO data (mostly Legacy Data Collection Project)
+# This contains matchup level head-to-head data on Swiss rounds from challenges
+# You must have pulled https://github.com/davidfischer/modometa-community-data already
+uv run modometa ingest_community
 ```
 
 ### 4. Run Development Server

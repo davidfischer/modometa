@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from .models import Card
 from .models import CardLookup
 from .models import Deck
+from .models import Match
 from .models import Tournament
 
 
@@ -118,3 +119,43 @@ class DeckAdmin(admin.ModelAdmin):
             'background: var(--darkened-bg, #f8f9fa); color: var(--body-fg, #333); margin: 0;">{}</pre>',
             obj.decklist_text,
         )
+
+
+@admin.register(Match)
+class MatchAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tournament",
+        "round_name",
+        "player1",
+        "player1_wins",
+        "player2_wins",
+        "player2",
+        "draws",
+        "source",
+        "tournament_date",
+    )
+    list_select_related = ("tournament",)
+    list_filter = (
+        TimeframeFilter,
+        "source",
+        "round_slug",
+        "tournament__format",
+    )
+    search_fields = (
+        "player1",
+        "player2",
+        "tournament__name",
+        "tournament__id",
+        "id",
+    )
+    raw_id_fields = ("tournament", "player1_deck", "player2_deck")
+    ordering = ("-tournament__date", "round_slug", "id")
+    date_hierarchy = "tournament__date"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("tournament")
+
+    @admin.display(description="Date", ordering="tournament__date")
+    def tournament_date(self, obj: Match) -> date | None:
+        return obj.tournament.date if obj.tournament else None

@@ -2284,8 +2284,11 @@ def get_archetype_matrix_data(
     archetype_match_counts = Counter()
     archetype_names = {}
     valid_matches = []
+    has_ldcp_data = False
 
     for m in matches:
+        if m.source == Match.SOURCE_LDCP:
+            has_ldcp_data = True
         d1 = m.player1_deck
         d2 = m.player2_deck
         if not d1 or not d2:
@@ -2303,6 +2306,7 @@ def get_archetype_matrix_data(
     if not valid_matches or not archetype_match_counts:
         return {
             "has_data": False,
+            "has_ldcp_data": has_ldcp_data,
             "total_matches": 0,
             "sorted_slugs": [],
             "archetype_names": {},
@@ -2419,6 +2423,7 @@ def get_archetype_matrix_data(
 
     return {
         "has_data": True,
+        "has_ldcp_data": has_ldcp_data,
         "total_matches": len(valid_matches),
         "sorted_slugs": sorted_slugs,
         "archetype_names": archetype_names,
@@ -2574,6 +2579,7 @@ def archetype_matrix(request, format):
             "archetypes": archetypes,
             "rows": rows,
             "total_matches": matrix_data["total_matches"],
+            "has_ldcp_data": matrix_data.get("has_ldcp_data", False),
             "days": days,
         },
     )

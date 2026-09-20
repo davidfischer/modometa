@@ -503,6 +503,7 @@ class IngestionPipeline:
                             player1_wins=p1_wins,
                             player2_wins=p2_wins,
                             draws=draws,
+                            source=Match.SOURCE_MTGO,
                         )
                     )
 

@@ -1,0 +1,99 @@
+{% load mana_tags %}
+
+<!-- Archetype Breakdown Chart (30-Day Challenge Top 8s) -->
+<div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6 space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h2 class="text-base font-semibold text-white flex items-center gap-2">
+        <span>Archetype Breakdown</span>
+        <span class="rounded bg-zinc-800 px-2 py-0.5 text-2xs font-semibold text-zinc-400 font-mono">
+          {{ archetype_chart.total_archetypes }} Archetype{{ archetype_chart.total_archetypes|pluralize }}
+        </span>
+      </h2>
+      <p class="text-xs text-zinc-400 mt-0.5">
+        Challenge Top 8 finishes over the last 30 days across {{ archetype_chart.total_tournaments }} events.
+      </p>
+    </div>
+
+    <!-- Header Right / Legend -->
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-3 text-xs font-mono">
+        <div class="flex items-center gap-1.5" title="1st Place Challenge Winner">
+          <span class="challenge-unit-pip challenge-unit-winner inline-flex items-center justify-center w-4 h-4 rounded-[3px] border shadow-xs">
+            <span class="text-3xs font-bold leading-none select-none">1</span>
+          </span>
+          <span class="text-zinc-300 font-sans">1st Place</span>
+        </div>
+        <div class="flex items-center gap-1.5" title="Top 8 finishes (2nd to 8th)">
+          <span class="challenge-unit-pip challenge-unit-top8 inline-flex items-center justify-center w-4 h-4 rounded-[3px] border shadow-xs">
+            <span class="text-3xs font-bold leading-none select-none">2</span>
+          </span>
+          <span class="text-zinc-300 font-sans">Top 8</span>
+        </div>
+      </div>
+      <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400 border border-emerald-500/20 font-mono">
+        🏆 {{ archetype_chart.total_decks }} Top 8s
+      </span>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 scrollbar-thin">
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap font-mono">
+        <tr>
+          <th class="py-2.5 px-3 min-w-44 sm:w-56">Archetype</th>
+          <th class="py-2.5 px-3 min-w-48">Top 8 Finishes</th>
+          <th class="py-2.5 px-3 text-right w-16">Wins</th>
+          <th class="py-2.5 px-3 text-right w-16">Total</th>
+          <th class="py-2.5 px-3 text-right w-16">Share</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono whitespace-nowrap">
+        {% for row in archetype_chart.rows %}
+          <tr class="hover:bg-zinc-800/40 transition-colors {% if row.wins_count > 0 %}bg-amber-500/[0.02]{% elif row.total_count > 0 and not row.is_others %}bg-emerald-500/[0.01]{% endif %}">
+            <td class="py-2.5 px-3 font-sans font-medium text-white">
+              {% if row.slug %}
+                <a href="{% url 'core:archetype_detail' format_slug row.slug %}" class="hover:text-emerald-400 transition-colors">
+                  {{ row.name }}
+                </a>
+                {% if row.colors %}
+                  <span class="ml-1.5 align-middle">{{ row.colors|mana_symbols:row.color_name }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-zinc-400 italic">{{ row.name }}</span>
+              {% endif %}
+            </td>
+            <td class="py-2.5 px-3">
+              <div class="flex flex-wrap items-center gap-1 min-h-6">
+                {% for unit in row.units %}
+                  <a href="{{ unit.deck_url }}"
+                     class="challenge-unit-pip {% if unit.is_win %}challenge-unit-winner{% else %}challenge-unit-top8{% endif %} inline-flex items-center justify-center w-4 h-4 rounded-[3px] border shadow-xs"
+                     title="Rank {{ unit.rank|default:'Top 8' }}{% if unit.player %} • {{ unit.player }}{% endif %}{% if row.is_others and unit.archetype_name %} • {{ unit.archetype_name }}{% endif %}{% if unit.tournament_name %} • {{ unit.tournament_name }}{% endif %}{% if unit.tournament_date %} ({{ unit.tournament_date|date:'M j' }}){% endif %}">
+                    {% if unit.rank %}
+                      <span class="text-3xs font-bold leading-none select-none">{{ unit.rank }}</span>
+                    {% endif %}
+                  </a>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-right">
+              {% if row.wins_count > 0 %}
+                <span class="inline-flex items-center justify-center rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-bold text-amber-400 border border-amber-500/30 min-w-6">
+                  {{ row.wins_count }}
+                </span>
+              {% else %}
+                <span class="text-zinc-600">—</span>
+              {% endif %}
+            </td>
+            <td class="py-2.5 px-3 text-right font-semibold text-white">
+              {{ row.total_count }}
+            </td>
+            <td class="py-2.5 px-3 text-right text-zinc-400">
+              {{ row.share_pct }}%
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -558,6 +558,10 @@ def tournament_list(request, format):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    archetype_chart = None
+    if active_type != "league":
+        archetype_chart = build_tournament_list_archetype_chart(fmt_slug, days=30)
+
     return render(
         request,
         "tournament_list.html",
@@ -567,6 +571,7 @@ def tournament_list(request, format):
             "active_type": active_type,
             "tournaments": page_obj.object_list,
             "page_obj": page_obj,
+            "archetype_chart": archetype_chart,
         },
     )
 
@@ -587,6 +592,260 @@ def tournament_deck_sort_key(
     return (rank, record, deck.player_lower, deck.id)
 
 
+def build_tournament_archetype_chart(
+    decks: list[Deck], is_challenge: bool = True
+) -> dict | None:
+    """Build archetype play rate and conversion chart data for tournament events."""
+    if not decks:
+        return None
+
+    total_decks = len(decks)
+    arch_map: dict[str, dict] = {}
+    for d in decks:
+        slug = d.archetype_slug
+        if slug not in arch_map:
+            arch_map[slug] = {
+                "name": d.archetype,
+                "slug": slug,
+                "colors_list": [],
+                "top8_decks": [],
+                "swiss_decks": [],
+            }
+        arch_map[slug]["colors_list"].append((d.colors, d.color_name))
+        if is_challenge and d.is_top8:
+            arch_map[slug]["top8_decks"].append(d)
+        else:
+            arch_map[slug]["swiss_decks"].append(d)
+
+    rows = []
+    total_top8_decks = 0
+    total_swiss_decks = 0
+
+    for slug, data in arch_map.items():
+        top8_decks = data["top8_decks"]
+        swiss_decks = data["swiss_decks"]
+        top8_count = len(top8_decks)
+        swiss_count = len(swiss_decks)
+        total_count = top8_count + swiss_count
+        total_top8_decks += top8_count
+        total_swiss_decks += swiss_count
+
+        color_counts = Counter(data["colors_list"])
+        most_common_colors, most_common_color_name = color_counts.most_common(1)[0][0]
+
+        units = []
+        for d in top8_decks:
+            units.append(
+                {
+                    "is_top8": True,
+                    "player": d.player,
+                    "result": d.result,
+                    "rank": d.rank,
+                    "deck_index": getattr(d, "deck_index", 1),
+                    "tooltip": f"{d.result}: {d.player} ({d.archetype})",
+                }
+            )
+        for d in swiss_decks:
+            units.append(
+                {
+                    "is_top8": False,
+                    "player": d.player,
+                    "result": d.result,
+                    "rank": d.rank,
+                    "deck_index": getattr(d, "deck_index", 1),
+                    "tooltip": f"{d.result}: {d.player} ({d.archetype})",
+                }
+            )
+
+        share_pct = round((total_count / total_decks) * 100, 1) if total_decks else 0.0
+
+        rows.append(
+            {
+                "name": data["name"],
+                "slug": data["slug"],
+                "colors": most_common_colors,
+                "color_name": most_common_color_name,
+                "total_count": total_count,
+                "top8_count": top8_count,
+                "swiss_count": swiss_count,
+                "share_pct": share_pct,
+                "units": units,
+            }
+        )
+
+    rows.sort(key=lambda r: (-r["total_count"], -r["top8_count"], r["name"].lower()))
+    max_count = max((r["total_count"] for r in rows), default=0)
+
+    return {
+        "is_challenge": is_challenge,
+        "total_decks": total_decks,
+        "total_archetypes": len(rows),
+        "total_top8_decks": total_top8_decks,
+        "total_swiss_decks": total_swiss_decks,
+        "max_count": max_count,
+        "rows": rows,
+    }
+
+
+def build_challenge_archetype_chart(decks: list[Deck]) -> dict | None:
+    """Build archetype play rate and Top 8 conversion chart data for challenge events."""
+    return build_tournament_archetype_chart(decks, is_challenge=True)
+
+
+def build_tournament_list_archetype_chart(fmt_slug: str, days: int = 30) -> dict | None:
+    """Build 30-day Challenge Top 8 archetype breakdown for tournament list view and OG image."""
+    cutoff, ref_date = get_timeframe_cutoff(days)
+    tourns_qs = Tournament.objects.filter(
+        format=fmt_slug,
+        event_type="challenge",
+        date__gte=cutoff,
+        date__lte=ref_date,
+    )
+    decks = list(
+        Deck.objects.filter(tournament__in=tourns_qs, is_top8=True).select_related(
+            "tournament"
+        )
+    )
+    if not decks:
+        return None
+
+    arch_map: dict[str, dict] = {}
+    for d in decks:
+        slug = d.archetype_slug or "unknown"
+        if slug not in arch_map:
+            arch_map[slug] = {
+                "name": d.archetype,
+                "slug": slug,
+                "colors_list": [],
+                "decks": [],
+                "wins_count": 0,
+            }
+        arch_map[slug]["colors_list"].append((d.colors, d.color_name))
+        arch_map[slug]["decks"].append(d)
+        if d.rank == 1 or (d.result and "1st" in d.result.lower()):
+            arch_map[slug]["wins_count"] += 1
+
+    total_decks = len(decks)
+    rows = []
+    for slug, data in arch_map.items():
+        d_list = data["decks"]
+        d_list.sort(
+            key=lambda x: (
+                x.rank if x.rank is not None else 999,
+                -(
+                    x.tournament.date.toordinal()
+                    if x.tournament and x.tournament.date
+                    else 0
+                ),
+                x.player_lower,
+            )
+        )
+        cnt = len(d_list)
+
+        c_counts = Counter(c for c, _ in data["colors_list"] if c)
+        best_colors = c_counts.most_common(1)[0][0] if c_counts else ""
+        name_counts = Counter(n for _, n in data["colors_list"] if n)
+        best_name = name_counts.most_common(1)[0][0] if name_counts else ""
+
+        units = []
+        for d in d_list:
+            t_id = d.tournament.id if d.tournament else ""
+            deck_idx = getattr(d, "deck_index", 1)
+            if deck_idx > 1:
+                deck_url = reverse(
+                    "core:deck_detail_disambiguated",
+                    kwargs={
+                        "player": d.player,
+                        "event": t_id,
+                        "deck_index": deck_idx,
+                    },
+                )
+            else:
+                deck_url = reverse(
+                    "core:deck_detail",
+                    kwargs={"player": d.player, "event": t_id},
+                )
+
+            units.append(
+                {
+                    "rank": d.rank if (d.rank and 1 <= d.rank <= 8) else None,
+                    "player": d.player,
+                    "archetype_name": d.archetype,
+                    "is_top8": True,
+                    "is_win": (d.rank == 1 or (d.result and "1st" in d.result.lower())),
+                    "tournament_id": t_id,
+                    "tournament_name": d.tournament.name if d.tournament else "",
+                    "tournament_date": d.tournament.date if d.tournament else None,
+                    "deck_url": deck_url,
+                    "id": d.id,
+                }
+            )
+
+        share_pct = round((cnt / total_decks) * 100, 1) if total_decks > 0 else 0.0
+
+        rows.append(
+            {
+                "name": data["name"],
+                "slug": slug,
+                "colors": best_colors,
+                "color_name": best_name,
+                "total_count": cnt,
+                "wins_count": data["wins_count"],
+                "share_pct": share_pct,
+                "units": units,
+            }
+        )
+
+    rows.sort(key=lambda r: (-r["total_count"], -r["wins_count"], r["name"].lower()))
+    total_archetypes = len(rows)
+
+    # Group archetypes with a single Top 8 and no 1st place finishes into "Others" at the bottom
+    main_rows = []
+    other_rows = []
+    for r in rows:
+        if r["total_count"] == 1 and r["wins_count"] == 0:
+            other_rows.append(r)
+        else:
+            main_rows.append(r)
+
+    if other_rows:
+        other_units = []
+        for r in other_rows:
+            other_units.extend(r["units"])
+        other_units.sort(
+            key=lambda u: (
+                u["rank"] if u["rank"] is not None else 999,
+                u["player"].lower() if u["player"] else "",
+            )
+        )
+        other_total = len(other_rows)
+        other_share = (
+            round((other_total / total_decks) * 100, 1) if total_decks > 0 else 0.0
+        )
+        main_rows.append(
+            {
+                "name": "Others",
+                "slug": None,
+                "colors": "",
+                "color_name": "",
+                "total_count": other_total,
+                "wins_count": 0,
+                "share_pct": other_share,
+                "units": other_units,
+                "is_others": True,
+            }
+        )
+
+    return {
+        "total_decks": total_decks,
+        "total_tournaments": tourns_qs.count(),
+        "total_archetypes": total_archetypes,
+        "start_date": cutoff,
+        "end_date": ref_date,
+        "rows": main_rows,
+    }
+
+
 # These basically never change unless it's today's leagues
 @public_cache(cdn_seconds=3600 * 4, browser_seconds=300)
 def tournament_detail(request, format, event):
@@ -603,12 +862,20 @@ def tournament_detail(request, format, event):
         d.deck_index = player_counts[d.player_lower]
         decks.append(d)
 
+    archetype_chart = None
+    event_type = getattr(tournament, "event_type", "").lower()
+    if event_type in ("challenge", "league"):
+        archetype_chart = build_tournament_archetype_chart(
+            decks, is_challenge=(event_type == "challenge")
+        )
+
     return render(
         request,
         "tournament_detail.html",
         {
             "tournament": tournament,
             "decks": decks,
+            "archetype_chart": archetype_chart,
         },
     )
 
@@ -2999,6 +3266,197 @@ def archetype_og_image(request, format, archetype):
                 "conversion_rate": conv_rate,
             },
             "heatmap": heatmap,
+        },
+        request=request,
+    )
+
+
+def _format_og_chart_row(r: dict, idx: int) -> dict:
+    """Format a single archetype row with SVG coordinate offsets for Challenge OG images."""
+    name = r["name"]
+    name_display = name[:18] + "…" if len(name) > 19 else name
+    units = []
+    for u_idx, u in enumerate(r["units"][:8]):
+        units.append(
+            {
+                "x": 160 + u_idx * 19,
+                "text_x": 160 + u_idx * 19 + 7.5,
+                "rank": u.get("rank"),
+                "is_top8": u["is_top8"],
+            }
+        )
+    return {
+        "y_offset": idx * 29,
+        "name": name_display,
+        "units": units,
+        "total_count": r["total_count"],
+        "top8_count": r["top8_count"],
+        "share_pct": r["share_pct"],
+    }
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def tournament_og_image(request, format, event):
+    """Serve dynamic Open Graph PNG image for a Challenge or League tournament."""
+    fmt_slug = format.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404(f"Format '{format}' not found.")
+
+    tournament = get_object_or_404(Tournament, id=event, format=fmt_slug)
+    event_type = getattr(tournament, "event_type", "").lower()
+    if event_type not in ("challenge", "league"):
+        raise Http404(
+            "OG images are only generated for Challenge and League tournaments."
+        )
+
+    is_challenge = event_type == "challenge"
+    raw_decks = list(Deck.objects.filter(tournament=tournament))
+    raw_decks.sort(key=tournament_deck_sort_key)
+    if not raw_decks:
+        raise Http404("No deck data recorded for this tournament.")
+
+    chart = build_tournament_archetype_chart(raw_decks, is_challenge=is_challenge)
+    if not chart or not chart.get("rows"):
+        raise Http404("Could not generate chart data for this tournament.")
+
+    rows = chart["rows"]
+    if len(rows) > 20:
+        displayed = list(rows[:19])
+        remaining = rows[19:]
+        rem_total = sum(r["total_count"] for r in remaining)
+        rem_top8 = sum(r["top8_count"] for r in remaining)
+        rem_share = round(sum(r["share_pct"] for r in remaining), 1)
+        rem_units = []
+        for r in remaining:
+            rem_units.extend(r["units"])
+        displayed.append(
+            {
+                "name": f"Other ({len(remaining)})",
+                "total_count": rem_total,
+                "top8_count": rem_top8,
+                "share_pct": rem_share,
+                "units": rem_units[:8],
+            }
+        )
+    else:
+        displayed = rows
+
+    half = (len(displayed) + 1) // 2
+    col1 = [_format_og_chart_row(r, i) for i, r in enumerate(displayed[:half])]
+    col2 = (
+        [_format_og_chart_row(r, i) for i, r in enumerate(displayed[half:])]
+        if len(displayed) > half
+        else []
+    )
+
+    podium = []
+    if is_challenge:
+        podium_ranks = ["1st", "2nd", "3rd"]
+        box_w = 348
+        gap = 18
+        for i in range(min(3, len(raw_decks))):
+            d = raw_decks[i]
+            p_name = d.player[:14] + "…" if len(d.player) > 15 else d.player
+            a_name = d.archetype[:17] + "…" if len(d.archetype) > 18 else d.archetype
+            podium.append(
+                {
+                    "x": 60 + i * (box_w + gap),
+                    "width": box_w,
+                    "text_right_x": box_w - 10,
+                    "label": f"{podium_ranks[i]}: {p_name}",
+                    "archetype": a_name,
+                    "is_first": (i == 0),
+                }
+            )
+
+    return render_og_png(
+        "og/tournament_og.svg",
+        {
+            "tournament": tournament,
+            "format_name": fmt_slug.capitalize(),
+            "chart": chart,
+            "podium": podium,
+            "col1": col1,
+            "col2": col2,
+        },
+        request=request,
+    )
+
+
+@public_cache(cdn_seconds=86400, browser_seconds=3600)
+def tournament_list_og_image(request, format):
+    """Serve dynamic Open Graph PNG image for the tournament list view (30-day Challenge Top 8 breakdown)."""
+    fmt_slug = format.lower().strip()
+    if fmt_slug not in settings.MODOMETA_FORMATS:
+        raise Http404(f"Format '{format}' not found.")
+
+    chart = build_tournament_list_archetype_chart(fmt_slug, days=30)
+    if not chart or not chart.get("rows"):
+        raise Http404(
+            f"No Challenge Top 8 data found in {fmt_slug} over the last 30 days."
+        )
+
+    format_name = (
+        FORMATS[fmt_slug].name if fmt_slug in FORMATS else fmt_slug.capitalize()
+    )
+
+    max_display_rows = 10
+    og_rows = []
+    for i, r in enumerate(chart["rows"][:max_display_rows]):
+        raw_units = r["units"]
+        overflow_count = max(0, len(raw_units) - 28)
+        visible_units = raw_units[:28] if overflow_count > 0 else raw_units
+
+        units_data = []
+        for u_idx, u in enumerate(visible_units):
+            u_x = 180 + u_idx * 18
+            units_data.append(
+                {
+                    "x": u_x,
+                    "text_x": u_x + 7,
+                    "rank": u["rank"],
+                    "is_win": u["is_win"],
+                }
+            )
+
+        overflow = None
+        if overflow_count > 0:
+            overflow = {
+                "x": 180 + len(visible_units) * 18,
+                "text_x": 180 + len(visible_units) * 18 + 14,
+                "label": f"+{overflow_count}",
+            }
+
+        name = r["name"]
+        if len(name) > 19:
+            name = name[:18] + "…"
+
+        og_rows.append(
+            {
+                "name": name,
+                "y_offset": i * 26,
+                "units": units_data,
+                "overflow": overflow,
+                "wins_count": r["wins_count"],
+                "total_count": r["total_count"],
+                "share_pct": r["share_pct"],
+            }
+        )
+
+    remaining_archetypes = max(0, chart["total_archetypes"] - len(og_rows))
+    remaining_decks = sum(r["total_count"] for r in chart["rows"][len(og_rows) :])
+    top_archetype = chart["rows"][0] if chart["rows"] else None
+
+    return render_og_png(
+        "og/tournament_list_og.svg",
+        {
+            "format_name": format_name,
+            "format_slug": fmt_slug,
+            "chart": chart,
+            "rows": og_rows,
+            "top_archetype": top_archetype,
+            "remaining_archetypes": remaining_archetypes,
+            "remaining_decks": remaining_decks,
         },
         request=request,
     )

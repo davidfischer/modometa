@@ -524,3 +524,99 @@ def test_build_matrix_og_data_eight_archetypes():
     assert len(data["rows"]) == 8
     for row in data["rows"]:
         assert len(row["cells"]) == 8
+
+
+@pytest.mark.django_db
+def test_tournament_og_image_view(client, sample_data):
+    """Test tournament PNG OG image view for Challenge and League events, and 404 for other events."""
+    tourn, deck = sample_data
+    # 1. Challenge event
+    response = client.get(f"/legacy/tournaments/{tourn.id}/og.png")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/png"
+    assert response.content[:4] == b"\x89PNG"
+    assert len(response.content) > 1000
+
+    html_resp = client.get(f"/legacy/tournaments/{tourn.id}/")
+    assert html_resp.status_code == 200
+    assert f"/legacy/tournaments/{tourn.id}/og.png" in html_resp.content.decode("utf-8")
+
+    # 2. League event
+    league_tourn = Tournament.objects.create(
+        id="legacy_league_seo_test",
+        format="legacy",
+        event_type="league",
+        name="Legacy League",
+        date=date(2026, 1, 15),
+    )
+    Deck.objects.create(
+        id="league_deck_seo_test",
+        tournament=league_tourn,
+        format="legacy",
+        player="LeaguePlayer",
+        player_lower="leagueplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+        result="5-0",
+        is_5_0=True,
+    )
+    league_og_resp = client.get(f"/legacy/tournaments/{league_tourn.id}/og.png")
+    assert league_og_resp.status_code == 200
+    assert league_og_resp["Content-Type"] == "image/png"
+    assert league_og_resp.content[:4] == b"\x89PNG"
+
+    league_html = client.get(f"/legacy/tournaments/{league_tourn.id}/").content.decode(
+        "utf-8"
+    )
+    assert f"/legacy/tournaments/{league_tourn.id}/og.png" in league_html
+
+    # 3. Other unranked event returns 404
+    other_tourn = Tournament.objects.create(
+        id="legacy_other_seo_test",
+        format="legacy",
+        event_type="other",
+        name="Legacy LCQ",
+        date=date(2026, 1, 15),
+    )
+    Deck.objects.create(
+        id="other_deck_seo_test",
+        tournament=other_tourn,
+        format="legacy",
+        player="OtherPlayer",
+        player_lower="otherplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+        result="3-1",
+    )
+    other_og_resp = client.get(f"/legacy/tournaments/{other_tourn.id}/og.png")
+    assert other_og_resp.status_code == 404
+
+    other_html = client.get(f"/legacy/tournaments/{other_tourn.id}/").content.decode(
+        "utf-8"
+    )
+    assert f"/legacy/tournaments/{other_tourn.id}/og.png" not in other_html
+    assert "/og.png" in other_html
+
+    # 4. Test invalid format returns 404
+    assert (
+        client.get(f"/invalidformat/tournaments/{tourn.id}/og.png").status_code == 404
+    )
+
+
+@pytest.mark.django_db
+def test_tournament_list_og_image_view(client, sample_data):
+    """Test tournament list PNG OG image view for formats with recent Challenge data."""
+    tourn, deck = sample_data
+    response = client.get("/legacy/tournaments/og.png")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/png"
+    assert response.content[:4] == b"\x89PNG"
+    assert len(response.content) > 1000
+
+    # Test HTML includes tournament list og.png link
+    html_resp = client.get("/legacy/tournaments/")
+    assert html_resp.status_code == 200
+    assert "/legacy/tournaments/og.png" in html_resp.content.decode("utf-8")
+
+    # Test invalid format returns 404
+    assert client.get("/invalidformat/tournaments/og.png").status_code == 404

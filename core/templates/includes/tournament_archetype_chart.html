@@ -1,0 +1,105 @@
+{% load mana_tags %}
+
+<!-- Archetype Breakdown Chart -->
+<div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6 space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+        <span>Archetype Breakdown</span>
+        <span class="rounded bg-zinc-800 px-2 py-0.5 text-2xs font-semibold text-zinc-400 font-mono">
+          {{ archetype_chart.total_archetypes }} Archetype{{ archetype_chart.total_archetypes|pluralize }}
+        </span>
+      </h2>
+      <p class="text-xs text-zinc-400 mt-0.5">
+        {% if archetype_chart.is_challenge %}
+          Play rates and Top 8 finishes across {{ archetype_chart.total_decks }} published decks.
+        {% else %}
+          Archetype distribution across {{ archetype_chart.total_decks }} published 5-0 decks.
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Header Right / Legend -->
+    {% if archetype_chart.is_challenge %}
+      <div class="flex items-center gap-4 text-xs font-mono">
+        <div class="flex items-center gap-1.5" title="Top 8 finishes in this Challenge">
+          <span class="challenge-unit-top8 inline-flex items-center justify-center w-4 h-4 rounded-[3px] border shadow-xs">
+            <span class="text-3xs font-bold leading-none select-none">1</span>
+          </span>
+          <span class="text-zinc-300 font-sans">Top 8 ({{ archetype_chart.total_top8_decks }})</span>
+        </div>
+        <div class="flex items-center gap-1.5" title="Swiss finishes (9th to {{ archetype_chart.total_decks }})">
+          <span class="challenge-unit-swiss inline-flex items-center justify-center w-4 h-4 rounded-[3px] border"></span>
+          <span class="text-zinc-400 font-sans">Swiss ({{ archetype_chart.total_swiss_decks }})</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-400 border border-sky-500/20 font-mono">
+          🏆 {{ archetype_chart.total_decks }} 5-0 Decks
+        </span>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 scrollbar-thin">
+    <table class="w-full text-left text-xs text-zinc-300">
+      <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 bg-zinc-950/40 whitespace-nowrap font-sans">
+        <tr>
+          <th class="py-2.5 px-3 min-w-44 sm:w-56">Archetype</th>
+          <th class="py-2.5 px-3 min-w-36">Decks</th>
+          <th class="py-2.5 px-3 text-right w-16">{% if archetype_chart.is_challenge %}Total{% else %}5-0s{% endif %}</th>
+          {% if archetype_chart.is_challenge %}
+            <th class="py-2.5 px-3 text-right w-16">Top 8</th>
+          {% endif %}
+          <th class="py-2.5 px-3 text-right w-16">Share</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800/60 font-mono whitespace-nowrap">
+        {% for row in archetype_chart.rows %}
+          <tr class="hover:bg-zinc-800/40 transition-colors {% if archetype_chart.is_challenge and row.top8_count > 0 %}bg-emerald-500/[0.02]{% endif %}">
+            <td class="py-2.5 px-3 font-sans font-medium text-white">
+              <a href="{% url 'core:archetype_detail' tournament.format row.slug %}" class="hover:text-emerald-400 transition-colors">
+                {{ row.name }}
+              </a>
+              {% if row.colors %}
+                <span class="ml-1.5 align-middle">{{ row.colors|mana_symbols:row.color_name }}</span>
+              {% endif %}
+            </td>
+            <td class="py-2.5 px-3 font-sans">
+              <div class="flex items-center gap-1 sm:gap-1.5">
+                {% for unit in row.units %}
+                  <a href="{% url 'core:deck_detail_disambiguated' unit.player tournament.id unit.deck_index %}"
+                     class="challenge-unit-pip inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-[3px] border transition-transform hover:scale-115 focus:outline-hidden focus:ring-2 focus:ring-emerald-400 {% if unit.is_top8 %}challenge-unit-top8 font-bold shadow-xs{% else %}challenge-unit-swiss{% endif %}"
+                     title="{{ unit.tooltip }}"
+                     aria-label="{{ unit.tooltip }}">
+                    {% if unit.is_top8 %}
+                      <span class="text-3xs sm:text-2xs font-mono leading-none select-none font-extrabold">{% if unit.rank %}{{ unit.rank }}{% else %}★{% endif %}</span>
+                    {% endif %}
+                  </a>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-right font-semibold text-white">
+              {{ row.total_count }}
+            </td>
+            {% if archetype_chart.is_challenge %}
+              <td class="py-2.5 px-3 text-right">
+                {% if row.top8_count > 0 %}
+                  <span class="inline-flex items-center justify-center rounded bg-emerald-500/20 px-1.5 py-0.5 text-xs font-bold text-emerald-400 border border-emerald-500/30 min-w-6">
+                    {{ row.top8_count }}
+                  </span>
+                {% else %}
+                  <span class="text-zinc-600">—</span>
+                {% endif %}
+              </td>
+            {% endif %}
+            <td class="py-2.5 px-3 text-right text-zinc-400">
+              {{ row.share_pct }}%
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

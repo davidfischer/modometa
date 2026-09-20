@@ -42,9 +42,19 @@ urlpatterns = [
     path("<str:format>/", views.format_overview, name="format_overview"),
     path("<str:format>/tournaments/", views.tournament_list, name="tournament_list"),
     path(
+        "<str:format>/tournaments/og.png",
+        views.tournament_list_og_image,
+        name="tournament_list_og_image",
+    ),
+    path(
         "<str:format>/tournaments/<str:event>/",
         views.tournament_detail,
         name="tournament_detail",
+    ),
+    path(
+        "<str:format>/tournaments/<str:event>/og.png",
+        views.tournament_og_image,
+        name="tournament_og_image",
     ),
     path(
         "<str:format>/archetype/<str:archetype>/",

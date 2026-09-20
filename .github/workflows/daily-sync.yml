@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: false
+      skip_community:
+        description: "Skip community data ingestion"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: daily-sync
@@ -117,6 +122,21 @@ jobs:
           fi
           # Skip kNN here. We'll run it explicitly in the next step
           uv run modometa ingest_tournaments --skip-knn --dir modometa-mtgo-data/Tournaments/MTGO $EXTRA_ARGS
+
+      - name: Shallow clone modometa-community-data repository
+        if: ${{ !inputs.skip_community }}
+        run: |
+          rm -rf modometa-community-data
+          git clone --depth 1 https://github.com/davidfischer/modometa-community-data.git modometa-community-data
+
+      - name: Ingest community data
+        if: ${{ !inputs.skip_community }}
+        run: |
+          COMMUNITY_ARGS=""
+          if [ "${{ inputs.force_ingest }}" = "true" ] || [ "${{ inputs.fresh_database }}" = "true" ]; then
+            COMMUNITY_ARGS="--force"
+          fi
+          uv run modometa ingest_community --dir modometa-community-data/datasources/legacy-data-collection $COMMUNITY_ARGS
 
       # Skip kNN here. We'll run it explicitly in the next step
       - name: Reclassify tournament decks

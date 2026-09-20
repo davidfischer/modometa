@@ -24,6 +24,13 @@ def normalize_round_slug(round_name: str) -> str:
 class Match(models.Model):
     """A match between two players in an MTGO tournament."""
 
+    class Source(models.TextChoices):
+        MTGO = "mtgo", "MTGO"
+        LDCP = "ldcp", "LDCP"
+
+    SOURCE_MTGO = Source.MTGO
+    SOURCE_LDCP = Source.LDCP
+
     id = models.CharField(max_length=255, primary_key=True, verbose_name="ID")
     tournament = models.ForeignKey(
         Tournament, on_delete=models.CASCADE, related_name="matches"
@@ -52,12 +59,20 @@ class Match(models.Model):
     player2_wins = models.IntegerField(default=0)
     draws = models.IntegerField(default=0)
 
+    source = models.CharField(
+        max_length=16,
+        choices=Source.choices,
+        default=Source.MTGO,
+        db_index=True,
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-tournament__date", "round_slug", "id"]
         indexes = [
             models.Index(fields=["tournament", "round_slug"]),
+            models.Index(fields=["tournament", "source"]),
         ]
         verbose_name = "Match"
         verbose_name_plural = "Matches"

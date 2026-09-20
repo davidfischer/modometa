@@ -61,10 +61,19 @@
       </div>
       <h1 class="mt-2 text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Archetype Matrix</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Head-to-head <strong>match win %</strong> for the top {{ archetypes|length }} archetypes based on {{ total_matches|intcomma }} <span title="Daybreak only publishes the head-to-head matches for the top 8 bracket" class="underline decoration-dotted cursor-help">Challenge Top 8 matches</span> over the last {% include "includes/timeframe_select.html" %}.
+        Head-to-head <strong>match win %</strong> for the top {{ archetypes|length }} archetypes based on {{ total_matches|intcomma }} {% if has_ldcp_data %}Challenge matches (augmented by LDCP){% else %}<span title="Daybreak only publishes the head-to-head matches for the top 8 bracket" class="underline decoration-dotted cursor-help">Challenge Top 8 matches</span>{% endif %} over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
   </div>
+
+  {% if has_ldcp_data %}
+    <div class="flex items-start sm:items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-3 text-xs text-zinc-300">
+      <div>
+        <span>Swiss round matchup data provided by the <a href="https://www.patreon.com/legacydatacollection" target="_blank" rel="noopener noreferrer" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">Legacy Data Collection Project</a>. </span>
+        <span>{{ SITE_NAME }} uses LDCP head-to-head matchup data where both players had their decklists in the official MTGO data (typically top32).</span>
+      </div>
+    </div>
+  {% endif %}
 
   {% if archetypes %}
     <!-- Scrollable Matrix Table -->

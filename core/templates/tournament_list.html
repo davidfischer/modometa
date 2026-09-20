@@ -7,6 +7,10 @@
 {% block og_description %}Explore {{ format_name }} tournament results on Magic Online. Browse recent Challenges, Preliminaries, and League 5-0 finishes.{% endblock %}
 {% block twitter_title %}{{ format_name }} Tournaments — {{ SITE_NAME }}{% endblock %}
 {% block twitter_description %}Explore {{ format_name }} tournament results on Magic Online. Browse recent Challenges, Preliminaries, and League 5-0 finishes.{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:tournament_list_og_image' format_slug %}{% endblock %}
+{% block og_image_alt %}{{ format_name }} Tournaments & Challenge Top 8 Metagame on {{ SITE_NAME }}{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'core:tournament_list_og_image' format_slug %}{% endblock %}
+{% block twitter_image_alt %}{{ format_name }} Tournaments & Challenge Top 8 Metagame on {{ SITE_NAME }}{% endblock %}
 
 {% block json_ld %}
 <script type="application/ld+json">
@@ -68,6 +72,11 @@
       </a>
     </div>
   </div>
+
+  <!-- Archetype Breakdown Chart (Challenges 30d) -->
+  {% if archetype_chart and active_type != 'league' %}
+    {% include "includes/tournament_list_archetype_chart.html" %}
+  {% endif %}
 
   <!-- Tournaments Table -->
   <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">

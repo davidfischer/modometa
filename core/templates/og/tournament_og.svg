@@ -1,0 +1,109 @@
+{% extends "og/base_og.svg" %}
+
+{% block badge %}
+  <rect x="860" y="42" width="280" height="34" rx="17" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+  <text x="1000" y="64" class="font-mono" font-size="12" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="0.08em">{{ format_name|upper }} {% if chart.is_challenge %}CHALLENGE{% else %}LEAGUE{% endif %} REPORT</text>
+{% endblock %}
+
+{% block content %}
+  <!-- Tournament Title & Meta -->
+  <text x="60" y="136" class="font-sans" font-size="34" font-weight="800" fill="#ffffff">{{ tournament.name }}</text>
+  <text x="60" y="168" class="font-sans" font-size="16" fill="#a1a1aa">{{ tournament.date|date:"F j, Y" }} • {{ chart.total_decks }} Decks Published • {{ chart.total_archetypes }} Archetypes{% if tournament.player_count %} • {{ tournament.player_count }} Players{% endif %}</text>
+
+  {% if podium %}
+  <g transform="translate(0, 182)">
+    {% for p in podium %}
+      <g transform="translate({{ p.x }}, 0)">
+        <rect x="0" y="0" width="{{ p.width }}" height="24" rx="6" fill="{% if p.is_first %}#10b981{% else %}#18181b{% endif %}" fill-opacity="{% if p.is_first %}0.15{% else %}0.8{% endif %}" stroke="{% if p.is_first %}#10b981{% else %}#27272a{% endif %}" stroke-width="1" stroke-opacity="{% if p.is_first %}0.4{% else %}1{% endif %}"/>
+        <text x="10" y="16" class="font-sans" font-size="11" font-weight="700" fill="{% if p.is_first %}#34d399{% else %}#a1a1aa{% endif %}">{{ p.label }}</text>
+        <text x="{{ p.text_right_x }}" y="16" class="font-sans" font-size="11" font-weight="600" fill="#ffffff" text-anchor="end">{{ p.archetype }}</text>
+      </g>
+    {% endfor %}
+  </g>
+  {% endif %}
+
+  <!-- Infographic Card Container -->
+  <rect x="60" y="218" width="1080" height="358" rx="14" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+  <!-- Card Header with Legend -->
+  <text x="80" y="244" class="font-mono" font-size="11" font-weight="700" fill="#71717a" letter-spacing="0.08em">{% if chart.is_challenge %}ARCHETYPE METAGAME &amp; TOP 8 CONVERSION{% else %}ARCHETYPE 5-0 METAGAME BREAKDOWN{% endif %}</text>
+
+  {% if chart.is_challenge %}
+  <g transform="translate(920, 233)">
+    <!-- Top 8 Legend -->
+    <rect x="0" y="0" width="12" height="12" rx="2.5" fill="#10b981" stroke="#34d399" stroke-width="0.75"/>
+    <text x="18" y="10" class="font-sans" font-size="11" fill="#e4e4e7">Top 8</text>
+
+    <!-- Swiss Legend -->
+    <rect x="70" y="0" width="12" height="12" rx="2.5" fill="#27272a" stroke="#3f3f46" stroke-width="0.75"/>
+    <text x="88" y="10" class="font-sans" font-size="11" fill="#a1a1aa">Swiss (9–{{ chart.total_decks }})</text>
+  </g>
+  {% else %}
+  <g transform="translate(995, 233)">
+    <rect x="0" y="0" width="12" height="12" rx="2.5" fill="#27272a" stroke="#3f3f46" stroke-width="0.75"/>
+    <text x="18" y="10" class="font-sans" font-size="11" fill="#a1a1aa">5-0 Finish</text>
+  </g>
+  {% endif %}
+
+  <!-- Horizontal Divider Line -->
+  <line x1="60" y1="256" x2="1140" y2="256" stroke="#27272a" stroke-width="1"/>
+
+  {% if col2 %}
+  <!-- Vertical Divider Line Between Columns -->
+  <line x1="595" y1="256" x2="595" y2="576" stroke="#27272a" stroke-width="1"/>
+  {% endif %}
+
+  <!-- Column 1 -->
+  <g transform="translate(80, 280)">
+    {% for row in col1 %}
+      <g transform="translate(0, {{ row.y_offset }})">
+        <!-- Archetype Name -->
+        <text x="0" y="12" class="font-sans" font-size="13" font-weight="600" fill="#ffffff">{{ row.name }}</text>
+
+        <!-- Unit Blocks -->
+        {% for u in row.units %}
+          <rect x="{{ u.x }}" y="-1" width="15" height="15" rx="2.5" fill="{% if u.is_top8 %}#10b981{% else %}#27272a{% endif %}" stroke="{% if u.is_top8 %}#34d399{% else %}#3f3f46{% endif %}" stroke-width="0.75"/>
+          {% if u.is_top8 and u.rank %}
+            <text x="{{ u.text_x }}" y="10" class="font-mono" font-size="9" font-weight="800" fill="#022c22" text-anchor="middle">{{ u.rank }}</text>
+          {% endif %}
+        {% endfor %}
+
+        <!-- Top 8 Badge if > 0 -->
+        {% if row.top8_count > 0 %}
+          <text x="415" y="12" class="font-mono" font-size="11" font-weight="700" fill="#34d399" text-anchor="end">{{ row.top8_count }} T8</text>
+        {% endif %}
+
+        <!-- Total Count & Share -->
+        <text x="495" y="12" class="font-mono" font-size="11" fill="#a1a1aa" text-anchor="end">{{ row.total_count }} <tspan fill="#52525b">({{ row.share_pct }}%)</tspan></text>
+      </g>
+    {% endfor %}
+  </g>
+
+  {% if col2 %}
+  <!-- Column 2 -->
+  <g transform="translate(625, 280)">
+    {% for row in col2 %}
+      <g transform="translate(0, {{ row.y_offset }})">
+        <!-- Archetype Name -->
+        <text x="0" y="12" class="font-sans" font-size="13" font-weight="600" fill="#ffffff">{{ row.name }}</text>
+
+        <!-- Unit Blocks -->
+        {% for u in row.units %}
+          <rect x="{{ u.x }}" y="-1" width="15" height="15" rx="2.5" fill="{% if u.is_top8 %}#10b981{% else %}#27272a{% endif %}" stroke="{% if u.is_top8 %}#34d399{% else %}#3f3f46{% endif %}" stroke-width="0.75"/>
+          {% if u.is_top8 and u.rank %}
+            <text x="{{ u.text_x }}" y="10" class="font-mono" font-size="9" font-weight="800" fill="#022c22" text-anchor="middle">{{ u.rank }}</text>
+          {% endif %}
+        {% endfor %}
+
+        <!-- Top 8 Badge if > 0 -->
+        {% if row.top8_count > 0 %}
+          <text x="415" y="12" class="font-mono" font-size="11" font-weight="700" fill="#34d399" text-anchor="end">{{ row.top8_count }} T8</text>
+        {% endif %}
+
+        <!-- Total Count & Share -->
+        <text x="495" y="12" class="font-mono" font-size="11" fill="#a1a1aa" text-anchor="end">{{ row.total_count }} <tspan fill="#52525b">({{ row.share_pct }}%)</tspan></text>
+      </g>
+    {% endfor %}
+  </g>
+  {% endif %}
+{% endblock %}

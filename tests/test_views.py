@@ -27,6 +27,7 @@ from core.models import Match
 from core.models import Tournament
 from core.pipeline.scryfall import _extract_mana_cost
 from core.views import _get_matrix_color_class
+from core.views import build_challenge_archetype_chart
 from core.views import build_format_bump_chart
 from core.views import classify_card_type
 from core.views import get_archetype_matrix_data
@@ -210,6 +211,389 @@ def test_tournament_detail_sort_order(client):
     assert response.status_code == 200
     ordered_players = [d.player for d in response.context["decks"]]
     assert ordered_players == ["p_1st", "p_50", "p_41", "p_31", "p_32", "p_13"]
+
+
+@pytest.mark.django_db
+def test_build_challenge_archetype_chart_empty():
+    """Test that build_challenge_archetype_chart returns None on empty list."""
+    assert build_challenge_archetype_chart([]) is None
+
+
+@pytest.mark.django_db
+def test_tournament_detail_challenge_archetype_chart(client):
+    """Test that challenge tournaments render the archetype breakdown chart with correct data."""
+    t = Tournament.objects.create(
+        id="legacy-challenge-chart-test",
+        name="Legacy Challenge 32",
+        format="legacy",
+        event_type="challenge",
+        date=date(2024, 1, 1),
+    )
+    # Archetype A (Doomsday): 2 decks (1 Top 8, 1 Swiss)
+    Deck.objects.create(
+        id="deck_1",
+        tournament=t,
+        format="legacy",
+        player="PlayerA",
+        player_lower="playera",
+        archetype="Doomsday",
+        archetype_slug="doomsday",
+        colors="UB",
+        color_name="Dimir",
+        result="1st Place",
+        rank=1,
+        is_top8=True,
+    )
+    Deck.objects.create(
+        id="deck_2",
+        tournament=t,
+        format="legacy",
+        player="PlayerB",
+        player_lower="playerb",
+        archetype="Doomsday",
+        archetype_slug="doomsday",
+        colors="UB",
+        color_name="Dimir",
+        result="9th Place",
+        rank=9,
+        is_top8=False,
+    )
+    # Archetype B (Omni-Tell): 3 decks (0 Top 8, 3 Swiss)
+    for i in range(3):
+        Deck.objects.create(
+            id=f"deck_omni_{i}",
+            tournament=t,
+            format="legacy",
+            player=f"PlayerOmni_{i}",
+            player_lower=f"playeromni_{i}",
+            archetype="Omni-Tell",
+            archetype_slug="omni-tell",
+            colors="UR",
+            color_name="Izzet",
+            result=f"{10 + i}th Place",
+            rank=10 + i,
+            is_top8=False,
+        )
+
+    # Archetype C (Mardu Energy): 1 deck (1 Top 8)
+    Deck.objects.create(
+        id="deck_mardu",
+        tournament=t,
+        format="legacy",
+        player="PlayerMardu",
+        player_lower="playermardu",
+        archetype="Mardu Energy",
+        archetype_slug="mardu-energy",
+        colors="WBR",
+        color_name="Mardu",
+        result="2nd Place",
+        rank=2,
+        is_top8=True,
+    )
+
+    response = client.get(f"/legacy/tournaments/{t.id}/")
+    assert response.status_code == 200
+    assert "archetype_chart" in response.context
+    chart = response.context["archetype_chart"]
+    assert chart is not None
+    assert chart["total_decks"] == 6
+    assert chart["total_archetypes"] == 3
+    assert chart["total_top8_decks"] == 2
+    assert chart["total_swiss_decks"] == 4
+    assert chart["max_count"] == 3
+
+    # Ordering: Omni-Tell (3 decks), Doomsday (2 decks, 1 Top 8), Mardu Energy (1 deck, 1 Top 8)
+    row_names = [r["name"] for r in chart["rows"]]
+    assert row_names == ["Omni-Tell", "Doomsday", "Mardu Energy"]
+
+    # Verify Doomsday units
+    dd_row = chart["rows"][1]
+    assert dd_row["total_count"] == 2
+    assert dd_row["top8_count"] == 1
+    assert dd_row["swiss_count"] == 1
+    assert len(dd_row["units"]) == 2
+    assert dd_row["units"][0]["is_top8"] is True
+    assert dd_row["units"][0]["rank"] == 1
+    assert dd_row["units"][1]["is_top8"] is False
+    assert dd_row["units"][1]["rank"] == 9
+
+    # Verify HTML template contains chart elements
+    content = response.content.decode("utf-8")
+    assert "Archetype Breakdown" in content
+    assert "challenge-unit-top8" in content
+    assert "challenge-unit-swiss" in content
+    assert "Omni-Tell" in content
+    assert "Doomsday" in content
+    assert "Mardu Energy" in content
+
+
+@pytest.mark.django_db
+def test_tournament_detail_league_archetype_chart(client):
+    """Test that league tournaments render the simplified archetype chart without green squares."""
+    t = Tournament.objects.create(
+        id="legacy-league-chart-test",
+        name="Legacy League",
+        format="legacy",
+        event_type="league",
+        date=date(2024, 1, 1),
+    )
+    # 2 Delver decks
+    for i in range(2):
+        Deck.objects.create(
+            id=f"league_delver_{i}",
+            tournament=t,
+            format="legacy",
+            player=f"DelverPlayer_{i}",
+            player_lower=f"delverplayer_{i}",
+            archetype="Delver",
+            archetype_slug="delver",
+            colors="UR",
+            color_name="Izzet",
+            result="5-0",
+            is_5_0=True,
+        )
+    # 1 Reanimator deck
+    Deck.objects.create(
+        id="league_reanimator",
+        tournament=t,
+        format="legacy",
+        player="ReanimatorPlayer",
+        player_lower="reanimatorplayer",
+        archetype="Reanimator",
+        archetype_slug="reanimator",
+        colors="UB",
+        color_name="Dimir",
+        result="5-0",
+        is_5_0=True,
+    )
+
+    response = client.get(f"/legacy/tournaments/{t.id}/")
+    assert response.status_code == 200
+    assert "archetype_chart" in response.context
+    chart = response.context["archetype_chart"]
+    assert chart is not None
+    assert chart["is_challenge"] is False
+    assert chart["total_decks"] == 3
+    assert chart["total_archetypes"] == 2
+    assert chart["total_top8_decks"] == 0
+
+    content = response.content.decode("utf-8")
+    assert "Archetype Breakdown" in content
+    assert "published 5-0 decks" in content
+    assert "🏆 3 5-0 Decks" in content
+    assert "challenge-unit-swiss" in content
+    assert "challenge-unit-top8" not in content  # No green squares
+    assert ">Top 8<" not in content  # No Top 8 column
+    assert ">5-0s<" in content
+
+
+@pytest.mark.django_db
+def test_tournament_detail_other_event_no_chart(client):
+    """Test that non-challenge and non-league events do not render the archetype chart."""
+    t = Tournament.objects.create(
+        id="legacy-other-no-chart-test",
+        name="Legacy Other Event",
+        format="legacy",
+        event_type="other",
+        date=date(2024, 1, 1),
+    )
+    Deck.objects.create(
+        id="other_deck_1",
+        tournament=t,
+        format="legacy",
+        player="OtherPlayer",
+        player_lower="otherplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+        colors="UR",
+        color_name="Izzet",
+        result="3-1",
+    )
+    response = client.get(f"/legacy/tournaments/{t.id}/")
+    assert response.status_code == 200
+    assert response.context.get("archetype_chart") is None
+    content = response.content.decode("utf-8")
+    assert "challenge-unit-top8" not in content
+    assert "challenge-unit-swiss" not in content
+
+
+@pytest.mark.django_db
+def test_tournament_list_challenge_top8_chart(client):
+    """Test that tournament list renders 30-day challenge Top 8 breakdown chart."""
+    ref_d = date(2024, 6, 15)
+    t = Tournament.objects.create(
+        id="legacy-challenge-list-test",
+        name="Legacy Challenge 32",
+        format="legacy",
+        event_type="challenge",
+        date=ref_d,
+    )
+    # 1st place Delver deck
+    Deck.objects.create(
+        id="tlist_deck_1",
+        tournament=t,
+        format="legacy",
+        player="WinnerPlayer",
+        player_lower="winnerplayer",
+        archetype="Delver",
+        archetype_slug="delver",
+        colors="UR",
+        color_name="Izzet",
+        rank=1,
+        result="1st",
+        is_top8=True,
+    )
+    # 2nd place Reanimator deck
+    Deck.objects.create(
+        id="tlist_deck_2",
+        tournament=t,
+        format="legacy",
+        player="RunnerUpPlayer",
+        player_lower="runnerupplayer",
+        archetype="Reanimator",
+        archetype_slug="reanimator",
+        colors="UB",
+        color_name="Dimir",
+        rank=2,
+        result="2nd",
+        is_top8=True,
+    )
+
+    # 1. Default (All) shows the chart
+    response = client.get("/legacy/tournaments/")
+    assert response.status_code == 200
+    assert "archetype_chart" in response.context
+    chart = response.context["archetype_chart"]
+    assert chart is not None
+    assert chart["total_decks"] >= 2
+    assert chart["total_tournaments"] >= 1
+
+    content = response.content.decode("utf-8")
+    assert "Archetype Breakdown" in content
+    assert "challenge-unit-winner" in content
+    assert "challenge-unit-top8" in content
+    assert "/legacy/tournaments/og.png" in content
+    assert "/player/WinnerPlayer/deck/legacy-challenge-list-test/" in content
+    assert "/player/RunnerUpPlayer/deck/legacy-challenge-list-test/" in content
+
+    # 2. Challenge filter shows the chart
+    chall_resp = client.get("/legacy/tournaments/?type=challenge")
+    assert chall_resp.status_code == 200
+    assert chall_resp.context.get("archetype_chart") is not None
+
+    # 3. League filter hides the chart
+    league_resp = client.get("/legacy/tournaments/?type=league")
+    assert league_resp.status_code == 200
+    assert league_resp.context.get("archetype_chart") is None
+    league_content = league_resp.content.decode("utf-8")
+    assert "challenge-unit-winner" not in league_content
+
+
+@pytest.mark.django_db
+def test_tournament_list_chart_groups_others(client):
+    """Test that single top8 archetypes without a win are grouped into Others on tournament list, but not tournament detail."""
+    ref_d = date(2024, 6, 15)
+    t = Tournament.objects.create(
+        id="legacy-challenge-others-test",
+        name="Legacy Challenge 32",
+        format="legacy",
+        event_type="challenge",
+        date=ref_d,
+    )
+    # Archetype 1: Multi top 8 (Delver: 2 finishes, 1 win)
+    for i in range(2):
+        Deck.objects.create(
+            id=f"others_delver_{i}",
+            tournament=t,
+            format="legacy",
+            player=f"DelverPlayer_{i}",
+            player_lower=f"delverplayer_{i}",
+            archetype="Delver",
+            archetype_slug="delver",
+            colors="UR",
+            color_name="Izzet",
+            rank=i + 1,
+            result="1st" if i == 0 else "2nd",
+            is_top8=True,
+        )
+    # Archetype 2: Single top 8 with a win (Painter: 1 finish, 1 win) -> should STAY separate
+    Deck.objects.create(
+        id="others_painter_1",
+        tournament=t,
+        format="legacy",
+        player="PainterPlayer",
+        player_lower="painterplayer",
+        archetype="Painter",
+        archetype_slug="painter",
+        colors="R",
+        color_name="Mono-Red",
+        rank=1,
+        result="1st",
+        is_top8=True,
+    )
+    # Archetype 3: Single top 8 without a win (Dredge: 1 finish, 0 wins) -> should be grouped into Others
+    Deck.objects.create(
+        id="others_dredge_1",
+        tournament=t,
+        format="legacy",
+        player="DredgePlayer",
+        player_lower="dredgeplayer",
+        archetype="Dredge",
+        archetype_slug="dredge",
+        colors="UBG",
+        color_name="Sultai",
+        rank=4,
+        result="4th",
+        is_top8=True,
+    )
+    # Archetype 4: Single top 8 without a win (Maverick: 1 finish, 0 wins) -> should be grouped into Others
+    Deck.objects.create(
+        id="others_maverick_1",
+        tournament=t,
+        format="legacy",
+        player="MaverickPlayer",
+        player_lower="maverickplayer",
+        archetype="Maverick",
+        archetype_slug="maverick",
+        colors="WG",
+        color_name="Selesnya",
+        rank=7,
+        result="7th",
+        is_top8=True,
+    )
+
+    # 1. Tournament list view groups Dredge and Maverick into Others
+    response = client.get("/legacy/tournaments/")
+    assert response.status_code == 200
+    chart = response.context["archetype_chart"]
+    row_names = [r["name"] for r in chart["rows"]]
+    assert "Delver" in row_names
+    assert "Painter" in row_names  # Kept separate because it has 1st place!
+    assert "Dredge" not in row_names  # Grouped into Others
+    assert "Maverick" not in row_names  # Grouped into Others
+    assert "Others" in row_names
+    assert row_names[-1] == "Others"  # At the bottom
+
+    others_row = next(r for r in chart["rows"] if r["name"] == "Others")
+    assert others_row["total_count"] == 2
+    assert others_row["wins_count"] == 0
+    assert len(others_row["units"]) == 2
+    assert others_row["is_others"] is True
+
+    content = response.content.decode("utf-8")
+    assert "Others" in content
+    # Pips in Others link to their respective deck detail pages
+    assert "/player/DredgePlayer/deck/legacy-challenge-others-test/" in content
+    assert "/player/MaverickPlayer/deck/legacy-challenge-others-test/" in content
+
+    # 2. Tournament detail view keeps all archetypes individual (no Others grouping)
+    detail_resp = client.get(f"/legacy/tournaments/{t.id}/")
+    assert detail_resp.status_code == 200
+    detail_chart = detail_resp.context["archetype_chart"]
+    detail_row_names = [r["name"] for r in detail_chart["rows"]]
+    assert "Others" not in detail_row_names
+    assert "Dredge" in detail_row_names
+    assert "Maverick" in detail_row_names
 
 
 @pytest.mark.django_db

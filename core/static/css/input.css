@@ -265,6 +265,78 @@ html:not(.dark) .activity-cell.activity-challenge-winner {
   fill: #059669; /* emerald-600 */
 }
 
+/* Challenge Archetype Breakdown Unit Blocks */
+.challenge-unit-pip {
+  cursor: pointer;
+  user-select: none;
+}
+
+.challenge-unit-winner {
+  background-color: rgba(245, 158, 11, 0.25);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+}
+
+.challenge-unit-winner:hover {
+  background-color: rgba(245, 158, 11, 0.4);
+  border-color: #fde68a;
+}
+
+html:not(.dark) .challenge-unit-winner {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+html:not(.dark) .challenge-unit-winner:hover {
+  background-color: #fde68a;
+  border-color: #d97706;
+}
+
+.challenge-unit-top8 {
+  background-color: #10b981; /* emerald-500 */
+  border-color: rgba(52, 211, 153, 0.6); /* emerald-400 */
+  color: #022c22; /* dark forest for high contrast */
+}
+
+.challenge-unit-top8:hover {
+  background-color: #34d399; /* emerald-400 */
+  border-color: #6ee7b7;
+}
+
+html:not(.dark) .challenge-unit-top8 {
+  background-color: #059669; /* emerald-600 */
+  border-color: rgba(4, 120, 87, 0.6);
+  color: #ffffff;
+}
+
+html:not(.dark) .challenge-unit-top8:hover {
+  background-color: #047857;
+  border-color: #065f46;
+}
+
+.challenge-unit-swiss {
+  background-color: #27272a; /* zinc-800 */
+  border-color: #3f3f46; /* zinc-700 */
+  color: #a1a1aa;
+}
+
+.challenge-unit-swiss:hover {
+  background-color: #3f3f46;
+  border-color: #71717a;
+}
+
+html:not(.dark) .challenge-unit-swiss {
+  background-color: #e2e8f0; /* zinc-200 */
+  border-color: #cbd5e1; /* zinc-300 */
+  color: #64748b;
+}
+
+html:not(.dark) .challenge-unit-swiss:hover {
+  background-color: #cbd5e1;
+  border-color: #94a3b8;
+}
+
 /* Format Bump Chart */
 .bump-track {
   opacity: 0.75;

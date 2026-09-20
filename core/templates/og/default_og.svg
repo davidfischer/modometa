@@ -37,7 +37,7 @@
     <circle cx="516" cy="40" r="14" fill="#38bdf8" opacity="0.15"/>
     <text x="516" y="45" class="font-mono" font-size="14" fill="#10b981" text-anchor="middle">⚡</text>
     <text x="546" y="36" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">Track The Changing Metagame</text>
-    <text x="546" y="58" class="font-sans" font-size="13" fill="#71717a">Advanced stats on the top decks, recent finishes &amp; top pilots</text>
+    <text x="546" y="58" class="font-sans" font-size="13" fill="#71717a">Advanced stats on the top decks, pilots &amp; finishes</text>
 
     <!-- Feature 3 -->
     <rect x="0" y="100" width="440" height="80" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
@@ -51,7 +51,7 @@
     <circle cx="516" cy="140" r="14" fill="#34d399" opacity="0.15"/>
     <text x="516" y="145" class="font-mono" font-size="14" fill="#34d399" text-anchor="middle">👤</text>
     <text x="546" y="136" class="font-sans" font-size="16" font-weight="700" fill="#ffffff">Player Profiles &amp; Activity</text>
-    <text x="546" y="158" class="font-sans" font-size="13" fill="#71717a">Leaderboard including challenge finishes &amp; conversion rates</text>
+    <text x="546" y="158" class="font-sans" font-size="13" fill="#71717a">Leaderboard with challenge finishes &amp; conversion rates</text>
   </g>
 {% endblock %}
 

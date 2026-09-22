@@ -53,7 +53,11 @@ modometa/
 │   ├── templatetags/         # Custom template filters/tags (e.g. mana_tags.py)
 │   ├── static/               # Static assets (input.css, protocol.css, mana font)
 │   └── views/
-│       └── __init__.py       # Views (overview, archetype, deck, player, tournament, caching)
+│       ├── __init__.py       # Re-exports views, OG views, chart builders, and utilities
+│       ├── utils.py          # View utilities, date/timeframe cutoffs, caching decorator
+│       ├── charts.py         # Bump charts, heatmaps, tournament bar charts, matrix data
+│       ├── opengraph.py      # Dynamic Open Graph image generation views & SVG helpers
+│       └── views.py          # Standard HTML and JSON route handlers
 ├── data/                     # Generated vectors & indices (knn_index.npz, search_index.json)
 ├── tests/                    # Pytest test suite
 ├── Makefile                  # Developer workflow targets
@@ -152,4 +156,5 @@ The project uses `core.cli:main` registered as `modometa` in `pyproject.toml`. Y
 - **Do not forget to recompile CSS when editing HTML classes**: If you add new Tailwind classes to templates or adjust `input.css`, always run `make css` and make sure `protocol.css` has a trailing newline.
 - **Card aliases and DFCs**: Cards can be referenced by front face or full double-faced name. Always use `normalize_card_name()` and check `CardLookup` when resolving card strings.
 - **Testing environment cache**: If you test views that use caching, remember that `settings.IS_TESTING` is enabled during pytest runs.
+- **Patching view functions in tests**: When mocking helper functions used by views (e.g. `render_og_png`), remember Python's "patch where it is looked up" rule (e.g. `patch("core.views.opengraph.render_og_png")` rather than the package re-export).
 - **Memory usage**: MODOMeta is deployed in production on limited servers with only ~1GB of RAM. Be mindful of memory when introducing new classifications or other features.

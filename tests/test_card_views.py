@@ -484,7 +484,7 @@ def test_card_detail_and_og_exclude_commander(client, sample_card):
 @pytest.mark.django_db
 def test_card_og_image_top_format_and_deck_count(client, sample_card):
     # 1. No decks: total_decks is "0", top_format_display defaults to first legal format
-    with patch("core.views.render_og_png") as mock_render:
+    with patch("core.views.opengraph.render_og_png") as mock_render:
         mock_render.return_value = HttpResponse(b"dummy-png", content_type="image/png")
         client.get(f"/card/{sample_card.name}/og.png")
         ctx = mock_render.call_args[0][1]
@@ -603,7 +603,7 @@ def test_card_og_image_top_format_and_deck_count(client, sample_card):
     )
 
     # Legacy has 3 decks vs Modern 1 deck -> top format is Legacy, total is 4
-    with patch("core.views.render_og_png") as mock_render:
+    with patch("core.views.opengraph.render_og_png") as mock_render:
         mock_render.return_value = HttpResponse(b"dummy-png", content_type="image/png")
         client.get(f"/card/{sample_card.name}/og.png")
         ctx = mock_render.call_args[0][1]
@@ -625,7 +625,7 @@ def test_card_og_image_top_format_and_deck_count(client, sample_card):
             sideboard=[],
         )
 
-    with patch("core.views.render_og_png") as mock_render:
+    with patch("core.views.opengraph.render_og_png") as mock_render:
         mock_render.return_value = HttpResponse(b"dummy-png", content_type="image/png")
         client.get(f"/card/{sample_card.name}/og.png")
         ctx = mock_render.call_args[0][1]

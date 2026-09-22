@@ -115,6 +115,7 @@ PSEUDO_COLORED_CARDS = {
         # Creatures that are usually not cast
         "atraxa, grand unifier": {"W", "U", "B", "G"},
         "griselbrand": {"B"},
+        "raph & mikey, troublemakers": {"G", "R"},
     }.items()
 }
 

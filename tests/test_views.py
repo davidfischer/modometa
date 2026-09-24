@@ -2458,18 +2458,18 @@ def test_format_overview_unsupported_format_notification(client):
         not in resp_supported.content.decode()
     )
 
-    # 2. Unsupported format (pauper) SHOULD display notification
-    resp_unsupported = client.get("/pauper/")
+    # 2. Unsupported format (standard) SHOULD display notification
+    resp_unsupported = client.get("/standard/")
     assert resp_unsupported.status_code == 200
     assert resp_unsupported.context["is_supported_format"] is False
     content = resp_unsupported.content.decode()
     assert "https://github.com/davidfischer/modometa/tree/main/archetypes" in content
     assert "Work in progress:" in content
-    assert "Archetypes for Pauper are a work in progress" in content
+    assert "Archetypes for Standard are a work in progress" in content
 
     # 3. If settings.ACTIVE_FORMAT_SLUGS is overridden to include pauper, notification disappears
-    with override_settings(ACTIVE_FORMAT_SLUGS=["pauper"]):
-        resp_overridden = client.get("/pauper/")
+    with override_settings(ACTIVE_FORMAT_SLUGS=["standard"]):
+        resp_overridden = client.get("/standard/")
         assert resp_overridden.status_code == 200
         assert resp_overridden.context["is_supported_format"] is True
         assert (

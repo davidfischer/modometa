@@ -4,10 +4,10 @@
 - **Vintage**
 - **Legacy**
 - **Premodern**
-- **Modern** (WIP)
+- **Modern**
+- **Pauper**
 - **Pioneer** (WIP)
 - **Standard** (WIP)
-- **Pauper** (WIP)
 
 The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/davidfischer/modometa-mtgo-data). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db
 

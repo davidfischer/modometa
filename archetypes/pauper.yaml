@@ -1,57 +1,258 @@
 # Pauper Archetype Signatures for Modometa
 
-- name: "Kuldotha Red"
+#####################################################################
+# Aggro Archetypes
+#####################################################################
+
+- name: "Bogles"
   category: "Aggro"
   priority: 95
   mandatory:
-    - "kuldotha rebirth"
+    - "slippery bogle"
   signatures:
-    - "goblin bushwhacker"
-    - "experimental synthesizer"
-    - "galvanic blast"
-    - "lightning bolt"
-    - "great furnace"
+    - "gladecover scout"
+    - "Silhana Ledgewalker"
+    - "ethereal armor"
+    - "ancestral mask"
+    - "armadillo cloak"
+    - "abundant growth"
   min_signatures: 3
 
-- name: "Grixis Affinity"
+# Support both mono-U and UB
+- name: "Faeries"
+  category: "Aggro"
+  priority: 95
+  mandatory:
+    - "spellstutter sprite"
+  signatures:
+    - "faerie seer"
+    - "Faerie Miscreant"
+    - "ninja of the deep hours"
+    - "moon-circuit hacker"
+    - "Brinebarrow Intruder"
+    - "Of One Mind"
+  min_signatures: 3
+
+# RG, R or RB varieties
+- name: "Madness"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Fiery Temper"
+    - "Faithless Looting"
+  signatures:
+    - "Lightning Bolt"
+    - "Lava Dart"
+    - "Grab the Prize"
+    - "Voldaren Epicure"
+    - "Kitchen Imp"
+    - "Highway Robbery"
+  min_signatures: 3
+  anti_signatures:
+    - "Rally at the Hornburg"
+    - "Dread Return"
+
+- name: "Red Deck Wins"
+  category: "Aggro"
+  priority: 95
+  signatures:
+    - "Lightning Bolt"
+    - "Goblin Bushwhacker"
+    - "Goblin Tomb Raider"
+    - "Clockwork Percussionist"
+    - "Galvanic Blast"
+    - "Rally at the Hornburg"
+    - "Great Furnace"
+    - "Inventor's Axe"
+    - "Experimental Synthesizer"
+    - "Chain Lightning"
+  min_signatures: 4
+  anti_signatures:
+    - "Faithless Looting"
+
+- name: "Affinity"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "thoughtcast"
+  signatures:
+    - "Myr Enforcer"
+    - "Great Furnace"
+    - "Drossforge Bridge"
+    - "Mistvault Bridge"
+    - "Silverbluff Bridge"
+    - "Vault of Whispers"
+    - "Seat of the Synod"
+    - "darksteel citadel"
+    - "All That Glitters"
+    - "novice inspector"
+  min_signatures: 3
+
+- name: "White Weenie"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "Ramosian Rally"
+    - "Guardians' Pledge"
+    - "Battle Screech"
+    - "Leonardo, Big Brother"
+    - "Thraben Inspector"
+    - "Novice Inspector"
+    - "Summon: Choco/Mog"
+    - "Raffine's Informant"
+  min_signatures: 4
+
+- name: "Infect"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "Glistener Elf"
+  signatures:
+    - "Blight Mamba"
+    - "Ichorclaw Myr"
+    - "vines of vastwood"
+    - "mutagenic growth"
+    - "Seal of Strength"
+    - "Embiggen"
+    - "Might of Old Krosa"
+    - "Rancor"
+  min_signatures: 3
+
+- name: "Elves"
+  category: "Aggro"
+  priority: 80
+  signatures:
+    - "Priest of Titania"
+    - "Fyndhorn Elves"
+    - "Elvish Mystic"
+    - "Llanowar Elves"
+    - "Quirion Ranger"
+    - "Lead the Stampede"
+    - "Avenging Hunter"
+    - "Timberwatch Elf"
+  min_signatures: 4
+
+- name: "Sacrifice"
+  category: "Aggro"
+  priority: 90
+  mandatory:
+    - "carrion feeder"
+  signatures:
+    - "mortician beetle"
+    - "bloodthrone vampire"
+    - "supernatural stamina"
+    - "nezumi linkbreaker"
+    - "village rites"
+    - "shambling ghast"
+    - "rite of consumption"
+  min_signatures: 3
+
+- name: "Heroic"
+  category: "Aggro"
+  priority: 90
+  signatures:
+    - "Lagonna-Band Trailblazer"
+    - "Skyward Spider"
+    - "benevolent blessing"
+    - "akroan skyguard"
+    - "spirit link"
+    - "emerge unscathed"
+    - "homestead courage"
+    - "hyena umbra"
+  min_signatures: 4
+
+
+#####################################################################
+# Midrange Archetypes
+#####################################################################
+
+- name: "Tron"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "urza's tower"
+    - "urza's mine"
+    - "urza's power plant"
+  signatures:
+    - "malevolent rumble"
+    - "expedition map"
+    - "crop rotation"
+    - "Giant's Boulder"
+  min_signatures: 1
+
+# U or UB
+- name: "Terror"
   category: "Midrange"
   priority: 95
-  signatures:
-    - "kenku artificer"
-    - "deadly dispute"
-    - "blood fountain"
-    - "galvanic blast"
-    - "thoughtcast"
-    - "mistvault bridge"
-    - "silverbluff bridge"
-    - "drossforge bridge"
-  min_signatures: 3
-
-- name: "Dimir Terror"
-  category: "Tempo"
-  priority: 95
-  signatures:
+  mandatory:
     - "tolarian terror"
+  signatures:
     - "cryptic serpent"
     - "thought scour"
     - "mental note"
-    - "snuff out"
     - "counterspell"
     - "lorien revealed"
+    - "Delver of Secrets"
+    - "Extract a Confession"
+    - "Thorn of the Black Rose"
+    - "Snuff Out"
   min_signatures: 3
 
-- name: "Mono-Blue Faeries"
-  category: "Tempo"
+- name: "Wildfire"
+  category: "Midrange"
   priority: 95
+  mandatory:
+    - "Cleansing Wildfire"
   signatures:
-    - "spellstutter sprite"
-    - "faerie seer"
-    - "ninja of the deep hours"
-    - "snap"
-    - "moon-circuit hacker"
+    - "Krark-Clan Shaman"
+    - "Gixian Infiltrator"
+    - "Fanatical Offering"
+    - "Writhing Chrysalis"
+    - "Ichor Wellspring"
+  min_signatures: 2
+
+- name: "Garden"
+  category: "Midrange"
+  priority: 90
+  mandatory:
+    - "Khalni Garden"
+  signatures:
+    - "Eviscerator's Insight"
+    - "Fanatical Offering"
+    - "Writhing Chrysalis"
+    - "Ichor Wellspring"
+    - "Troll of Khazad-dûm"
+    - "Defile"
+  min_signatures: 2
+
+- name: "Ponza"
+  category: "Midrange"
+  priority: 92
+  mandatory:
+    - "Mwonvuli Acid-Moss"
+  signatures:
+    - "Thermokarst"
+    - "Boarding Party"
+    - "Annoyed Altisaur"
+    - "Writhing Chrysalis"
+    - "Eldrazi Repurposer"
   min_signatures: 3
 
-- name: "Caw-Gates"
+- name: "Ramp"
+  category: "Midrange"
+  # Lower than Ponza
+  priority: 90
+  signatures:
+    - "Arbor Elf"
+    - "Boarding Party"
+    - "Annoyed Altisaur"
+    - "Writhing Chrysalis"
+    - "Eldrazi Repurposer"
+    - "Avenging Hunter"
+  min_signatures: 3
+
+# Both squadron hawk and non
+- name: "Gates"
   category: "Midrange"
   priority: 95
   mandatory:
@@ -59,31 +260,189 @@
   signatures:
     - "squadron hawk"
     - "sacred cat"
-    - "brainstorm"
-    - "guardian of the guildpact"
+    - "Citadel Gate"
+    - "Cliffgate"
     - "heap gate"
-  min_signatures: 2
-
-- name: "Bogles"
-  category: "Aggro"
-  priority: 95
-  signatures:
-    - "slippery bogle"
-    - "gladecover scout"
-    - "ethereal armor"
-    - "ancestral mask"
-    - "armadillo cloak"
-    - "abundant growth"
+    - "Manor Gate"
+    - "Sea Gate"
   min_signatures: 3
 
-- name: "Golgari Gardens"
+#####################################################################
+# Control Archetypes
+#####################################################################
+
+- name: "Blink"
   category: "Control"
   priority: 95
+  mandatory:
+    - card: "Ephemerate"
+      min: 2
   signatures:
-    - "crypt rats"
-    - "avenging hunter"
-    - "deadly dispute"
-    - "chainer's edict"
-    - "cast down"
-    - "spinning darkness"
+    - "Archaeomancer"
+    - "Augur of Bolas"
+    - "Mulldrifter"
+    - "Fallaji Archaeologist"
+    - "Ghostly Flicker"
+    - "God-Pharaoh's Faithful"
+    - "Sea Gate Oracle"
+  min_signatures: 2
+
+
+#####################################################################
+# Combo Archetypes
+#####################################################################
+
+- name: "Spy Combo"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - card: "Balustrade Spy"
+      min: 3
+  signatures:
+    - "Troll of Khazad-dum"
+    - "Land Grant"
+    - "Lotleth Giant"
+    - "Dread Return"
+    - "Sagu Wildling"
+    - "Generous Ent"
   min_signatures: 3
+
+- name: "Ruby Storm"
+  category: "Combo"
+  priority: 95
+  signatures:
+    - "Manamorphose"
+    - "Seething Song"
+    - "Seize the Storm"
+    - "Desperate Ritual"
+    - "Thornscape Familiar"
+    - "Goblin Anarchomancer"
+  min_signatures: 3
+
+- name: "Dredge"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "Stinkweed Imp"
+  signatures:
+    - "Faithless Looting"
+    - "Burning Inquiry"
+    - "Greater Mossdog"
+    - "Dread Return"
+    - "Lotleth Giant"
+    - "Scrapwork Mutt"
+    - "Masked Meower"
+    - "Satyr Wayfinder"
+  min_signatures: 3
+  anti_signatures:
+    - "Balustrade Spy"
+
+- name: "Cycle Storm"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "Reaping the Graves"
+  signatures:
+    - "monstrous carabid"
+    - "drannith stinger"
+    - "Drannith Healer"
+    - "street wraith"
+    - "Songs of the Damned"
+    - "Horror of the Broken Lands"
+    - "Page, Loose Leaf"
+  min_signatures: 3
+
+# Banned
+- name: "High Tide"
+  category: "Combo"
+  priority: 95
+  mandatory:
+    - "High Tide"
+  signatures:
+    - "ideas unbound"
+    - "peer through depths"
+    - "reach through mists"
+    - "pieces of the puzzle"
+    - "Hidden Strings"
+    - "Merchant Scroll"
+    - "Psychic Puppetry"
+    - "Snap"
+  min_signatures: 3
+
+- name: "Walls Combo"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "axebane guardian"
+  signatures:
+    - "wall of roots"
+    - "jaspera sentinel"
+    - "Overgrown Battlement"
+    - "saruli caretaker"
+    - "Shield-Wall Sentinel"
+  min_signatures: 3
+
+- name: "Fog"
+  category: "Combo"
+  priority: 100
+  mandatory:
+    - "Moment's Peace"
+  signatures:
+    - "Tangle"
+    - "fog"
+    - "Growth Spiral"
+    - "Embrace the Paradox"
+    - "Stream of Thought"
+  min_signatures: 2
+
+- name: "Poison Storm"
+  category: "Combo"
+  priority: 90
+  signatures:
+    # Doesn't always run both of these
+    - "Prologue to Phyresis"
+    - "Infectious Inquiry"
+    - "Contentious Plan"
+    - "Vivisurgeon's Insight"
+    - "Steady Progress"
+    - "Thirsting Roots"
+  min_signatures: 3
+
+- name: "Goblin Matron"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "goblin matron"
+  signatures:
+    - "skirk prospector"
+    - "fanatical offering"
+    - "deadly dispute"
+    - "Putrid Goblin"
+    - "Impulsive Pilferer"
+  min_signatures: 2
+
+- name: "Glee"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "Sadistic Glee"
+    - "Basking Broodscale"
+  signatures:
+    - "duress"
+    - "Nadier's Nightblade"
+    - "snakeskin veil"
+    - "Tamiyo's Safekeeping"
+  min_signatures: 1
+
+- name: "Inside Out"
+  category: "Combo"
+  priority: 90
+  mandatory:
+    - "Inside Out"
+  signatures:
+    - "Tireless Tribe"
+    - "Fling"
+    - "Loran's Escape"
+    - "Aurora Eidolon"
+    - "Thrilling Discovery"
+  min_signatures: 2

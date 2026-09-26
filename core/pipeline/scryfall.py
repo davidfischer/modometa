@@ -30,7 +30,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from django.conf import settings
 from django.db import transaction
 from tqdm import tqdm
 
@@ -39,14 +38,13 @@ from core.models.card import Card
 from core.models.card import CardLookup
 from core.models.card import generate_card_slug
 from core.models.card import normalize_card_name
+from core.utils import get_user_agent
 
 
 logger = logging.getLogger(__name__)
 
 SCRYFALL_BULK_URL = "https://api.scryfall.com/bulk-data"
-USER_AGENT = getattr(
-    settings, "USER_AGENT", "Modometa/1.0 (https://github.com/modometa/modometa)"
-)
+USER_AGENT = get_user_agent()
 
 
 def fetch_default_cards_download_url() -> str:

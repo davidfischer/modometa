@@ -25,6 +25,7 @@ from core.models.card import normalize_card_name
 from core.models.deck import Deck
 from core.models.tournament import Tournament
 from core.templatetags.mana_tags import COLOR_ORDER
+from core.utils import get_user_agent
 from core.views.charts import build_archetype_heatmap
 from core.views.charts import build_format_bump_chart
 from core.views.charts import build_player_heatmap
@@ -708,13 +709,7 @@ def card_og_image(request, card):
     image_data_uri = cache.get(cache_key)
     if not image_data_uri and card_obj.image_uri:
         try:
-            headers = {
-                "User-Agent": getattr(
-                    settings,
-                    "USER_AGENT",
-                    "Modometa/1.0 (https://github.com/modometa/modometa)",
-                )
-            }
+            headers = {"User-Agent": get_user_agent()}
             with httpx.Client(timeout=5.0, follow_redirects=True) as client:
                 resp = client.get(card_obj.image_uri, headers=headers)
                 if resp.status_code == 200:

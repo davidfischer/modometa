@@ -1,0 +1,103 @@
+name: Daily Card Price Sync & R2 Push
+
+# Syncs price data from MTGJson and GoatBots and writes to S3/Cloudflare R2
+#
+# By default, syncs yesterday's price data from MTGJson (TCGPlayer, CardMarket, Cardhoarder, CardKingdom),
+# combines with GoatBots data, and writes to a daily parquet file.
+# Also writes a parquet with the previous 365 days of price data to a file for consumption by MODOMeta
+
+on:
+  schedule:
+    # Run daily at 07:15 UTC (09:15 CEST / 03:15 EDT).
+    # Allows a ~105-minute buffer after GoatBots publishes prices at 5:30am CET
+    # and ensures MTGJSON's nightly build (02:00-06:00 UTC) has completed.
+    - cron: "15 7 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Target date in YYYY-MM-DD format (default: 'yesterday')"
+        required: false
+        type: string
+        default: "yesterday"
+      days:
+        description: "Number of days to process ending on date (default: 1; max: 90 for backfilling)"
+        required: false
+        type: number
+        default: 1
+      skip_previous_365d:
+        description: "Skip compiling prices_previous_365d.parquet serving artifact"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-prices
+  cancel-in-progress: false
+
+env:
+  R2_BUCKET: modometa-data
+  R2_PUBLIC_URL: https://data.modometa.com
+
+jobs:
+  sync-prices:
+    name: Sync Card Prices & Push to R2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install project dependencies
+        run: uv sync --frozen
+
+      - name: Configure AWS credentials for Cloudflare R2
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=auto" >> $GITHUB_ENV
+          echo "R2_ENDPOINT=https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" >> $GITHUB_ENV
+
+      - name: Pull recent daily Parquet files from R2 for 365-day compilation
+        if: ${{ !inputs.skip_previous_365d }}
+        run: |
+          mkdir -p data/prices/daily
+          echo "Syncing daily Parquet files from R2 for 365-day rollup..."
+          # Sync down the current and prior year daily folders from R2
+          CURRENT_YEAR=$(date +%Y)
+          LAST_YEAR=$((CURRENT_YEAR - 1))
+          aws s3 sync "s3://${R2_BUCKET}/prices/daily/${CURRENT_YEAR}" "data/prices/daily/${CURRENT_YEAR}" --endpoint-url "$R2_ENDPOINT" || true
+          aws s3 sync "s3://${R2_BUCKET}/prices/daily/${LAST_YEAR}" "data/prices/daily/${LAST_YEAR}" --endpoint-url "$R2_ENDPOINT" || true
+
+      - name: Generate daily card price Parquets
+        run: |
+          TARGET_DATE="${{ inputs.date || 'yesterday' }}"
+          DAYS="${{ inputs.days || 1 }}"
+          EXTRA_ARGS=""
+          if [ "${{ inputs.skip_previous_365d }}" = "true" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --no-previous-365d"
+          fi
+
+          uv run modometa sync_prices \
+            --date "$TARGET_DATE" \
+            --days "$DAYS" \
+            $EXTRA_ARGS
+
+      - name: Upload price Parquet files to Cloudflare R2
+        run: |
+          echo "Uploading daily price Parquets to R2..."
+          aws s3 sync data/prices/daily/ "s3://${R2_BUCKET}/prices/daily/" --endpoint-url "$R2_ENDPOINT"
+
+          if [ -f data/prices/prices_previous_365d.parquet ]; then
+            echo "Uploading prices_previous_365d.parquet to R2..."
+            aws s3 cp data/prices/prices_previous_365d.parquet "s3://${R2_BUCKET}/prices/prices_previous_365d.parquet" --endpoint-url "$R2_ENDPOINT"
+          fi

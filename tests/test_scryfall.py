@@ -13,12 +13,14 @@ from core.pipeline.scryfall import _extract_card_name_and_type
 from core.pipeline.scryfall import _extract_colors
 from core.pipeline.scryfall import _extract_oracle_text
 from core.pipeline.scryfall import ingest_scryfall_cards
+from core.utils import get_user_agent
 
 
 def test_user_agent_setting():
     assert hasattr(settings, "USER_AGENT")
     assert "Modometa" in settings.USER_AGENT
     assert USER_AGENT == settings.USER_AGENT
+    assert get_user_agent() == settings.USER_AGENT
 
 
 def test_print_rank_alpha_vs_beta():

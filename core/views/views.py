@@ -24,6 +24,7 @@ from core.models.card import generate_card_slug
 from core.models.card import get_gatherer_url
 from core.models.card import get_scryfall_url
 from core.models.deck import Deck
+from core.models.match import Match
 from core.models.tournament import Tournament
 from core.views.charts import _get_matrix_color_class
 from core.views.charts import build_archetype_heatmap
@@ -394,6 +395,49 @@ def player_detail(request, player):
 
     formats_played = sorted(list({d.format for d in all_decks}))
 
+    chall_deck_ids = {
+        d.id
+        for d in all_decks
+        if getattr(d.tournament, "event_type", "") == "challenge"
+    }
+    match_filter = Q(player1__iexact=player_clean) | Q(player2__iexact=player_clean)
+    if chall_deck_ids:
+        match_filter |= Q(player1_deck_id__in=chall_deck_ids) | Q(
+            player2_deck_id__in=chall_deck_ids
+        )
+    chall_matches = (
+        Match.objects.filter(tournament__event_type="challenge")
+        .filter(match_filter)
+        .distinct()
+    )
+
+    chall_match_wins = 0
+    chall_matches_count = 0
+    for m in chall_matches:
+        is_p1 = (m.player1_deck_id in chall_deck_ids) or (
+            m.player1.strip().lower() == player_lower
+        )
+        is_p2 = (m.player2_deck_id in chall_deck_ids) or (
+            m.player2.strip().lower() == player_lower
+        )
+        if is_p1:
+            p_wins = m.player1_wins
+            opp_wins = m.player2_wins
+        elif is_p2:
+            p_wins = m.player2_wins
+            opp_wins = m.player1_wins
+        else:
+            continue
+        chall_matches_count += 1
+        if p_wins > opp_wins:
+            chall_match_wins += 1
+
+    chall_win_rate = (
+        round((chall_match_wins / chall_matches_count) * 100, 1)
+        if chall_matches_count > 0
+        else 0.0
+    )
+
     # Add disambiguator index for player decks (chronological numbering per event)
     event_counts = Counter()
     for d in reversed(all_decks):
@@ -422,6 +466,9 @@ def player_detail(request, player):
             "total_5_0s": total_5_0s,
             "chall_appearances": chall_appearances,
             "conversion_rate": conversion_rate,
+            "chall_match_wins": chall_match_wins,
+            "chall_matches_count": chall_matches_count,
+            "chall_win_rate": chall_win_rate,
             "formats_played": [f.capitalize() for f in formats_played],
             "decks": page_obj.object_list,
             "page_obj": page_obj,

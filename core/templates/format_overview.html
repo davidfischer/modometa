@@ -90,7 +90,10 @@
       <div class="mt-1 text-2xl font-bold font-mono text-emerald-400">{{ stats.challenge_count|intcomma }}</div>
     </div>
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-      <div class="text-2xs font-semibold uppercase tracking-wider text-zinc-500">League 5-0 Decks</div>
+      <div class="text-2xs font-semibold uppercase tracking-wider text-zinc-500">
+        <span>League 5-0 Decks</span>
+        <sup><a href="{% url 'core:faq' %}#league-5-0s" title="Learn more about League 5-0 decks in the FAQ" aria-label="League 5-0 decks FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+      </div>
       <div class="mt-1 text-2xl font-bold font-mono text-white">{{ stats.league_5_0_count|intcomma }}</div>
     </div>
     <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
@@ -117,15 +120,27 @@
 
     <div class="mt-6 pt-6 border-t border-zinc-800 overflow-x-auto">
       <table class="w-full text-left text-xs text-zinc-300">
-        <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500">
+        <thead class="border-b border-zinc-800 text-2xs uppercase tracking-wider text-zinc-500 whitespace-nowrap">
           <tr>
             <th class="py-3 px-3">Archetype</th>
             <th class="py-3 px-3 text-right">Decks</th>
-            <th class="py-3 px-3 text-right" title="5-0 Decks / Total 5-0 Decks">League Share</th>
-            <th class="py-3 px-3 text-right" title="Challenge Decks / Total Challenge Decks">Challenge Share</th>
-            <th class="py-3 px-3 text-right" title="Top 8 Finishes / Total Top 8 Slots">Top 8 Share</th>
+            <th class="py-3 px-3 text-right" title="5-0 Decks / Total 5-0 Decks">
+              <span>League Share</span>
+              <sup><a href="{% url 'core:faq' %}#league-share" title="Learn more about League Share in the FAQ" aria-label="League Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
+            <th class="py-3 px-3 text-right" title="Challenge Decks / Total Challenge Decks">
+              <span>Challenge Share</span>
+              <sup><a href="{% url 'core:faq' %}#challenge-share" title="Learn more about Challenge Share in the FAQ" aria-label="Challenge Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
+            <th class="py-3 px-3 text-right" title="Top 8 Finishes / Total Top 8 Slots">
+              <span>Top 8 Share</span>
+              <sup><a href="{% url 'core:faq' %}#top8-share" title="Learn more about Top 8 Share in the FAQ" aria-label="Top 8 Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
             <th class="py-3 px-3 text-right" title="Top 8 finishes in last {{ TIMEFRAME }} days vs previous {{ TIMEFRAME }} days">T8 Momentum</th>
-            <th class="py-3 px-3 text-right" title="Top 8 Finishes / Challenge Appearances">Conversion</th>
+            <th class="py-3 px-3 text-right" title="Top 8 Finishes / Challenge Appearances">
+              <span>Conversion</span>
+              <sup><a href="{% url 'core:faq' %}#conversion-rate" title="Learn more about Conversion Rate in the FAQ" aria-label="Conversion Rate FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-zinc-800/60 font-mono">

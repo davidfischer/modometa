@@ -13,22 +13,28 @@
   <!-- Lifetime Stat Summary Row -->
   <g transform="translate(60, 205)">
     <!-- League 5-0 Trophies -->
-    <rect x="0" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
-    <text x="20" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">LEAGUE 5-0 TROPHIES</text>
-    <text x="20" y="54" class="font-mono" font-size="24" font-weight="700" fill="#38bdf8">{{ total_5_0s }}</text>
-    <text x="100" y="53" class="font-mono" font-size="12" fill="#71717a">trophies</text>
+    <rect x="0" y="0" width="252" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="16" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">LEAGUE 5-0 TROPHIES</text>
+    <text x="16" y="54" class="font-mono" font-size="24" font-weight="700" fill="#38bdf8">{{ total_5_0s }}</text>
+    <text x="96" y="53" class="font-mono" font-size="12" fill="#71717a">trophies</text>
 
     <!-- Challenge Top 8s -->
-    <rect x="370" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
-    <text x="390" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CHALLENGE TOP 8S</text>
-    <text x="390" y="54" class="font-mono" font-size="24" font-weight="700" fill="#10b981">{{ total_top8s }}</text>
-    <text x="460" y="53" class="font-mono" font-size="12" fill="#71717a">appearances</text>
+    <rect x="276" y="0" width="252" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="292" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CHALLENGE TOP 8S</text>
+    <text x="292" y="54" class="font-mono" font-size="24" font-weight="700" fill="#10b981">{{ total_top8s }}</text>
+    <text x="365" y="53" class="font-mono" font-size="12" fill="#71717a">appearances</text>
 
     <!-- Conversion Rate -->
-    <rect x="740" y="0" width="340" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
-    <text x="760" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CONVERSION RATE</text>
-    <text x="760" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{{ conversion_rate }}%</text>
-    <text x="860" y="53" class="font-mono" font-size="12" fill="#71717a">T8 / entry</text>
+    <rect x="552" y="0" width="252" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="568" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">CONVERSION RATE</text>
+    <text x="568" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{% if chall_appearances > 0 %}{{ conversion_rate }}%{% else %}-{% endif %}</text>
+    <text x="668" y="53" class="font-mono" font-size="12" fill="#71717a">T8 / entry</text>
+
+    <!-- Challenge Match Win % -->
+    <rect x="828" y="0" width="252" height="72" rx="10" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+    <text x="844" y="24" class="font-mono" font-size="11" font-weight="600" fill="#71717a" letter-spacing="0.05em">MATCH WIN %</text>
+    <text x="844" y="54" class="font-mono" font-size="24" font-weight="700" fill="#ffffff">{% if chall_matches_count > 0 %}{{ chall_win_rate }}%{% else %}-{% endif %}</text>
+    <text x="944" y="53" class="font-mono" font-size="12" fill="#71717a">in challenges</text>
   </g>
 
   <!-- Heatmap Label -->

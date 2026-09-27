@@ -632,18 +632,31 @@ def player_og_image(request, player):
 
     total_top8s = sum(1 for d in all_decks if d.is_top8)
     total_5_0s = sum(
-        1
-        for d in all_decks
-        if d.is_5_0 and getattr(d.tournament, "event_type", "") == "league"
+        1 for d in all_decks if d.is_5_0 and d.tournament.event_type == "league"
     )
     chall_appearances = sum(
-        1 for d in all_decks if getattr(d.tournament, "event_type", "") == "challenge"
+        1 for d in all_decks if d.tournament.event_type == "challenge"
     )
     conversion_rate = (
         round((total_top8s / chall_appearances) * 100, 1)
         if chall_appearances > 0
         else 0.0
     )
+
+    chall_match_wins = 0
+    chall_match_losses = 0
+    for d in all_decks:
+        if d.tournament.event_type == "challenge" and d.wins is not None:
+            chall_match_wins += d.wins
+            chall_match_losses += d.losses or 0
+
+    chall_matches_count = chall_match_wins + chall_match_losses
+    chall_win_rate = (
+        round((chall_match_wins / chall_matches_count) * 100, 1)
+        if chall_matches_count > 0
+        else 0.0
+    )
+
     formats_played = sorted(set(d.format.capitalize() for d in all_decks if d.format))
     player_name = all_decks[0].player
 
@@ -657,7 +670,11 @@ def player_og_image(request, player):
             "total_decks": total_decks,
             "total_5_0s": total_5_0s,
             "total_top8s": total_top8s,
+            "chall_appearances": chall_appearances,
             "conversion_rate": conversion_rate,
+            "chall_match_wins": chall_match_wins,
+            "chall_matches_count": chall_matches_count,
+            "chall_win_rate": chall_win_rate,
             "formats_played": formats_played,
             "heatmap": heatmap,
         },

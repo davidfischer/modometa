@@ -628,20 +628,210 @@ def test_player_detail_view(client):
     if response.context["start_year"]:
         assert f"(since {response.context['start_year']})".encode() in response.content
     assert "chall_appearances" in response.context
+    assert "chall_match_wins" in response.context
+    assert "chall_matches_count" in response.context
+    assert "chall_win_rate" in response.context
     assert "page_obj" in response.context
     assert response.context["page_obj"].paginator.per_page == 100
 
     # Verify League 5-0 Trophies stat card comes before Challenge T8 stat card
     l50_pos = response.content.find(b"League 5-0 Trophies")
     ct8_pos = response.content.find(b"Challenge T8")
-    assert l50_pos != -1 and ct8_pos != -1
-    assert l50_pos < ct8_pos
+    cwin_pos = response.content.find(b"Challenge Win %")
+    assert l50_pos != -1 and ct8_pos != -1 and cwin_pos != -1
+    assert l50_pos < ct8_pos < cwin_pos
 
     # Verify Action column is gone and Date links to deck detail
     assert b">Action</th>" not in response.content
     assert b"View Deck" not in response.content
     deck_link = f"/player/{deck.player}/deck/{deck.tournament_id}/".encode()
     assert deck_link in response.content
+
+
+@pytest.mark.django_db
+def test_player_detail_challenge_match_win_rate(client):
+    """Test challenge match win rate calculation, tooltip formatting, and edge cases."""
+    tourn_chall = Tournament.objects.create(
+        id="vintage-challenge-test-winrate",
+        name="Vintage Challenge 32",
+        format="vintage",
+        date=date(2024, 6, 1),
+        event_type="challenge",
+    )
+    tourn_league = Tournament.objects.create(
+        id="vintage-league-test-winrate",
+        name="Vintage League",
+        format="vintage",
+        date=date(2024, 6, 2),
+        event_type="league",
+    )
+
+    deck_a = Deck.objects.create(
+        id="deck_test_a",
+        tournament=tourn_chall,
+        player="AliceWins",
+        player_lower="alicewins",
+        format="vintage",
+        archetype="Oath",
+        archetype_slug="oath",
+        result="2nd Place",
+        is_top8=True,
+    )
+    deck_b = Deck.objects.create(
+        id="deck_test_b",
+        tournament=tourn_chall,
+        player="BobPlays",
+        player_lower="bobplays",
+        format="vintage",
+        archetype="Dredge",
+        archetype_slug="dredge",
+        result="3rd Place",
+        is_top8=True,
+    )
+    deck_c = Deck.objects.create(
+        id="deck_test_c",
+        tournament=tourn_chall,
+        player="CharlieLoses",
+        player_lower="charlieloses",
+        format="vintage",
+        archetype="MUD",
+        archetype_slug="mud",
+        result="4th Place",
+        is_top8=True,
+    )
+    # League deck for Alice
+    Deck.objects.create(
+        id="deck_test_a_league",
+        tournament=tourn_league,
+        player="AliceWins",
+        player_lower="alicewins",
+        format="vintage",
+        archetype="Oath",
+        archetype_slug="oath",
+        result="5-0",
+        is_5_0=True,
+    )
+    # League-only deck for LeagueHero
+    Deck.objects.create(
+        id="deck_test_league_hero",
+        tournament=tourn_league,
+        player="LeagueHero",
+        player_lower="leaguehero",
+        format="vintage",
+        archetype="Oath",
+        archetype_slug="oath",
+        result="5-0",
+        is_5_0=True,
+    )
+
+    # 4 Challenge matches involving Alice:
+    # 1. Alice (p1) beats Bob (p2): 2-1
+    Match.objects.create(
+        id="m_winrate_1",
+        tournament=tourn_chall,
+        round_name="Quarterfinals",
+        round_slug="quarterfinals",
+        player1="AliceWins",
+        player2="BobPlays",
+        player1_deck=deck_a,
+        player2_deck=deck_b,
+        player1_wins=2,
+        player2_wins=1,
+    )
+    # 2. Charlie (p1) loses to Alice (p2): 0-2 (Alice wins as p2)
+    Match.objects.create(
+        id="m_winrate_2",
+        tournament=tourn_chall,
+        round_name="Semifinals",
+        round_slug="semifinals",
+        player1="CharlieLoses",
+        player2="AliceWins",
+        player1_deck=deck_c,
+        player2_deck=deck_a,
+        player1_wins=0,
+        player2_wins=2,
+    )
+    # 3. Alice (p1) loses to Bob (p2): 1-2
+    Match.objects.create(
+        id="m_winrate_3",
+        tournament=tourn_chall,
+        round_name="Finals",
+        round_slug="finals",
+        player1="AliceWins",
+        player2="BobPlays",
+        player1_deck=deck_a,
+        player2_deck=deck_b,
+        player1_wins=1,
+        player2_wins=2,
+    )
+    # 4. Charlie (p1) beats Alice (p2): 2-1 (Alice loses as p2)
+    Match.objects.create(
+        id="m_winrate_4",
+        tournament=tourn_chall,
+        round_name="Swiss R1",
+        round_slug="round_01",
+        player1="CharlieLoses",
+        player2="AliceWins",
+        player1_deck=deck_c,
+        player2_deck=deck_a,
+        player1_wins=2,
+        player2_wins=1,
+    )
+    # 5. Non-challenge match (should be ignored):
+    Match.objects.create(
+        id="m_winrate_5_league",
+        tournament=tourn_league,
+        round_name="Round 1",
+        round_slug="round_01",
+        player1="AliceWins",
+        player2="BobPlays",
+        player1_wins=2,
+        player2_wins=0,
+    )
+    # 6. Drawn match: 1-1 (counts as played match, but not win)
+    Match.objects.create(
+        id="m_winrate_6_draw",
+        tournament=tourn_chall,
+        round_name="Swiss R2",
+        round_slug="round_02",
+        player1="AliceWins",
+        player2="BobPlays",
+        player1_deck=deck_a,
+        player2_deck=deck_b,
+        player1_wins=1,
+        player2_wins=1,
+        draws=0,
+    )
+
+    # Test Alice: 2 wins / 5 challenge matches = 40.0%
+    resp_a = client.get("/player/AliceWins/")
+    assert resp_a.status_code == 200
+    assert resp_a.context["chall_match_wins"] == 2
+    assert resp_a.context["chall_matches_count"] == 5
+    assert resp_a.context["chall_win_rate"] == 40.0
+    content_a = resp_a.content.decode()
+    assert 'title="2/5"' in content_a
+    assert "40.0%" in content_a
+    assert "Challenge Win %" in content_a
+
+    # Test Bob: 3 challenge matches (m_winrate_1 lost, m_winrate_3 won, m_winrate_6 drawn) = 1 win / 3 matches = 33.3%
+    resp_b = client.get("/player/BobPlays/")
+    assert resp_b.status_code == 200
+    assert resp_b.context["chall_match_wins"] == 1
+    assert resp_b.context["chall_matches_count"] == 3
+    assert resp_b.context["chall_win_rate"] == 33.3
+    content_b = resp_b.content.decode()
+    assert 'title="1/3"' in content_b
+    assert "33.3%" in content_b
+
+    # Test LeagueHero (0 challenge matches): 0/0 and 0.0%
+    resp_l = client.get("/player/LeagueHero/")
+    assert resp_l.status_code == 200
+    assert resp_l.context["chall_match_wins"] == 0
+    assert resp_l.context["chall_matches_count"] == 0
+    assert resp_l.context["chall_win_rate"] == 0.0
+    content_l = resp_l.content.decode()
+    assert 'title="0/0"' in content_l
 
 
 @pytest.mark.django_db

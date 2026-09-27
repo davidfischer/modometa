@@ -61,16 +61,24 @@
       </div>
       <h1 class="mt-2 text-3xl font-bold tracking-tight text-white capitalize">{{ format_name }} Archetype Matrix</h1>
       <p class="mt-1 text-sm text-zinc-400">
-        Head-to-head <strong>match win %</strong> for the top {{ archetypes|length }} archetypes based on {{ total_matches|intcomma }} {% if has_ldcp_data %}Challenge matches (augmented by LDCP){% else %}<span title="Daybreak only publishes the head-to-head matches for the top 8 bracket" class="underline decoration-dotted cursor-help">Challenge Top 8 matches</span>{% endif %} over the last {% include "includes/timeframe_select.html" %}.
+        Head-to-head <strong>match &amp; game win %</strong> for the top {{ archetypes|length }} archetypes based on {{ total_matches|intcomma }} <span title="Daybreak only publishes the head-to-head matches for the top 8 bracket" class="underline decoration-dotted cursor-help">Challenge matches</span> over the last {% include "includes/timeframe_select.html" %}.
       </p>
     </div>
   </div>
 
-  {% if has_ldcp_data %}
+  {% url 'core:faq' as faq_url %}
+  {% if has_vmc_data and format_slug == 'vintage' %}
+    <div class="flex items-start sm:items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-3 text-xs text-zinc-300">
+      <div>
+        <span>Swiss round matchup data provided by the <a href="https://discord.gg/2eVcsjK" target="_blank" rel="noopener noreferrer" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">Vintage MTGO Community</a>. </span>
+        <span>{{ SITE_NAME }} uses Vintage MTGO Community head-to-head matchup data where both players had their decklists in the official MTGO data (typically top 32)<sup><a href="{{ faq_url }}#legacy-vintage-data" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">1</a></sup>.</span>
+      </div>
+    </div>
+  {% elif has_ldcp_data %}
     <div class="flex items-start sm:items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-3 text-xs text-zinc-300">
       <div>
         <span>Swiss round matchup data provided by the <a href="https://www.patreon.com/legacydatacollection" target="_blank" rel="noopener noreferrer" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">Legacy Data Collection Project</a>. </span>
-        <span>{{ SITE_NAME }} uses LDCP head-to-head matchup data where both players had their decklists in the official MTGO data (typically top 32).</span>
+        <span>{{ SITE_NAME }} uses LDCP head-to-head matchup data where both players had their decklists in the official MTGO data (typically top 32)<sup><a href="{{ faq_url }}#legacy-vintage-data" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">1</a></sup>.</span>
       </div>
     </div>
   {% endif %}
@@ -124,8 +132,8 @@
                   <td class="border-b border-r border-zinc-800/40 p-0 text-center w-[5rem] min-w-[5rem] max-w-[5rem] overflow-hidden">
                     {% if cell.has_data %}
                       <div class="flex flex-col items-center justify-center py-1.5 px-1 leading-tight {{ cell.color_class }} transition-colors">
-                        <span class="w-full text-center font-bold text-xs cursor-default" title="{{ cell.match_tooltip }}">{{ cell.match_win_pct }}</span>
-                        <span class="w-full text-center text-2xs opacity-75 font-normal cursor-default" title="{{ cell.game_tooltip }}">{{ cell.game_win_pct }}</span>
+                        <span class="w-full text-center font-bold text-xs cursor-default" title="Match Wins: {{ cell.match_tooltip }}">{{ cell.match_win_pct }}</span>
+                        <span class="w-full text-center text-2xs opacity-75 font-normal cursor-default" title="Game Wins: {{ cell.game_tooltip }}">{{ cell.game_win_pct }}</span>
                       </div>
                     {% elif cell.is_mirror %}
                       <div class="flex items-center justify-center py-2 px-1 text-zinc-600 select-none cursor-default" title="{{ cell.tooltip }}">

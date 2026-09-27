@@ -1,4 +1,4 @@
-"""Ingestion pipeline for Legacy Data Collection Project (LDCP) community match data."""
+"""Ingestion pipeline for community match data (Legacy Data Collection Project, Vintage MTGO Community)."""
 
 import json
 import logging
@@ -34,20 +34,31 @@ class CommunityIngestionResult:
 
 
 class CommunityIngestionPipeline:
-    """Processes LDCP JSON files and ingests Swiss matches into SQLite."""
+    """Processes community JSON files and ingests Swiss matches into SQLite."""
 
     def __init__(self) -> None:
         pass
 
-    def find_files(self, base_dir: Path) -> list[Path]:
+    def find_files(
+        self, base_dir: Path, format_filter: str | None = None
+    ) -> list[Path]:
         """Find all tournament JSON files under the directory."""
         if base_dir.is_file():
             return [base_dir]
 
         target_dir = base_dir
-        sub_ldcp = base_dir / "datasources" / "legacy-data-collection"
-        if sub_ldcp.is_dir():
-            target_dir = sub_ldcp
+        if (base_dir / "datasources").is_dir():
+            target_dir = base_dir / "datasources"
+
+        fmt = format_filter.strip().lower() if format_filter else None
+        if fmt == "legacy":
+            sub_ldcp = target_dir / "legacy-data-collection"
+            if sub_ldcp.is_dir():
+                target_dir = sub_ldcp
+        elif fmt == "vintage":
+            sub_vmc = target_dir / "vintage-mtgo-community"
+            if sub_vmc.is_dir():
+                target_dir = sub_vmc
 
         candidates = list(target_dir.rglob("*.json"))
         tournament_files = []
@@ -55,10 +66,23 @@ class CommunityIngestionPipeline:
             # Skip hidden directories, virtual environments, caches
             parts = p.parts
             if any(
-                part.startswith(".") or part in ("venv", ".venv", "site-packages")
+                (part.startswith(".") and part not in (".", ".."))
+                or part in ("venv", ".venv", "site-packages")
                 for part in parts
             ):
                 continue
+            if fmt == "legacy":
+                if not (
+                    p.stem.lower().startswith("legacy-")
+                    or "legacy-data-collection" in p.parts
+                ):
+                    continue
+            elif fmt == "vintage":
+                if not (
+                    p.stem.lower().startswith("vintage-")
+                    or "vintage-mtgo-community" in p.parts
+                ):
+                    continue
             tournament_files.append(p)
 
         return sorted(tournament_files)
@@ -67,8 +91,9 @@ class CommunityIngestionPipeline:
         self,
         file_path: Path,
         force: bool = False,
+        format_filter: str | None = None,
     ) -> tuple[int, int, list[str], list[str]]:
-        """Ingest a single LDCP tournament JSON file.
+        """Ingest a single community tournament JSON file.
 
         Returns:
             tuple: (matches_saved, matches_skipped_no_deck, warnings, disagreements)
@@ -89,19 +114,40 @@ class CommunityIngestionPipeline:
             logger.warning(warning_msg)
             return 0, 0, [warning_msg], []
 
+        if format_filter and tournament.format != format_filter.strip().lower():
+            logger.debug(
+                "Tournament %s format '%s' does not match filter '%s'; skipping.",
+                event_id,
+                tournament.format,
+                format_filter,
+            )
+            return 0, 0, [], []
+
         decks = list(tournament.decks.all())
         if not decks:
             warning_msg = f"Tournament {event_id} has no official deck data in database; skipping."
             logger.warning(warning_msg)
             return 0, 0, [warning_msg], []
 
-        has_existing_ldcp = Match.objects.filter(
-            tournament=tournament, source=Match.SOURCE_LDCP
+        json_source = (t_meta.get("Source") or "").strip().lower()
+        if json_source == "vintage-mtgo-community" or tournament.format == "vintage":
+            match_source = Match.SOURCE_VMC
+            source_label = "VMC"
+        elif json_source == "legacy-data-collection" or tournament.format == "legacy":
+            match_source = Match.SOURCE_LDCP
+            source_label = "LDCP"
+        else:
+            match_source = Match.SOURCE_LDCP
+            source_label = "Community"
+
+        has_existing = Match.objects.filter(
+            tournament=tournament, source__in=Match.COMMUNITY_SOURCES
         ).exists()
-        if has_existing_ldcp and not force:
+        if has_existing and not force:
             logger.debug(
-                "Tournament %s already has LDCP matches and force=False; skipping.",
+                "Tournament %s already has %s matches and force=False; skipping.",
                 event_id,
+                source_label,
             )
             return 0, 0, [], []
 
@@ -160,7 +206,7 @@ class CommunityIngestionPipeline:
                         if not matched_official:
                             disagreement_msg = (
                                 f"Top 8 pairing disagreement in {event_id} ({round_name}): "
-                                f"LDCP has {p1} vs {p2} ({res}), not found in official MTGO matches."
+                                f"{source_label} has {p1} vs {p2} ({res}), not found in official MTGO matches."
                             )
                             logger.warning(disagreement_msg)
                             disagreements.append(disagreement_msg)
@@ -181,7 +227,7 @@ class CommunityIngestionPipeline:
                             if expected != actual:
                                 disagreement_msg = (
                                     f"Top 8 score disagreement in {event_id} ({round_name}) between {p1} and {p2}: "
-                                    f"LDCP reports {p1_w}-{p2_w}-{draws}, official MTGO reports {expected[0]}-{expected[1]}-{expected[2]}."
+                                    f"{source_label} reports {p1_w}-{p2_w}-{draws}, official MTGO reports {expected[0]}-{expected[1]}-{expected[2]}."
                                 )
                                 logger.warning(disagreement_msg)
                                 disagreements.append(disagreement_msg)
@@ -222,7 +268,7 @@ class CommunityIngestionPipeline:
                         player1_wins=p1_w,
                         player2_wins=p2_w,
                         draws=draws,
-                        source=Match.SOURCE_LDCP,
+                        source=match_source,
                     )
                 )
 
@@ -230,7 +276,8 @@ class CommunityIngestionPipeline:
             with transaction.atomic():
                 if force:
                     Match.objects.filter(
-                        tournament=tournament, source=Match.SOURCE_LDCP
+                        tournament=tournament,
+                        source__in=Match.COMMUNITY_SOURCES,
                     ).delete()
                 Match.objects.bulk_create(matches_to_save, ignore_conflicts=True)
 
@@ -242,18 +289,18 @@ class CommunityIngestionPipeline:
         force: bool = False,
         limit: int | None = None,
         since: str | None = None,
+        format_filter: str | None = None,
     ) -> CommunityIngestionResult:
-        """Ingest multiple LDCP JSON files."""
+        """Ingest multiple community JSON files."""
         result = CommunityIngestionResult()
 
         target_files = files
         if since:
             filtered = []
             for f in target_files:
-                # LDCP filename format contains date: e.g. legacy-challenge-32-YYYY-MM-DD...
-                # or we check date inside JSON / tournament
+                # Tournament filename format contains date: e.g. legacy-challenge-32-YYYY-MM-DD...
+                # or vintage-challenge-32-YYYY-MM-DD...
                 stem = f.stem
-                # Check for YYYY-MM-DD pattern
                 match = re.search(r"\d{4}-\d{2}-\d{2}", stem)
                 if match:
                     if match.group(0) >= since:
@@ -268,7 +315,7 @@ class CommunityIngestionPipeline:
         for file_path in target_files:
             result.tournaments_scanned += 1
             saved, skipped, warnings, disagreements = self.ingest_file(
-                file_path, force=force
+                file_path, force=force, format_filter=format_filter
             )
             result.warnings.extend(warnings)
             result.disagreements.extend(disagreements)

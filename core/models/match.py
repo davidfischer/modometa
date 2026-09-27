@@ -27,9 +27,12 @@ class Match(models.Model):
     class Source(models.TextChoices):
         MTGO = "mtgo", "MTGO"
         LDCP = "ldcp", "LDCP"
+        VMC = "vmc", "VMC"
 
     SOURCE_MTGO = Source.MTGO
     SOURCE_LDCP = Source.LDCP
+    SOURCE_VMC = Source.VMC
+    COMMUNITY_SOURCES = {Source.LDCP, Source.VMC}
 
     id = models.CharField(max_length=255, primary_key=True, verbose_name="ID")
     tournament = models.ForeignKey(

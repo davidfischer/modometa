@@ -3063,3 +3063,25 @@ def test_intcomma_formatting_in_views(client):
     resp = client.get(f"/modern/tournaments/{t.id}/")
     assert resp.status_code == 200
     assert "1,234 Players" in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_custom_404_page(client):
+    """Verify that 404 responses render the custom 404 page with MTG humor and site guides."""
+    with override_settings(DEBUG=False):
+        response = client.get("/this-route-does-not-exist-anywhere/")
+        assert response.status_code == 404
+        assert "404.html" in [t.name for t in response.templates]
+        content = response.content.decode()
+
+        # Base template derivation & cheeky MTG theme
+        assert "Mulligan to Zero" in content
+        assert "Not Found" in content
+        assert "The page you are looking for is gone" in content
+        assert "A mulligan won't help" in content
+
+        # Invalid format path also renders the custom 404
+        resp_fmt = client.get("/not-a-format/")
+        assert resp_fmt.status_code == 404
+        assert "404.html" in [t.name for t in resp_fmt.templates]
+        assert "/not-a-format/" in resp_fmt.content.decode()

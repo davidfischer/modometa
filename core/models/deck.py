@@ -23,6 +23,13 @@ class Deck(models.Model):
     is_top8 = models.BooleanField(default=False)
     is_5_0 = models.BooleanField(default=False, verbose_name="is 5-0")
 
+    # Duplicated from the tournament standings
+    wins = models.IntegerField(blank=True, null=True)
+    losses = models.IntegerField(blank=True, null=True)
+    draws = models.IntegerField(blank=True, null=True)
+    points = models.IntegerField(blank=True, null=True)
+    omwp = models.FloatField(blank=True, null=True, verbose_name="OMWP")
+
     archetype = models.CharField(max_length=128)
     archetype_slug = models.CharField(max_length=128, db_index=True)
     is_auto_classified = models.BooleanField(
@@ -77,6 +84,15 @@ class Deck(models.Model):
 
     def __str__(self) -> str:
         return f"{self.player} - {self.archetype} ({self.tournament_id})"
+
+    @property
+    def record_display(self) -> str | None:
+        """Return formatted tournament match record (e.g. '7-2' or '6-1-1')."""
+        if self.wins is None or self.losses is None:
+            return None
+        if self.draws:
+            return f"{self.wins}-{self.losses}-{self.draws}"
+        return f"{self.wins}-{self.losses}"
 
     @property
     def mainboard_card_count(self) -> int:

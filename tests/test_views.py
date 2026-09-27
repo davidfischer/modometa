@@ -622,7 +622,7 @@ def test_player_detail_view(client):
     response = client.get(f"/player/{deck.player}/")
     assert response.status_code == 200
     assert deck.player.encode() in response.content
-    assert b"League 5-0 Trophies" in response.content
+    assert b"League 5-0" in response.content
     assert b"all time" in response.content
     assert "start_year" in response.context
     if response.context["start_year"]:
@@ -635,9 +635,9 @@ def test_player_detail_view(client):
     assert response.context["page_obj"].paginator.per_page == 100
 
     # Verify League 5-0 Trophies stat card comes before Challenge T8 stat card
-    l50_pos = response.content.find(b"League 5-0 Trophies")
+    l50_pos = response.content.find(b"League 5-0")
     ct8_pos = response.content.find(b"Challenge T8")
-    cwin_pos = response.content.find(b"Challenge Win %")
+    cwin_pos = response.content.find(b"Challenge MW%")
     assert l50_pos != -1 and ct8_pos != -1 and cwin_pos != -1
     assert l50_pos < ct8_pos < cwin_pos
 
@@ -666,7 +666,7 @@ def test_player_detail_challenge_match_win_rate(client):
         event_type="league",
     )
 
-    deck_a = Deck.objects.create(
+    Deck.objects.create(
         id="deck_test_a",
         tournament=tourn_chall,
         player="AliceWins",
@@ -676,8 +676,10 @@ def test_player_detail_challenge_match_win_rate(client):
         archetype_slug="oath",
         result="2nd Place",
         is_top8=True,
+        wins=2,
+        losses=3,
     )
-    deck_b = Deck.objects.create(
+    Deck.objects.create(
         id="deck_test_b",
         tournament=tourn_chall,
         player="BobPlays",
@@ -687,8 +689,10 @@ def test_player_detail_challenge_match_win_rate(client):
         archetype_slug="dredge",
         result="3rd Place",
         is_top8=True,
+        wins=1,
+        losses=2,
     )
-    deck_c = Deck.objects.create(
+    Deck.objects.create(
         id="deck_test_c",
         tournament=tourn_chall,
         player="CharlieLoses",
@@ -698,6 +702,8 @@ def test_player_detail_challenge_match_win_rate(client):
         archetype_slug="mud",
         result="4th Place",
         is_top8=True,
+        wins=0,
+        losses=3,
     )
     # League deck for Alice
     Deck.objects.create(
@@ -724,85 +730,6 @@ def test_player_detail_challenge_match_win_rate(client):
         is_5_0=True,
     )
 
-    # 4 Challenge matches involving Alice:
-    # 1. Alice (p1) beats Bob (p2): 2-1
-    Match.objects.create(
-        id="m_winrate_1",
-        tournament=tourn_chall,
-        round_name="Quarterfinals",
-        round_slug="quarterfinals",
-        player1="AliceWins",
-        player2="BobPlays",
-        player1_deck=deck_a,
-        player2_deck=deck_b,
-        player1_wins=2,
-        player2_wins=1,
-    )
-    # 2. Charlie (p1) loses to Alice (p2): 0-2 (Alice wins as p2)
-    Match.objects.create(
-        id="m_winrate_2",
-        tournament=tourn_chall,
-        round_name="Semifinals",
-        round_slug="semifinals",
-        player1="CharlieLoses",
-        player2="AliceWins",
-        player1_deck=deck_c,
-        player2_deck=deck_a,
-        player1_wins=0,
-        player2_wins=2,
-    )
-    # 3. Alice (p1) loses to Bob (p2): 1-2
-    Match.objects.create(
-        id="m_winrate_3",
-        tournament=tourn_chall,
-        round_name="Finals",
-        round_slug="finals",
-        player1="AliceWins",
-        player2="BobPlays",
-        player1_deck=deck_a,
-        player2_deck=deck_b,
-        player1_wins=1,
-        player2_wins=2,
-    )
-    # 4. Charlie (p1) beats Alice (p2): 2-1 (Alice loses as p2)
-    Match.objects.create(
-        id="m_winrate_4",
-        tournament=tourn_chall,
-        round_name="Swiss R1",
-        round_slug="round_01",
-        player1="CharlieLoses",
-        player2="AliceWins",
-        player1_deck=deck_c,
-        player2_deck=deck_a,
-        player1_wins=2,
-        player2_wins=1,
-    )
-    # 5. Non-challenge match (should be ignored):
-    Match.objects.create(
-        id="m_winrate_5_league",
-        tournament=tourn_league,
-        round_name="Round 1",
-        round_slug="round_01",
-        player1="AliceWins",
-        player2="BobPlays",
-        player1_wins=2,
-        player2_wins=0,
-    )
-    # 6. Drawn match: 1-1 (counts as played match, but not win)
-    Match.objects.create(
-        id="m_winrate_6_draw",
-        tournament=tourn_chall,
-        round_name="Swiss R2",
-        round_slug="round_02",
-        player1="AliceWins",
-        player2="BobPlays",
-        player1_deck=deck_a,
-        player2_deck=deck_b,
-        player1_wins=1,
-        player2_wins=1,
-        draws=0,
-    )
-
     # Test Alice: 2 wins / 5 challenge matches = 40.0%
     resp_a = client.get("/player/AliceWins/")
     assert resp_a.status_code == 200
@@ -812,9 +739,9 @@ def test_player_detail_challenge_match_win_rate(client):
     content_a = resp_a.content.decode()
     assert 'title="2/5"' in content_a
     assert "40.0%" in content_a
-    assert "Challenge Win %" in content_a
+    assert "Challenge MW%" in content_a
 
-    # Test Bob: 3 challenge matches (m_winrate_1 lost, m_winrate_3 won, m_winrate_6 drawn) = 1 win / 3 matches = 33.3%
+    # Test Bob: 1 win / 3 matches = 33.3%
     resp_b = client.get("/player/BobPlays/")
     assert resp_b.status_code == 200
     assert resp_b.context["chall_match_wins"] == 1
@@ -1784,6 +1711,98 @@ def test_leaderboard_view(client):
     response = client.get("/legacy/leaderboard/")
     assert response.status_code == 200
     assert b"Leaderboard" in response.content
+
+
+@pytest.mark.django_db
+def test_leaderboard_view_match_win_rate(client):
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="legacy-challenge-leaderboard-test",
+        name="Legacy Challenge 32",
+        format="legacy",
+        event_type="challenge",
+        date=today,
+    )
+    Deck.objects.create(
+        id="deck_lb_1",
+        tournament=tourn,
+        format="legacy",
+        player="ChampPlayer",
+        player_lower="champplayer",
+        rank=1,
+        is_top8=True,
+        wins=8,
+        losses=1,
+        draws=0,
+        archetype="Delver",
+        archetype_slug="delver",
+    )
+    Deck.objects.create(
+        id="deck_lb_2",
+        tournament=tourn,
+        format="legacy",
+        player="RunnerUp",
+        player_lower="runnerup",
+        rank=2,
+        is_top8=True,
+        wins=7,
+        losses=2,
+        draws=1,
+        archetype="Reanimator",
+        archetype_slug="reanimator",
+    )
+
+    response = client.get("/legacy/leaderboard/")
+    assert response.status_code == 200
+    players = response.context["players"]
+    assert len(players) >= 2
+    p1 = next(p for p in players if p["player"] == "ChampPlayer")
+    assert p1["match_win_rate"] == 88.9
+    assert p1["challenge_record"] == "8-1"
+
+    p2 = next(p for p in players if p["player"] == "RunnerUp")
+    assert p2["match_win_rate"] == 77.8
+    assert p2["challenge_record"] == "7-2-1"
+
+    content = response.content.decode()
+    assert "88.9%" in content
+    assert "Match Win %" in content
+
+
+@pytest.mark.django_db
+def test_player_detail_win_rate_from_deck_standings(client):
+    today = date.today()
+    tourn = Tournament.objects.create(
+        id="modern-challenge-player-test",
+        name="Modern Challenge 32",
+        format="modern",
+        event_type="challenge",
+        date=today,
+    )
+    Deck.objects.create(
+        id="deck_p_standings",
+        tournament=tourn,
+        format="modern",
+        player="StandingsAce",
+        player_lower="standingsace",
+        rank=1,
+        is_top8=True,
+        wins=9,
+        losses=1,
+        draws=0,
+        points=27,
+        omwp=0.67,
+        archetype="Murktide",
+        archetype_slug="murktide",
+    )
+    response = client.get("/player/StandingsAce/")
+    assert response.status_code == 200
+    ctx = response.context
+    assert ctx["chall_match_wins"] == 9
+    assert ctx["chall_matches_count"] == 10
+    assert ctx["chall_win_rate"] == 90.0
+    content = response.content.decode()
+    assert "90.0%" in content
 
 
 @pytest.mark.django_db

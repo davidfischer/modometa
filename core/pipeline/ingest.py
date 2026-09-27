@@ -322,6 +322,7 @@ class IngestionPipeline:
                     player_count = None
             raw_decks = data.get("Decks") or []
             raw_rounds = data.get("Rounds") or []
+            raw_standings = data.get("Standings") or []
 
             is_already_in_db = (event_id in existing_ids) and not replace_existing
             player_deck_map: dict[str, str] = {}
@@ -339,8 +340,15 @@ class IngestionPipeline:
                             uri=tourn_uri,
                             deck_count=len(raw_decks),
                             player_count=player_count,
+                            standings=raw_standings,
                         )
                     )
+
+                standings_by_player: dict[str, dict[str, Any]] = {}
+                for st in raw_standings:
+                    p_name = st.get("Player")
+                    if p_name:
+                        standings_by_player[p_name.strip().lower()] = st
 
                 # Player index tracker for multiple decks in same dump
                 player_counts: dict[str, int] = {}
@@ -366,6 +374,60 @@ class IngestionPipeline:
                     result = deck_data.get("Result") or ""
                     rank, is_top8, is_5_0 = parse_result_and_rank(result)
                     anchor_uri = deck_data.get("AnchorUri")
+
+                    st = standings_by_player.get(player_lower)
+                    wins = None
+                    losses = None
+                    draws = None
+                    points = None
+                    omwp = None
+                    if st:
+                        try:
+                            wins = (
+                                int(st["Wins"]) if st.get("Wins") is not None else None
+                            )
+                        except ValueError, TypeError:
+                            pass
+                        try:
+                            losses = (
+                                int(st["Losses"])
+                                if st.get("Losses") is not None
+                                else None
+                            )
+                        except ValueError, TypeError:
+                            pass
+                        try:
+                            draws = (
+                                int(st["Draws"])
+                                if st.get("Draws") is not None
+                                else None
+                            )
+                        except ValueError, TypeError:
+                            pass
+                        try:
+                            points = (
+                                int(st["Points"])
+                                if st.get("Points") is not None
+                                else None
+                            )
+                        except ValueError, TypeError:
+                            pass
+                        try:
+                            omwp = (
+                                float(st["OMWP"])
+                                if st.get("OMWP") is not None
+                                else None
+                            )
+                        except ValueError, TypeError:
+                            pass
+
+                        if rank is None and st.get("Rank") is not None:
+                            try:
+                                rank = int(st["Rank"])
+                                if rank and 1 <= rank <= 8:
+                                    is_top8 = True
+                            except ValueError, TypeError:
+                                pass
 
                     # Format mainboard and sideboard with canonical card names
                     mainboard_raw = []
@@ -444,6 +506,11 @@ class IngestionPipeline:
                             rank=rank,
                             is_top8=is_top8,
                             is_5_0=is_5_0,
+                            wins=wins,
+                            losses=losses,
+                            draws=draws,
+                            points=points,
+                            omwp=omwp,
                             archetype=arch_name,
                             archetype_slug=arch_slug,
                             is_auto_classified=is_fallback,

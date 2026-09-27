@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import include
 from django.urls import path
+from django.views import defaults as default_views
 from django.views.generic import RedirectView
 from django.views.generic import TemplateView
 
@@ -31,6 +32,18 @@ urlpatterns = [
     path(f"admin/{admin_path}", admin.site.urls),
     path("", include("core.urls")),
 ]
+
+if settings.DEBUG:
+    # This allows the error pages to be debugged during development
+    # Needs to be earlier in the patterns so Django doesn't try to match this as a format
+    urlpatterns = [
+        path(
+            "404/",
+            default_views.page_not_found,
+            kwargs={"exception": Exception("Page not Found")},
+        ),
+        *urlpatterns,
+    ]
 
 # Enable Django Debug Toolbar in development only
 if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:

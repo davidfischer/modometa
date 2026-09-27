@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load mana_tags %}
+
+{% block title %}404 - Mulligan to Zero | {{ SITE_NAME }}{% endblock %}
+{% block meta_description %}404 Not Found - The spell has fizzled, the hand was mulliganed to 0, or this page was exiled to the Blind Eternities.{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+
+{% block og_title %}404: Mulligan to 0 - {{ SITE_NAME }}{% endblock %}
+{% block og_description %}This page has fizzled. Countered upon resolution or removed from the battlefield, stack, and game entirely.{% endblock %}
+
+{% block breadcrumbs %}
+<div class="text-sm font-medium text-zinc-400">
+  <a href="{% url 'core:home' %}" class="hover:text-white transition-colors">Home</a>
+  <span class="mx-2 text-zinc-600">/</span>
+  <span class="text-rose-400">404: Spell Fizzled</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-10">
+
+  <!-- MTG Card Frame / Hero Box -->
+  <div class="relative rounded-2xl border border-zinc-700/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-6 sm:p-8 shadow-2xl backdrop-blur">
+    <!-- Top Card Header: Name + Cost -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Not Found</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        {# Necessary to avoid the padding/margin to the left of {4} #}
+        <span class="text-lg [&_i]:ms-0">
+          {{ "{4}{0}{4}"|mana_cost }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Card Rules Text Box -->
+    <div class="mt-4 rounded-xl border border-zinc-800/90 bg-zinc-950/70 p-5 space-y-4">
+      <!-- Oracle Rules Text -->
+      <div class="space-y-2 text-lg text-zinc-300 leading-relaxed">
+        <p>
+          The page you are looking for is gone.
+          A mulligan won't help.
+        </p>
+      </div>
+
+      <!-- Flavor Text -->
+      <div class="pt-3 border-t border-zinc-800/80 space-y-3">
+        <blockquote id="mulligan-quote" class="italic text-zinc-300 text-sm sm:text-base leading-relaxed pl-3 border-l-2 border-emerald-500/40">
+          {% with "012345"|make_list|random as roll %}
+            {% if roll == "0" %}
+              &ldquo;Use <a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'serum-powder' %}">Serum Powder</a> and try again.&rdquo;
+            {% elif roll == "1" %}
+              &ldquo;The server cast <a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'force-of-will' %}">Force of Will</a> on your request, pitching a blue card.&rdquo;
+            {% elif roll == "2" %}
+              &ldquo;<a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'demonic-consultation' %}">Demonic Consultation</a> for a <a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'sorcerous-spyglass' %}">Sorcerous Spyglass</a> should help find your page.&rdquo;
+            {% elif roll == "3" %}
+              &ldquo;Even <a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'alquist-proft-master-sleuth' %}">Proft</a> couldn't find what you were looking for.&rdquo;
+            {% else %}
+              &ldquo;Turn 1 <a class="text-emerald-400 hover:underline" href="{% url 'core:card_detail' 'thoughtseize' %}">Thoughtseize</a> took this page from our servers.&rdquo;
+            {% endif %}
+          {% endwith %}
+        </blockquote>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -69,11 +69,11 @@ def test_format_overview_view(client):
 
     # Verify column header order: League Share before Challenge Share before Top 8 Share before T8 Momentum before Conversion
     content = response.content
-    pos_ls = content.find(b">League Share</th>")
-    pos_cs = content.find(b">Challenge Share</th>")
-    pos_t8s = content.find(b">Top 8 Share</th>")
+    pos_ls = content.find(b">League Share</span>")
+    pos_cs = content.find(b">Challenge Share</span>")
+    pos_t8s = content.find(b">Top 8 Share</span>")
     pos_t8m = content.find(b">T8 Momentum</th>")
-    pos_conv = content.find(b">Conversion</th>")
+    pos_conv = content.find(b">Conversion</span>")
     assert (
         pos_ls != -1
         and pos_cs != -1

@@ -75,27 +75,39 @@
 
     <!-- Metagame Performance Metrics (30d vs 90d) -->
     <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 pt-6 border-t border-zinc-800">
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.league_5_0_count|intcomma }}/{{ stats.total_5_0s|intcomma }}">
-        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">League Share</div>
-        <div class="mt-1 text-2xl font-bold font-mono text-sky-400">{{ stats.league_share }}%</div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">
+          <span>League Share</span>
+          <sup><a href="{% url 'core:faq' %}#league-share" title="Learn more about League Share in the FAQ" aria-label="League Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+        </div>
+        <div class="mt-1 text-2xl font-bold font-mono text-sky-400 cursor-help" title="{{ stats.league_5_0_count|intcomma }}/{{ stats.total_5_0s|intcomma }}">{{ stats.league_share }}%</div>
         <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.league_5_0_count|intcomma }} trophies</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.challenge_appearances|intcomma }}/{{ stats.total_chall_decks|intcomma }}">
-        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Share</div>
-        <div class="mt-1 text-2xl font-bold font-mono text-white">{{ stats.challenge_share }}%</div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">
+          <span>Challenge Share</span>
+          <sup><a href="{% url 'core:faq' %}#challenge-share" title="Learn more about Challenge Share in the FAQ" aria-label="Challenge Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+        </div>
+        <div class="mt-1 text-2xl font-bold font-mono text-white cursor-help" title="{{ stats.challenge_appearances|intcomma }}/{{ stats.total_chall_decks|intcomma }}">{{ stats.challenge_share }}%</div>
         <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.challenge_appearances|intcomma }} entries</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count|intcomma }}/{{ stats.total_top8_slots|intcomma }}">
-        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Top 8 Share</div>
-        <div class="mt-1 text-2xl font-bold font-mono text-emerald-400">{{ stats.top8_share }}%</div>
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">
+          <span>Challenge Top 8 Share</span>
+          <sup><a href="{% url 'core:faq' %}#top8-share" title="Learn more about Top 8 Share in the FAQ" aria-label="Top 8 Share FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+        </div>
+        <div class="mt-1 text-2xl font-bold font-mono text-emerald-400 cursor-help" title="{{ stats.top8_count|intcomma }}/{{ stats.total_top8_slots|intcomma }}">{{ stats.top8_share }}%</div>
         <div class="text-2xs text-zinc-500 mt-0.5 font-mono">{{ stats.top8_count|intcomma }} Top 8s</div>
       </div>
-      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800 cursor-help" title="{{ stats.top8_count|intcomma }}/{{ stats.challenge_appearances|intcomma }}">
-        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">Challenge Conversion</div>
-        <div class="mt-1 text-2xl font-bold font-mono {% if stats.conversion_rate >= 20 %}text-emerald-400{% else %}text-zinc-300{% endif %}">
+      <div class="rounded-lg bg-zinc-950 p-3 border border-zinc-800">
+        <div class="text-2xs text-zinc-500 uppercase tracking-wider font-semibold">
+          <span>Challenge Conversion</span>
+          <sup><a href="{% url 'core:faq' %}#conversion-rate" title="Learn more about Challenge Conversion in the FAQ" aria-label="Challenge Conversion FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+        </div>
+        <div class="mt-1 text-2xl font-bold font-mono cursor-help {% if stats.conversion_rate >= 20 %}text-emerald-400{% else %}text-zinc-300{% endif %}" title="{{ stats.top8_count|intcomma }}/{{ stats.challenge_appearances|intcomma }}">
           {{ stats.conversion_rate }}%
         </div>
-        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">T8s / appearances</div>
+        <div class="text-2xs text-zinc-500 mt-0.5 font-mono">T8's / appearances</div>
       </div>
     </div>
 

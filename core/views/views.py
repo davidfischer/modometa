@@ -380,12 +380,10 @@ def player_detail(request, player):
 
     total_top8s = sum(1 for d in all_decks if d.is_top8)
     total_5_0s = sum(
-        1
-        for d in all_decks
-        if d.is_5_0 and getattr(d.tournament, "event_type", "") == "league"
+        1 for d in all_decks if d.is_5_0 and d.tournament.event_type == "league"
     )
     chall_appearances = sum(
-        1 for d in all_decks if getattr(d.tournament, "event_type", "") == "challenge"
+        1 for d in all_decks if d.tournament.event_type == "challenge"
     )
     conversion_rate = (
         round((total_top8s / chall_appearances) * 100, 1)
@@ -398,10 +396,7 @@ def player_detail(request, player):
     chall_match_wins = 0
     chall_match_losses = 0
     for d in all_decks:
-        if (
-            getattr(d.tournament, "event_type", "") == "challenge"
-            and d.wins is not None
-        ):
+        if d.tournament.event_type == "challenge" and d.wins is not None:
             chall_match_wins += d.wins
             chall_match_losses += d.losses or 0
 

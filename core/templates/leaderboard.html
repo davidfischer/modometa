@@ -71,11 +71,20 @@
           <tr>
             <th class="py-3 px-4 w-12 text-center">#</th>
             <th class="py-3 px-4">Player</th>
-            <th class="py-3 px-4 text-right" title="Challenge Top 8 finishes in period">Top 8s</th>
+            <th class="py-3 px-4 text-right" title="Challenge Top 8 finishes in period">Top 8's</th>
             <th class="py-3 px-4 text-right" title="Total Challenge appearances">Appearances</th>
-            <th class="py-3 px-4 text-right" title="Challenge match win % (from the official standings)">Match Win %</th>
-            <th class="py-3 px-4 text-right" title="Top 8 finishes / Challenge appearances">Conversion Rate</th>
-            <th class="py-3 px-4 text-right" title="League 5-0 trophies in period">5-0 Trophies</th>
+            <th class="py-3 px-4 text-right" title="Challenge match win % (from the official standings)">
+              <span>Match Win %</span>
+              <sup><a href="{% url 'core:faq' %}#match-win-perc" title="Learn more about Match Win % in the FAQ" aria-label="Match Win % FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
+            <th class="py-3 px-4 text-right" title="Top 8 finishes / Challenge appearances">
+              <span>Conversion Rate</span>
+              <sup><a href="{% url 'core:faq' %}#conversion-rate" title="Learn more about Conversion Rate in the FAQ" aria-label="Conversion Rate FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
+            <th class="py-3 px-4 text-right" title="League 5-0 trophies in period">
+              <span>5-0 Trophies</span>
+              <sup><a href="{% url 'core:faq' %}#league-5-0s" title="Learn more about League 5-0 trophies in the FAQ" aria-label="League 5-0 trophies FAQ" class="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2">?</a></sup>
+            </th>
             <th class="py-3 px-4">Top Archetype</th>
           </tr>
         </thead>

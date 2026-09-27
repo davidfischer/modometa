@@ -349,11 +349,34 @@ def test_archetype_og_image_view(client, sample_data):
 def test_player_og_image_view(client, sample_data):
     """Test player PNG OG image view with activity heatmap."""
     _, deck = sample_data
+    deck.wins = 7
+    deck.losses = 2
+    deck.save()
+
     response = client.get(f"/player/{deck.player}/og.png")
     assert response.status_code == 200
     assert response["Content-Type"] == "image/png"
     assert response.content[:4] == b"\x89PNG"
     assert len(response.content) > 1000
+
+    svg = render_to_string(
+        "og/player_og.svg",
+        {
+            "player_name": deck.player,
+            "total_decks": 1,
+            "total_5_0s": 0,
+            "total_top8s": 1,
+            "chall_appearances": 1,
+            "conversion_rate": 100.0,
+            "chall_match_wins": 7,
+            "chall_matches_count": 9,
+            "chall_win_rate": 77.8,
+            "formats_played": ["Legacy"],
+            "heatmap": {"month_labels": [], "day_labels": [], "weeks": []},
+        },
+    )
+    assert "MATCH WIN %" in svg
+    assert "77.8%" in svg
 
     # Test non-existent player returns 404
     resp_invalid = client.get("/player/nonexistent_player_12345/og.png")

@@ -121,7 +121,7 @@
           For Legacy, we augment the official matchup data with Swiss results captured by the <a href="https://www.patreon.com/legacydatacollection" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Legacy Data Collection Project</a> for players with published decklists (typically top 32).
           Similarly, for Vintage, we use matchup data compiled by the <a href="https://discord.gg/2eVcsjK" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Vintage MTGO Community</a>.
           Across other formats, {{ SITE_NAME }} uses only the official published playoff results.
-          This means we have about 10x the data on archetype and player performance in those formats compared with other formats.
+          This means we have about 10x the data on archetype and player performance in Vintage and Legacy compared with other formats.
         </p>
         <p class="text-sm text-zinc-300 leading-relaxed">
           Our figures, in the archetype matrix for example, may not precisely agree with data from the Legacy Data Collection Project or the Vintage MTGO Community, but they should be close.
@@ -166,7 +166,7 @@
           Never say never, but probably not.
           The MTGO dataset is already cleaned (virtually no invalid cards, consistent player names) and pre-processed.
           There's also a clear hierarchy of the competitiveness of the events (Challenges &gt; Leagues).
-          Even though paper events are in the decklist cache we're using (from Melee.gg),
+          Even though some paper event data are available (from Melee.gg for example),
           it would be a lot of work to cover them and MTGO by itself gives a pretty clear idea of the current metagame.
         </p>
       </div>
@@ -207,6 +207,7 @@
   </div>
 
   <!-- Section: Metagame Metrics -->
+  <!-- IMPORTANT: these metrics' anchors are linked from various pages -->
   <div class="space-y-4">
     <h2 id="metagame-metrics" class="group text-lg font-bold text-white flex items-center gap-2 scroll-mt-24">
       <span class="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">2</span>
@@ -252,7 +253,7 @@
         </h3>
         <p class="text-sm text-zinc-300 leading-relaxed">
           Calculated as <code class="font-mono text-zinc-300">Top 8 Finishes / Challenge Appearances</code>.
-          Measures an archetype's win efficiency: when a player brings this deck, how likely are they to convert their run into a Top 8 appearance?
+          Measures an archetype's or player's win efficiency: how likely is a player or archetype to convert a run into a Top 8 appearance?
           Since there are usually only 32 decklists posted per challenge, a conversion rate significantly above 25% (8 / 32) is very good.
         </p>
       </div>
@@ -268,6 +269,22 @@
         <p class="text-sm text-zinc-300 leading-relaxed">
           The proportion of all verified League 5-0 trophies earned by an archetype within the selected timeframe.
           While Challenges represent premier competitive play, League Share reflects everyday popularity, accessibility, and brewing viability.
+        </p>
+      </div>
+
+      <div id="match-win-perc" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-2 scroll-mt-24">
+        <h3 class="group text-sm font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>Match Win %</span>
+          </span>
+          <a href="#match-win-perc" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link" aria-label="Direct link to Match Win %">#</a>
+        </h3>
+        <p class="text-sm text-zinc-300 leading-relaxed">
+          This stat gives a good idea of a player's strength in challenges although it will overstate a player's true match win percentage.
+          Daybreak / WotC post full win-loss standings for the top 32 players in a challenge.
+          If a player drops from an event after losing in the early rounds and places outside the top 32,
+          those losses will not count against their match win percentage because their standings were never posted.
         </p>
       </div>
     </div>
@@ -409,7 +426,7 @@
         </div>
 
         <!-- Vintage MTGO Community -->
-        <div id="ldcp-legacy" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+        <div id="vmc-vintage" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-bold text-white">Vintage MTGO Community</h4>
           </div>

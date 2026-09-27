@@ -1162,10 +1162,13 @@ def get_archetype_matrix_data(
     archetype_names = {}
     valid_matches = []
     has_ldcp_data = False
+    has_vmc_data = False
 
     for m in matches:
         if m.source == Match.SOURCE_LDCP:
             has_ldcp_data = True
+        elif m.source == Match.SOURCE_VMC:
+            has_vmc_data = True
         d1 = m.player1_deck
         d2 = m.player2_deck
         if not d1 or not d2:
@@ -1180,10 +1183,14 @@ def get_archetype_matrix_data(
         archetype_names[s2] = d2.archetype
         valid_matches.append((s1, s2, m.player1_wins, m.player2_wins, m.draws))
 
+    has_community_data = has_ldcp_data or has_vmc_data
+
     if not valid_matches or not archetype_match_counts:
         return {
             "has_data": False,
             "has_ldcp_data": has_ldcp_data,
+            "has_vmc_data": has_vmc_data,
+            "has_community_data": has_community_data,
             "total_matches": 0,
             "sorted_slugs": [],
             "archetype_names": {},
@@ -1301,6 +1308,8 @@ def get_archetype_matrix_data(
     return {
         "has_data": True,
         "has_ldcp_data": has_ldcp_data,
+        "has_vmc_data": has_vmc_data,
+        "has_community_data": has_community_data,
         "total_matches": len(valid_matches),
         "sorted_slugs": sorted_slugs,
         "archetype_names": archetype_names,

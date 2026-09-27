@@ -136,7 +136,7 @@ jobs:
           if [ "${{ inputs.force_ingest }}" = "true" ] || [ "${{ inputs.fresh_database }}" = "true" ]; then
             COMMUNITY_ARGS="--force"
           fi
-          uv run modometa ingest_community --dir modometa-community-data/datasources/legacy-data-collection $COMMUNITY_ARGS
+          uv run modometa ingest_community --dir modometa-community-data/datasources $COMMUNITY_ARGS
 
       # Skip kNN here. We'll run it explicitly in the next step
       - name: Reclassify tournament decks

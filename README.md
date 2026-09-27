@@ -66,7 +66,7 @@ uv run modometa sync_scryfall
 # You must have pulled https://github.com/davidfischer/modometa-mtgo-data already
 uv run modometa ingest_tournaments
 
-# Ingest community MTGO data (mostly Legacy Data Collection Project)
+# Ingest community MTGO data (Legacy Data Collection Project, Vintage MTGO Community)
 # This contains matchup level head-to-head data on Swiss rounds from challenges
 # You must have pulled https://github.com/davidfischer/modometa-community-data already
 uv run modometa ingest_community

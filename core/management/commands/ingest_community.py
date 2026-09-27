@@ -1,4 +1,4 @@
-"""Management command to ingest Legacy Data Collection Project (LDCP) community match data."""
+"""Management command to ingest community match data (Legacy Data Collection Project, Vintage MTGO Community)."""
 
 from pathlib import Path
 
@@ -6,18 +6,26 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
+from core.formats import FORMAT_NAMES
+from core.formats import is_valid_format
 from core.pipeline.community import CommunityIngestionPipeline
 
 
 class Command(BaseCommand):
-    help = "Ingest Legacy Data Collection Project (LDCP) community match data"
+    help = "Ingest community match data (Legacy Data Collection Project, Vintage MTGO Community)"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--dir",
             type=str,
             default=str(settings.DEFAULT_COMMUNITY_DATA_DIR),
-            help="Directory containing LDCP community data JSON files",
+            help="Directory containing community data JSON files",
+        )
+        parser.add_argument(
+            "--format",
+            type=str,
+            default=None,
+            help="Filter by format (e.g. legacy, vintage)",
         )
         parser.add_argument(
             "--since",
@@ -41,7 +49,7 @@ class Command(BaseCommand):
             "--force",
             action="store_true",
             default=False,
-            help="Force re-ingestion and overwrite existing LDCP community matches",
+            help="Force re-ingestion and overwrite existing community matches",
         )
         parser.add_argument(
             "--strict",
@@ -55,19 +63,27 @@ class Command(BaseCommand):
         if not data_dir.exists():
             raise CommandError(f"Community data directory does not exist: {data_dir}")
 
+        fmt_filter = options.get("format")
+        if fmt_filter:
+            fmt_filter = fmt_filter.strip().lower()
+            if not is_valid_format(fmt_filter):
+                raise CommandError(
+                    f"Unsupported format '{fmt_filter}'. Supported formats: {', '.join(sorted(FORMAT_NAMES))}"
+                )
+
         pipeline = CommunityIngestionPipeline()
 
         if options["slug"]:
             slug = options["slug"].strip()
             # Look for matching file directly or under directory
-            candidates = pipeline.find_files(data_dir)
+            candidates = pipeline.find_files(data_dir, format_filter=fmt_filter)
             files = [f for f in candidates if slug in f.stem]
             if not files:
                 raise CommandError(
                     f"No JSON file found matching slug '{slug}' in {data_dir}"
                 )
         else:
-            files = pipeline.find_files(data_dir)
+            files = pipeline.find_files(data_dir, format_filter=fmt_filter)
 
         if not files:
             self.stdout.write(
@@ -84,11 +100,12 @@ class Command(BaseCommand):
             force=options["force"],
             limit=options["limit"],
             since=options["since"],
+            format_filter=fmt_filter,
         )
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Ingestion complete: {result.matches_saved} LDCP match(es) saved "
+                f"Ingestion complete: {result.matches_saved} community match(es) saved "
                 f"across {result.tournaments_ingested} tournament(s) "
                 f"({result.matches_skipped_no_deck} matchups skipped without full decklists, "
                 f"{result.tournaments_scanned} scanned)."

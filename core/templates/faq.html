@@ -107,8 +107,27 @@
           Because finishes below 32nd place are omitted from official results dumps, our Challenge Share and metagame metrics reflect only these top 32 lists.
           Decks that finish outside the top 32 are effectively invisible to {{ SITE_NAME }}.
           For head-to-head match data, official dumps only include the 7 playoff bracket matches (Quarterfinals, Semifinals, Finals).
-          For Legacy, we augment these official results with Swiss matchup data captured by the <a href="https://www.patreon.com/legacydatacollection" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Legacy Data Collection Project</a> for players with published decklists (please <a href="https://www.patreon.com/legacydatacollection" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">support them on Patreon!</a>).
+        </p>
+      </div>
+
+      <!-- Additional Legacy and Vintage data -->
+      <!-- IMPORTANT: this anchor is linked from archetype matrix -->
+      <div id="legacy-vintage-data" class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-2 scroll-mt-24">
+        <h3 class="group text-base font-semibold text-white flex items-center gap-2">
+          <span>How does {{ SITE_NAME }} have so much data on Vintage and Legacy?</span>
+          <a href="#legacy-vintage-data" class="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-400 transition-opacity font-mono text-xs select-none" title="Direct link to this question" aria-label="Direct link to this question">#</a>
+        </h3>
+        <p class="text-sm text-zinc-300 leading-relaxed">
+          For Legacy, we augment the official matchup data with Swiss results captured by the <a href="https://www.patreon.com/legacydatacollection" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Legacy Data Collection Project</a> for players with published decklists (typically top 32).
+          Similarly, for Vintage, we use matchup data compiled by the <a href="https://discord.gg/2eVcsjK" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Vintage MTGO Community</a>.
           Across other formats, {{ SITE_NAME }} uses only the official published playoff results.
+          This means we have about 10x the data on archetype and player performance in those formats compared with other formats.
+        </p>
+        <p class="text-sm text-zinc-300 leading-relaxed">
+          Our figures, in the archetype matrix for example, may not precisely agree with data from the Legacy Data Collection Project or the Vintage MTGO Community, but they should be close.
+          We do our own archetype classification based on the published decklist and as a result only count matchups between players finishing in the top 32,
+          while those projects collect data on all matchups in the events.
+          Most challenges in those formats have fewer than 64 players although showcase challenges usually have much more.
         </p>
       </div>
 
@@ -174,7 +193,9 @@
         <p class="text-sm text-zinc-300 leading-relaxed">
           The data for {{ SITE_NAME }} is built entirely from public sources:
           <a href="https://scryfall.com/docs/api/bulk-data" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">Scryfall card data</a>
-          and a cache of <a href="https://github.com/davidfischer/modometa-mtgo-data" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">MTGO tournament results</a>.
+          a cache of <a href="https://github.com/davidfischer/modometa-mtgo-data" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">MTGO tournament results</a>,
+          and player-driven data collected by the Legacy Data Collection Project and Vintage MTGO Community
+          (see <a href="https://github.com/davidfischer/modometa-community-data" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">this repository</a> for more details).
         </p>
         <p class="text-sm text-zinc-300 leading-relaxed">
           You can also download the exact <a href="https://data.modometa.com/modometa.db" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">database dump</a> (~800 MB)
@@ -374,6 +395,26 @@
           </div>
           <p class="text-sm text-zinc-400">
             Tournament decklists and tournament standings are sourced from the <a href="https://github.com/davidfischer/modometa-mtgo-data" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">modometa-mtgo-data</a> archive, building upon the format established by Francisco Bettega's <a href="https://github.com/fbettega/MTG_decklistcache" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">MTG_decklistcache</a>.
+          </p>
+        </div>
+
+        <!-- Legacy Data Collection Project -->
+        <div id="ldcp-legacy" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">Legacy Data Collection Project</h4>
+          </div>
+          <p class="text-sm text-zinc-400">
+            Detailed player matchup results and archetype head-to-head data would be far more limited without the <a href="https://www.patreon.com/legacydatacollection" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">LDCP</a> archive of match results.
+          </p>
+        </div>
+
+        <!-- Vintage MTGO Community -->
+        <div id="ldcp-legacy" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">Vintage MTGO Community</h4>
+          </div>
+          <p class="text-sm text-zinc-400">
+            Similar to the LDCP for Legacy, detailed matchup results are sourced from the <a href="https://discord.gg/2eVcsjK" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Vintage MTGO Community</a> player-driven spreadsheets.
           </p>
         </div>
       </div>

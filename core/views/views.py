@@ -1223,6 +1223,8 @@ def archetype_matrix(request, format):
             "rows": rows,
             "total_matches": matrix_data["total_matches"],
             "has_ldcp_data": matrix_data.get("has_ldcp_data", False),
+            "has_vmc_data": matrix_data.get("has_vmc_data", False),
+            "has_community_data": matrix_data.get("has_community_data", False),
             "days": days,
         },
     )

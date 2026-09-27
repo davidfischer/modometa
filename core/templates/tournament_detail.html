@@ -98,12 +98,20 @@
       </p>
     </div>
 
-    {% if tournament.uri %}
-      <a href="{{ tournament.uri }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 hover:text-white hover:bg-zinc-700 transition-colors">
-        <span>Official MTGO Decklist</span>
-        <span>↗</span>
-      </a>
-    {% endif %}
+    <div class="flex flex-wrap items-center gap-2">
+      {% if tournament.uri %}
+        <a href="{{ tournament.uri }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 hover:text-white hover:bg-zinc-700 transition-colors">
+          <span>Official MTGO Decklist</span>
+          <span>↗</span>
+        </a>
+      {% endif %}
+      {% if tournament.community_sheet_url %}
+        <a href="{{ tournament.community_sheet_url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 hover:text-white hover:bg-zinc-700 transition-colors">
+          <span>{{ tournament.community_source_name|default:"Community Sheet" }}</span>
+          <span>↗</span>
+        </a>
+      {% endif %}
+    </div>
   </div>
 
   {% if archetype_chart and archetype_chart.rows %}
@@ -135,6 +143,9 @@
                   </span>
                 {% else %}
                   <span class="text-zinc-400">{{ d.result }}</span>
+                {% endif %}
+                {% if d.record_display %}
+                  <span class="ml-1 text-2xs text-zinc-500 font-normal">({{ d.record_display }})</span>
                 {% endif %}
               </td>
               <td class="py-3 px-4 font-sans font-medium text-white">

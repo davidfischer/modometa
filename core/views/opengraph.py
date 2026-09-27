@@ -623,7 +623,7 @@ def player_og_image(request, player):
     decks_qs = (
         Deck.objects.filter(player_lower=player_lower)
         .select_related("tournament")
-        .defer("mainboard", "sideboard", "illegal_cards")
+        .defer("mainboard", "sideboard", "illegal_cards", "tournament__standings")
     )
     all_decks = list(decks_qs)
     total_decks = len(all_decks)

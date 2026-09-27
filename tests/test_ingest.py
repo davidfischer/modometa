@@ -416,3 +416,85 @@ def test_ingest_challenge_with_rounds_creates_matches(tmp_path: Path):
     assert m.player2_deck is not None
     assert m.player1_deck.player == "Alice"
     assert m.player2_deck.player == "Bob"
+
+
+@pytest.mark.django_db
+def test_ingest_challenge_standings(tmp_path: Path):
+    """Test that official Standings are ingested into Tournament and mapped to Decks."""
+    tourn_dir = tmp_path / "Tournaments" / "MTGO"
+    tourn_dir.mkdir(parents=True)
+
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
+    t_id = f"modern-challenge-32-{today_str}98765"
+    chall_file = tourn_dir / f"{t_id}.json"
+
+    data = {
+        "Tournament": {
+            "Name": f"Modern Challenge 32 {today_str}",
+            "Date": today_str,
+            "Uri": f"https://www.mtgo.com/decklist/{t_id}",
+        },
+        "Decks": [
+            {
+                "Player": "Alice",
+                "Result": "1st Place",
+                "Mainboard": [{"CardName": "Lightning Bolt", "Count": 4}],
+                "Sideboard": [],
+            },
+            {
+                "Player": "Bob",
+                "Result": "2nd Place",
+                "Mainboard": [{"CardName": "Counterspell", "Count": 4}],
+                "Sideboard": [],
+            },
+        ],
+        "Standings": [
+            {
+                "Rank": 1,
+                "Player": "Alice",
+                "Points": 21,
+                "Wins": 7,
+                "Losses": 1,
+                "Draws": 0,
+                "OMWP": 0.654,
+                "GWP": 0.700,
+                "OGWP": 0.600,
+            },
+            {
+                "Rank": 2,
+                "Player": "Bob",
+                "Points": 18,
+                "Wins": 6,
+                "Losses": 2,
+                "Draws": 1,
+                "OMWP": 0.582,
+                "GWP": 0.650,
+                "OGWP": 0.550,
+            },
+        ],
+    }
+    chall_file.write_text(json.dumps(data))
+
+    call_command("ingest_tournaments", dir=str(tourn_dir), skip_knn=True)
+
+    tourn = Tournament.objects.get(id=t_id)
+    assert len(tourn.standings) == 2
+    assert tourn.standings[0]["Player"] == "Alice"
+    assert tourn.standings[0]["Wins"] == 7
+
+    alice_deck = Deck.objects.get(tournament=tourn, player="Alice")
+    assert alice_deck.wins == 7
+    assert alice_deck.losses == 1
+    assert alice_deck.draws == 0
+    assert alice_deck.points == 21
+    assert alice_deck.omwp == 0.654
+    assert alice_deck.record_display == "7-1"
+
+    bob_deck = Deck.objects.get(tournament=tourn, player="Bob")
+    assert bob_deck.wins == 6
+    assert bob_deck.losses == 2
+    assert bob_deck.draws == 1
+    assert bob_deck.points == 18
+    assert bob_deck.omwp == 0.582
+    assert bob_deck.record_display == "6-2-1"

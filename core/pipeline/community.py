@@ -140,6 +140,11 @@ class CommunityIngestionPipeline:
             match_source = Match.SOURCE_LDCP
             source_label = "Community"
 
+        sheet_id = (t_meta.get("SheetId") or "").strip() or None
+        if sheet_id and tournament.community_sheet_id != sheet_id:
+            tournament.community_sheet_id = sheet_id
+            tournament.save(update_fields=["community_sheet_id"])
+
         has_existing = Match.objects.filter(
             tournament=tournament, source__in=Match.COMMUNITY_SOURCES
         ).exists()

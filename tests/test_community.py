@@ -811,3 +811,42 @@ def test_archetype_matrix_vintage_vmc_credit(
     assert "Vintage MTGO Community" in content
     assert "https://discord.gg/2eVcsjK" in content
     assert "Legacy Data Collection Project" not in content
+
+
+@pytest.mark.django_db
+def test_community_ingestion_populates_sheet_id(
+    tmp_path: Path, mock_legacy_challenge: Tournament
+):
+    """Test that community ingestion populates tournament community_sheet_id and properties."""
+    ldcp_dir = tmp_path / "datasources" / "legacy-data-collection"
+    ldcp_dir.mkdir(parents=True)
+
+    json_file = ldcp_dir / f"{mock_legacy_challenge.id}.json"
+    data = {
+        "Tournament": {
+            "Id": mock_legacy_challenge.id,
+            "Date": mock_legacy_challenge.date.strftime("%Y-%m-%d"),
+            "Name": mock_legacy_challenge.name,
+            "Source": "legacy-data-collection",
+            "SheetId": "1FNRLozqu7UVO4PYxqsg-Jl128lQ-pyodtlBHWwHVx-0",
+        },
+        "Players": [],
+        "Rounds": [],
+    }
+    json_file.write_text(json.dumps(data))
+
+    pipeline = CommunityIngestionPipeline()
+    pipeline.ingest_file(json_file)
+
+    mock_legacy_challenge.refresh_from_db()
+    assert (
+        mock_legacy_challenge.community_sheet_id
+        == "1FNRLozqu7UVO4PYxqsg-Jl128lQ-pyodtlBHWwHVx-0"
+    )
+    assert (
+        mock_legacy_challenge.community_sheet_url
+        == "https://docs.google.com/spreadsheets/d/1FNRLozqu7UVO4PYxqsg-Jl128lQ-pyodtlBHWwHVx-0/edit"
+    )
+    assert (
+        mock_legacy_challenge.community_source_name == "Legacy Data Collection Project"
+    )

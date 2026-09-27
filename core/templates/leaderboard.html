@@ -73,6 +73,7 @@
             <th class="py-3 px-4">Player</th>
             <th class="py-3 px-4 text-right" title="Challenge Top 8 finishes in period">Top 8s</th>
             <th class="py-3 px-4 text-right" title="Total Challenge appearances">Appearances</th>
+            <th class="py-3 px-4 text-right" title="Challenge match win % (from the official standings)">Match Win %</th>
             <th class="py-3 px-4 text-right" title="Top 8 finishes / Challenge appearances">Conversion Rate</th>
             <th class="py-3 px-4 text-right" title="League 5-0 trophies in period">5-0 Trophies</th>
             <th class="py-3 px-4">Top Archetype</th>
@@ -103,6 +104,14 @@
               <td class="py-3 px-4 text-right text-zinc-300">
                 {{ p.challenge_appearances|intcomma }}
               </td>
+              <td class="py-3 px-4 text-right text-zinc-300" title="Record: {{ p.challenge_record }}">
+                {% if p.match_win_rate is not None %}
+                  <span>{{ p.match_win_rate }}%</span>
+                {% else %}
+                  {# Should never happen - how else did they get on the leaderboard #}
+                  <span>—</span>
+                {% endif %}
+              </td>
               <td class="py-3 px-4 text-right" title="{{ p.top8_count|intcomma }}/{{ p.challenge_appearances|intcomma }}">
                 <span class="rounded px-2 py-0.5 text-2xs font-semibold {% if p.conversion_rate >= 30 %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% elif p.conversion_rate >= 15 %}bg-sky-500/20 text-sky-300{% else %}text-zinc-400{% endif %}">
                   {{ p.conversion_rate }}%
@@ -123,7 +132,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="7" class="py-8 text-center text-zinc-500 italic">No player leaderboard data available for this timeframe.</td>
+              <td colspan="8" class="py-8 text-center text-zinc-500 italic">No player leaderboard data available for this timeframe.</td>
             </tr>
           {% endfor %}
         </tbody>

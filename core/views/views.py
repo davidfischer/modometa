@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.db.models import Q
+from django.db.models import Sum
 from django.http import Http404
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -24,7 +25,6 @@ from core.models.card import generate_card_slug
 from core.models.card import get_gatherer_url
 from core.models.card import get_scryfall_url
 from core.models.deck import Deck
-from core.models.match import Match
 from core.models.tournament import Tournament
 from core.views.charts import _get_matrix_color_class
 from core.views.charts import build_archetype_heatmap
@@ -370,7 +370,7 @@ def player_detail(request, player):
     decks_qs = (
         Deck.objects.filter(player_lower=player_lower)
         .select_related("tournament")
-        .defer("mainboard", "sideboard", "illegal_cards")
+        .defer("mainboard", "sideboard", "illegal_cards", "tournament__standings")
         .order_by("-tournament__date")
     )
     all_decks = list(decks_qs)
@@ -395,43 +395,17 @@ def player_detail(request, player):
 
     formats_played = sorted(list({d.format for d in all_decks}))
 
-    chall_deck_ids = {
-        d.id
-        for d in all_decks
-        if getattr(d.tournament, "event_type", "") == "challenge"
-    }
-    match_filter = Q(player1__iexact=player_clean) | Q(player2__iexact=player_clean)
-    if chall_deck_ids:
-        match_filter |= Q(player1_deck_id__in=chall_deck_ids) | Q(
-            player2_deck_id__in=chall_deck_ids
-        )
-    chall_matches = (
-        Match.objects.filter(tournament__event_type="challenge")
-        .filter(match_filter)
-        .distinct()
-    )
-
     chall_match_wins = 0
-    chall_matches_count = 0
-    for m in chall_matches:
-        is_p1 = (m.player1_deck_id in chall_deck_ids) or (
-            m.player1.strip().lower() == player_lower
-        )
-        is_p2 = (m.player2_deck_id in chall_deck_ids) or (
-            m.player2.strip().lower() == player_lower
-        )
-        if is_p1:
-            p_wins = m.player1_wins
-            opp_wins = m.player2_wins
-        elif is_p2:
-            p_wins = m.player2_wins
-            opp_wins = m.player1_wins
-        else:
-            continue
-        chall_matches_count += 1
-        if p_wins > opp_wins:
-            chall_match_wins += 1
+    chall_match_losses = 0
+    for d in all_decks:
+        if (
+            getattr(d.tournament, "event_type", "") == "challenge"
+            and d.wins is not None
+        ):
+            chall_match_wins += d.wins
+            chall_match_losses += d.losses or 0
 
+    chall_matches_count = chall_match_wins + chall_match_losses
     chall_win_rate = (
         round((chall_match_wins / chall_matches_count) * 100, 1)
         if chall_matches_count > 0
@@ -1070,6 +1044,9 @@ def leaderboard(request, format):
             league_count=Count(
                 "id", filter=Q(tournament__event_type="league", is_5_0=True)
             ),
+            chall_wins=Sum("wins", filter=Q(tournament__event_type="challenge")),
+            chall_losses=Sum("losses", filter=Q(tournament__event_type="challenge")),
+            chall_draws=Sum("draws", filter=Q(tournament__event_type="challenge")),
         )
         .order_by("-top8_count", "-league_count", "-total_finishes")[:100]
     )
@@ -1095,6 +1072,21 @@ def leaderboard(request, format):
         challs = p["chall_appearances"]
         conv_rate = round((top8s / challs) * 100, 1) if challs > 0 else 0.0
 
+        chall_wins = p["chall_wins"] or 0
+        chall_losses = p["chall_losses"] or 0
+        chall_draws = p["chall_draws"] or 0
+        total_chall_matches = chall_wins + chall_losses
+        win_rate = (
+            round((chall_wins / total_chall_matches) * 100, 1)
+            if total_chall_matches > 0
+            else None
+        )
+        chall_record = (
+            f"{chall_wins}-{chall_losses}-{chall_draws}"
+            if chall_draws
+            else f"{chall_wins}-{chall_losses}"
+        )
+
         fav_arch_tuple = fav_arch_map.get(p["player_lower"])
         fav_arch_name = fav_arch_tuple[0] if fav_arch_tuple else None
         fav_arch_slug = fav_arch_tuple[1] if fav_arch_tuple else None
@@ -1105,6 +1097,11 @@ def leaderboard(request, format):
                 "top8_count": top8s,
                 "challenge_appearances": challs,
                 "conversion_rate": conv_rate,
+                "match_win_rate": win_rate,
+                "challenge_record": chall_record,
+                "challenge_match_wins": chall_wins,
+                "challenge_match_losses": chall_losses,
+                "challenge_match_draws": chall_draws,
                 "league_count": p["league_count"],
                 "top_archetype": fav_arch_name,
                 "top_archetype_slug": fav_arch_slug,

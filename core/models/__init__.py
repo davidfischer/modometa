@@ -4,6 +4,7 @@ from .card import expand_card_names
 from .card import get_gatherer_url
 from .card import get_scryfall_url
 from .card import normalize_card_name
+from .deck import ClassificationMethod
 from .deck import Deck
 from .match import Match
 from .match import normalize_round_slug
@@ -13,6 +14,7 @@ from .tournament import Tournament
 __all__ = [
     "Card",
     "CardLookup",
+    "ClassificationMethod",
     "Deck",
     "Match",
     "Tournament",

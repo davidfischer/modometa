@@ -85,6 +85,10 @@ html:not(.dark) .text-rose-300 {
   color: #be123c;
 }
 
+html:not(.dark) .text-amber-300 {
+  color: #b45309;
+}
+
 html:not(.dark) .text-red-400 {
   color: #dc2626;
 }
@@ -143,6 +147,13 @@ html:not(.dark) .bg-rose-950\/40 {
   background-color: #fff1f2;
   border-color: #fecdd3;
   color: #9f1239;
+}
+
+/* Restricted card warning banner */
+html:not(.dark) .bg-amber-950\/40 {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
 }
 
 /* Work in progress format banner */

@@ -93,6 +93,7 @@ class LegalityEngine:
         errors: list[str] = []
         illegal_cards: set[str] = set()
         card_totals = defaultdict(int)
+        norm_to_name: dict[str, str] = {}
 
         mb_count = sum(item.get("count", 0) for item in mainboard)
         sb_count = sum(item.get("count", 0) for item in sideboard)
@@ -111,30 +112,37 @@ class LegalityEngine:
                 count = item.get("count") or item.get("Count") or 0
                 norm = normalize_card_name(name)
                 card_totals[norm] += count
+                if name and norm not in norm_to_name:
+                    norm_to_name[norm] = name
 
                 card = self.resolve_card(name)
                 if card:
+                    canonical_name = card.name
+                    norm_to_name[norm] = canonical_name
                     if not card.is_legal_in(fmt):
                         errors.append(
-                            f"{name} is not legal or is banned in {fmt.capitalize()}"
+                            f"{canonical_name} is not legal or is banned in {fmt.capitalize()}"
                         )
-                        illegal_cards.add(name)
+                        illegal_cards.add(canonical_name)
                     # Vintage restricted check
                     if fmt == "vintage":
                         leg = card.legalities.get("vintage")
                         if leg == "restricted" and card_totals[norm] > 1:
                             errors.append(
-                                f"{name} is restricted in Vintage (maximum 1 copy)"
+                                f"{canonical_name} is restricted in Vintage (maximum 1 copy)"
                             )
-                            illegal_cards.add(name)
+                            illegal_cards.add(canonical_name)
 
         # 4-of limit check
         for norm, total in card_totals.items():
             if norm in BASIC_LANDS or norm in ANY_NUMBER_CARDS:
                 continue
             if total > 4:
-                errors.append(f"Deck contains {total} copies of {norm} (maximum 4)")
-                illegal_cards.add(norm)
+                card_display_name = norm_to_name.get(norm, norm)
+                errors.append(
+                    f"Deck contains {total} copies of {card_display_name} (maximum 4)"
+                )
+                illegal_cards.add(card_display_name)
 
         is_legal = len(errors) == 0
         return is_legal, errors, sorted(list(illegal_cards))

@@ -4,8 +4,6 @@ from collections import Counter
 from collections import defaultdict
 
 import numpy as np
-import yaml
-from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from scipy.sparse import csr_matrix
@@ -99,29 +97,6 @@ class Command(BaseCommand):
             raise CommandError(
                 "No cards found in database. Run 'python manage.py sync_scryfall' first."
             )
-
-        # 1. Validate existing YAML archetype rules for this format
-        yaml_file = settings.ARCHETYPES_DIR / f"{fmt}.yaml"
-        if yaml_file.exists():
-            try:
-                with open(yaml_file, "r", encoding="utf-8") as fp:
-                    existing_rules = yaml.safe_load(fp) or []
-            except Exception as e:
-                raise CommandError(f"Error reading {yaml_file}: {e}")
-
-            for r in existing_rules:
-                arch_name = r.get("name", "Unknown")
-                for key in ("mandatory", "signatures", "anti_signatures"):
-                    for item in r.get(key, []):
-                        card = (
-                            item.get("card") or item.get("name")
-                            if isinstance(item, dict)
-                            else item
-                        )
-                        if not is_known_card(card, valid_names):
-                            raise CommandError(
-                                f"Unrecognized card '{card}' found in {yaml_file} for archetype '{arch_name}' ({key})."
-                            )
 
         qs = Deck.objects.filter(format=fmt)
         if not analyze_all:

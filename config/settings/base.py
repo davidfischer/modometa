@@ -107,7 +107,7 @@ MODOMETA_FORMATS = FORMAT_SLUGS
 # That's a proxy for popularity
 ACTIVE_FORMAT_SLUGS = ["modern", "pauper", "legacy", "premodern", "vintage"]
 
-ARCHETYPES_DIR = BASE_DIR / "archetypes"
+ARCHETYPES_DIR = None
 DEFAULT_DECKLIST_DIR = BASE_DIR.parent / "modometa-mtgo-data" / "Tournaments" / "MTGO"
 DEFAULT_COMMUNITY_DATA_DIR = BASE_DIR.parent / "modometa-community-data" / "datasources"
 KNN_INDEX_PATH = BASE_DIR / "data" / "knn_index.npz"

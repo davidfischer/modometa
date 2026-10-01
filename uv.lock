@@ -198,6 +198,7 @@ dependencies = [
     { name = "django" },
     { name = "gunicorn" },
     { name = "httpx" },
+    { name = "mtg-archetypes" },
     { name = "numpy" },
     { name = "pyarrow" },
     { name = "pyyaml" },
@@ -221,6 +222,7 @@ requires-dist = [
     { name = "django", specifier = ">=5.2" },
     { name = "gunicorn", specifier = ">=23.0" },
     { name = "httpx", specifier = ">=0.28" },
+    { name = "mtg-archetypes", specifier = ">=2026.9.3" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -237,6 +239,18 @@ dev = [
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-django", specifier = ">=4.14.0" },
+]
+
+[[package]]
+name = "mtg-archetypes"
+version = "2026.9.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/5b/5a2f113c75a9c6748a08070b364f2b6540f3cb4e565bff69597fcc70306b/mtg_archetypes-2026.9.3.tar.gz", hash = "sha256:ab2d985d7e0a5d6c88af2963512f405878547601fca950e4873309458017aab0", size = 57440, upload-time = "2026-10-01T03:22:18.067Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/d8/711a1b0021ced667a602d90d6949ca61cafb78e8785b3d0f096251e6a9f1/mtg_archetypes-2026.9.3-py3-none-any.whl", hash = "sha256:6a4e7ba1a94214df8b65c63ad1d5894d721cebdde2ddde0f5393c50a3a0b0f10", size = 104290, upload-time = "2026-10-01T03:22:16.856Z" },
 ]
 
 [[package]]

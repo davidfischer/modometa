@@ -20,11 +20,6 @@ MODOMeta is an MTGO (Magic: The Gathering Online) metagame analyzer that tracks 
 ### Repository Structure
 ```text
 modometa/
-├── archetypes/               # Declarative YAML classification rules per format
-│   ├── legacy.yaml
-│   ├── vintage.yaml
-│   ├── premodern.yaml
-│   └── README.md             # Rule specification and curation guide
 ├── config/                   # Django project configuration
 │   ├── settings/
 │   │   ├── base.py           # Shared settings, format definitions, app registry
@@ -119,7 +114,10 @@ When modifying or adding code to MODOMeta, all agents MUST follow these core rul
 - **Formats Supported**: Standard, Pioneer, Pauper, Modern, Premodern, Legacy, Vintage (`core/formats.py`). Formats not specified in `settings.ACTIVE_FORMAT_SLUGS` are hidden in the UI.
 
 ### Archetype Classification Engine (`core/rules/engine.py`)
-Declarative rules live in `archetypes/{format}.yaml`. Rules are usually done by hand. See `archetypes/README.md` for more details.
+Multi-stage classifier:
+1. First stage: Explicit rules from `mtg-archetypes` (open-source library).
+2. Second stage: TF-IDF kNN closeness matching (≥ 85% cosine similarity to an established archetype).
+3. Third stage: Tactical posture fallback (`Mono-Red Aggro`, `Grixis Control`, etc.) + true colors.
 
 
 ### Caching and `IS_TESTING`

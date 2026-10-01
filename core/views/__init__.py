@@ -32,6 +32,7 @@ from core.views.utils import DEFAULT_TIMEFRAME
 from core.views.utils import VALID_TIMEFRAMES
 from core.views.utils import build_deck_mainboard_sections
 from core.views.utils import classify_card_type
+from core.views.utils import get_card_legality_badge
 from core.views.utils import get_cards_map
 from core.views.utils import get_dataset_min_date
 from core.views.utils import get_dataset_start_year
@@ -90,6 +91,7 @@ __all__ = [
     "format_overview",
     "get_activity_heatmap_date_range",
     "get_archetype_matrix_data",
+    "get_card_legality_badge",
     "get_cards_map",
     "get_dataset_min_date",
     "get_dataset_start_year",

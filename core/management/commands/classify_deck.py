@@ -87,14 +87,7 @@ class Command(BaseCommand):
             Card.objects.exclude(colors=[]).values_list("normalized_name", "colors")
         )
 
-        (
-            arch_name,
-            arch_slug,
-            colors_code,
-            color_name,
-            is_fallback,
-            debug,
-        ) = engine.classify(
+        result = engine.classify(
             mainboard, fmt, card_colors_map=card_colors, sideboard_cards=sideboard
         )
 
@@ -113,20 +106,31 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f"Format: {fmt.capitalize()} (Explicit)")
         self.stdout.write(f"Cards: {total_mb} mainboard, {total_sb} sideboard")
-        self.stdout.write(
-            self.style.SUCCESS(f"Archetype: {arch_name}")
-            if not is_fallback
-            else self.style.WARNING(f"Archetype (Fallback): {arch_name}")
-        )
-        self.stdout.write(f"Colors: {color_name} ({colors_code})")
+        if result.is_rule:
+            self.stdout.write(self.style.SUCCESS(f"Archetype: {result.archetype_name}"))
+        elif result.is_knn:
+            self.stdout.write(
+                self.style.SUCCESS(f"Archetype (kNN): {result.archetype_name}")
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(f"Archetype (Fallback): {result.archetype_name}")
+            )
+        self.stdout.write(f"Colors: {result.color_display_name} ({result.colors_code})")
         self.stdout.write("-" * 60)
 
-        if not is_fallback and debug.get("matched_rule"):
+        if result.is_rule and result.debug_info.get("matched_rule"):
             self.stdout.write(
-                f"Matched Rule: {debug['matched_rule']} (Score: {debug.get('score')})"
+                f"Matched Rule: {result.debug_info['matched_rule']} (Score: {result.debug_info.get('score')})"
             )
-        elif is_fallback:
-            self.stdout.write(f"Fallback Posture: {debug.get('fallback_posture')}")
+        elif result.is_knn and result.debug_info.get("matched_knn"):
+            self.stdout.write(
+                f"Matched via kNN Closeness: {result.debug_info['matched_knn']} (Similarity: {result.debug_info.get('similarity', 0) * 100:.1f}%)"
+            )
+        elif result.is_fallback:
+            self.stdout.write(
+                f"Fallback Posture: {result.debug_info.get('fallback_posture')}"
+            )
 
         # Legality status
         if is_legal:

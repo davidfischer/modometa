@@ -1,14 +1,17 @@
-"""Declarative YAML Archetype Classification Engine with Tactical Posture Fallback."""
+"""MTG Archetype Classification Engine using mtg-archetypes, TF-IDF kNN, and Tactical Posture Fallback."""
 
 import logging
-import re
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from typing import Iterable
 
-import yaml
 from django.conf import settings
+from mtg_archetypes import ArchetypeClassifier
+from mtg_archetypes import slugify_archetype
 
+from core.engine.knn import get_global_knn_index
 from core.models.card import expand_card_counts
 from core.models.card import normalize_card_name
 from core.rules.colors import deduce_deck_colors
@@ -89,189 +92,250 @@ AGGRO_CARDS = {
 }
 
 
-def slugify_archetype(name: str) -> str:
-    """Convert archetype name to clean URL slug."""
-    s = name.lower().strip()
-    s = re.sub(r"[/\\]", "-", s)
-    s = re.sub(r"[^\w\s-]", "", s)
-    s = re.sub(r"[\s_]+", "-", s)
-    s = re.sub(r"-+", "-", s).strip("-")
-    return s
+@dataclass(frozen=True)
+class KNNMatchResult:
+    """Result of kNN similarity search against rule-classified decks."""
+
+    archetype_name: str
+    archetype_slug: str
+    similarity: float
+    matched_deck_id: str
+
+    def __iter__(self):
+        yield self.archetype_name
+        yield self.archetype_slug
+        yield self.similarity
+        yield self.matched_deck_id
+
+    def __getitem__(self, index: int):
+        return (
+            self.archetype_name,
+            self.archetype_slug,
+            self.similarity,
+            self.matched_deck_id,
+        )[index]
+
+
+@dataclass(frozen=True)
+class FallbackPostureResult:
+    """Result of tactical posture heuristic fallback."""
+
+    posture: str
+    archetype_name: str
+    archetype_slug: str
+
+    def __iter__(self):
+        yield self.posture
+        yield self.archetype_name
+        yield self.archetype_slug
+
+    def __getitem__(self, index: int):
+        return (self.posture, self.archetype_name, self.archetype_slug)[index]
+
+
+class ClassificationType(StrEnum):
+    """Method by which a deck archetype was classified."""
+
+    RULE = "rule"
+    KNN = "knn"
+    FALLBACK = "fallback"
+
+
+@dataclass(frozen=True)
+class ClassificationResult:
+    """Result of full archetype classification pipeline."""
+
+    archetype_name: str | None
+    archetype_slug: str | None
+    colors_code: str
+    color_display_name: str
+    classification_type: ClassificationType | str | None
+    debug_info: dict[str, Any]
+
+    @property
+    def is_rule(self) -> bool:
+        """True if deck was matched by an explicit rule."""
+        return self.classification_type == ClassificationType.RULE
+
+    @property
+    def is_knn(self) -> bool:
+        """True if deck was matched via TF-IDF kNN similarity."""
+        return self.classification_type == ClassificationType.KNN
+
+    @property
+    def is_fallback(self) -> bool:
+        """Backwards compatibility property: True if deck was assigned tactical posture or unclassified."""
+        return self.classification_type not in (
+            ClassificationType.RULE,
+            ClassificationType.KNN,
+        )
+
+    @property
+    def classification_method(self) -> str | None:
+        """Convenience property for classification method string."""
+        if self.classification_type is not None:
+            return str(self.classification_type)
+        return self.debug_info.get("classification_method")
+
+    @property
+    def name(self) -> str | None:
+        """Alias for archetype_name."""
+        return self.archetype_name
+
+    @property
+    def slug(self) -> str | None:
+        """Alias for archetype_slug."""
+        return self.archetype_slug
+
+    @property
+    def colors(self) -> str:
+        """Alias for colors_code."""
+        return self.colors_code
+
+    @property
+    def color_name(self) -> str:
+        """Alias for color_display_name."""
+        return self.color_display_name
+
+    def __iter__(self):
+        yield self.archetype_name
+        yield self.archetype_slug
+        yield self.colors_code
+        yield self.color_display_name
+        yield self.classification_type
+        yield self.debug_info
+
+    def __getitem__(self, index: int):
+        return (
+            self.archetype_name,
+            self.archetype_slug,
+            self.colors_code,
+            self.color_display_name,
+            self.classification_type,
+            self.debug_info,
+        )[index]
 
 
 class ArchetypeEngine:
-    """Evaluates decks against YAML archetype signatures with deterministic priority."""
+    """Evaluates decks against mtg-archetypes rules, TF-IDF kNN closeness, and tactical posture fallback."""
 
-    def __init__(self, archetypes_dir: Path | None = None):
-        self.archetypes_dir = archetypes_dir or settings.ARCHETYPES_DIR
-        self._rules_by_format: dict[str, list[dict[str, Any]]] = {}
-        self.load_all_rules()
+    def __init__(
+        self,
+        archetypes_dir: Path | None = None,
+        enable_knn: bool = True,
+        knn_threshold: float = 0.85,
+        enable_posture: bool = True,
+    ):
+        if archetypes_dir is None and getattr(settings, "configured", False):
+            archetypes_dir = getattr(settings, "ARCHETYPES_DIR", None)
+        self.classifier = ArchetypeClassifier(rules_dir=archetypes_dir)
+        self.archetypes_dir = getattr(self.classifier, "rules_dir", archetypes_dir)
+        self.enable_knn = enable_knn
+        self.knn_threshold = knn_threshold
+        self.enable_posture = enable_posture
+        self._known_archetypes: dict[str, set[str]] = {}
 
     def load_all_rules(self) -> None:
-        """Load and normalize YAML rules for each format."""
-        if not self.archetypes_dir.exists():
-            logger.warning(
-                "Archetypes directory %s does not exist", self.archetypes_dir
-            )
-            return
+        """Reload all rules from classifier."""
+        self.classifier.load_all_rules()
+        self._known_archetypes.clear()
 
-        for yaml_file in self.archetypes_dir.glob("*.yaml"):
-            fmt = yaml_file.stem.lower()
-            try:
-                with open(yaml_file, "r", encoding="utf-8") as fp:
-                    raw_rules = yaml.safe_load(fp) or []
-            except Exception as e:
-                logger.error("Error reading %s: %s", yaml_file, e)
-                continue
-
-            parsed_rules = []
-            for r in raw_rules:
-                mandatory = {}
-                for item in r.get("mandatory", []):
-                    if isinstance(item, dict):
-                        c_name = item.get("card") or item.get("name") or ""
-                        try:
-                            min_cnt = int(item.get("min", item.get("count", 1)))
-                        except ValueError, TypeError:
-                            min_cnt = 1
-                    else:
-                        c_name = str(item)
-                        min_cnt = 1
-                    norm = normalize_card_name(c_name)
-                    if norm:
-                        mandatory[norm] = min_cnt
-
-                signatures = set()
-                for c in r.get("signatures", []):
-                    if c:
-                        norm = normalize_card_name(c)
-                        signatures.add(norm)
-                        if " // " in norm:
-                            signatures.add(norm.split(" // ")[0].strip())
-
-                anti_signatures = set()
-                for c in r.get("anti_signatures", []):
-                    if c:
-                        norm = normalize_card_name(c)
-                        anti_signatures.add(norm)
-                        if " // " in norm:
-                            anti_signatures.add(norm.split(" // ")[0].strip())
-                min_sig = r.get("min_signatures", max(1, min(2, len(signatures))))
-                priority = r.get("priority", 50)
-                category = r.get("category", "Midrange")
-
-                parsed_rules.append(
-                    {
-                        "name": r["name"],
-                        "slug": slugify_archetype(r["name"]),
-                        "category": category,
-                        "priority": priority,
-                        "mandatory": mandatory,
-                        "signatures": signatures,
-                        "min_signatures": min_sig,
-                        "anti_signatures": anti_signatures,
-                        "colors": r.get("colors"),
-                    }
-                )
-
-            # Sort by priority descending
-            parsed_rules.sort(key=lambda x: x["priority"], reverse=True)
-            self._rules_by_format[fmt] = parsed_rules
-            logger.info("Loaded %d archetype rules for %s", len(parsed_rules), fmt)
+    def get_known_archetypes(self, format_name: str) -> set[str]:
+        """Return the set of known explicit archetype display names for a format."""
+        fmt = format_name.lower().strip()
+        if fmt not in self._known_archetypes:
+            rules = self.classifier.get_rules(fmt)
+            self._known_archetypes[fmt] = {r.name for r in rules}
+        return self._known_archetypes[fmt]
 
     def get_rules(self, format_name: str) -> list[dict[str, Any]]:
-        """Return parsed rules for the given format."""
-        return self._rules_by_format.get(format_name.lower().strip(), [])
+        """Return parsed rules for the given format as dictionaries."""
+        rules = self.classifier.get_rules(format_name)
+        return [
+            {
+                "name": r.name,
+                "slug": r.slug,
+                "priority": r.priority,
+                "category": r.category,
+            }
+            for r in rules
+        ]
 
-    def classify(
+    def _find_knn_match(
         self,
         mainboard_cards: Iterable[Any],
+        sideboard_cards: Iterable[Any] | None,
         format_name: str,
-        card_colors_map: dict[str, list[str]] | None = None,
-        sideboard_cards: Iterable[Any] | None = None,
-    ) -> tuple[str, str, str, str, bool, dict[str, Any]]:
-        """Classify deck cards into archetype and color combination.
+        knn_index: Any | None = None,
+    ) -> KNNMatchResult | None:
+        """Find the closest classified deck in the same format using TF-IDF index."""
+        if knn_index is None:
+            knn_index = get_global_knn_index()
+        if knn_index is None or knn_index.tfidf_matrix is None:
+            return None
 
-        Args:
-            mainboard_cards: Iterable of mainboard cards (card names or dicts with card and count).
-            format_name: Format to classify against.
-            card_colors_map: Optional precomputed card -> colors mapping.
-            sideboard_cards: Optional iterable of sideboard cards (e.g. companions).
+        # Format input cards as expected by vector_from_decklist
+        mb_items = [
+            {
+                "card": item.get("card", "") if isinstance(item, dict) else str(item),
+                "count": int(item.get("count", 1)) if isinstance(item, dict) else 1,
+            }
+            for item in mainboard_cards
+        ]
+        sb_items = [
+            {
+                "card": item.get("card", "") if isinstance(item, dict) else str(item),
+                "count": int(item.get("count", 1)) if isinstance(item, dict) else 1,
+            }
+            for item in (sideboard_cards or [])
+        ]
 
-        Returns:
-            (archetype_name, archetype_slug, colors_code, color_display_name, is_fallback, debug_info)
-        """
-        fmt = format_name.lower().strip()
-        mb_counts = expand_card_counts(mainboard_cards)
-        sb_counts = expand_card_counts(sideboard_cards or [])
-        total_counts = mb_counts + sb_counts
-
-        norm_mainboard = set(mb_counts.keys())
-        norm_cards = set(total_counts.keys())
-
-        # Step 1: Deduce colors (based on mainboard mana base & spells)
-        colors_code, color_display_name = deduce_deck_colors(
-            norm_mainboard, card_colors_map
+        query_vec = knn_index.vector_from_decklist(mb_items, sb_items)
+        known_archetypes = self.get_known_archetypes(format_name)
+        match = knn_index.find_closest_classified(
+            query_vec=query_vec,
+            format_filter=format_name,
+            known_archetypes=known_archetypes,
+            min_similarity=self.knn_threshold,
+            only_rule_classified=True,
+        )
+        if match is None:
+            return None
+        return KNNMatchResult(
+            archetype_name=match[0],
+            archetype_slug=match[1],
+            similarity=match[2],
+            matched_deck_id=match[3],
         )
 
-        # Step 2: Try explicit YAML rules
-        rules = self._rules_by_format.get(fmt, [])
-        best_match = None
-        best_score = -1
-        debug_matches = []
+    def find_knn_match(
+        self,
+        mainboard_cards: Iterable[Any],
+        sideboard_cards: Iterable[Any] | None,
+        format_name: str,
+        knn_index: Any | None = None,
+    ) -> KNNMatchResult | None:
+        """Public method to find the closest classified deck in the same format using TF-IDF index."""
+        return self._find_knn_match(
+            mainboard_cards,
+            sideboard_cards,
+            format_name,
+            knn_index=knn_index,
+        )
 
-        for rule in rules:
-            # Check mandatory cards: each must meet minimum quantity
-            if rule["mandatory"]:
-                if any(
-                    max(
-                        total_counts.get(req_card, 0),
-                        total_counts.get(req_card.split(" // ")[0].strip(), 0)
-                        if " // " in req_card
-                        else 0,
-                    )
-                    < min_cnt
-                    for req_card, min_cnt in rule["mandatory"].items()
-                ):
-                    continue
+    def _get_fallback_posture(
+        self,
+        cards: Iterable[Any],
+        color_display_name: str,
+    ) -> FallbackPostureResult:
+        """Determine tactical posture (Aggro, Control, Combo, Tempo, Midrange) from cards."""
+        if isinstance(cards, (set, frozenset)):
+            norm_cards = cards
+        elif isinstance(cards, dict):
+            norm_cards = set(cards.keys())
+        else:
+            norm_cards = set(expand_card_counts(cards).keys())
 
-            # Check anti_signatures: NONE may be present
-            if rule["anti_signatures"] and any(
-                c in norm_cards for c in rule["anti_signatures"]
-            ):
-                continue
-
-            # Check signatures
-            sig_hits = [c for c in rule["signatures"] if c in norm_cards]
-            if len(sig_hits) >= rule["min_signatures"]:
-                score = rule["priority"] * 10 + len(sig_hits)
-                debug_matches.append(
-                    {
-                        "rule": rule["name"],
-                        "hits": len(sig_hits),
-                        "score": score,
-                    }
-                )
-                if score > best_score:
-                    best_score = score
-                    best_match = rule
-
-        if best_match:
-            debug_info = {
-                "matched_rule": best_match["name"],
-                "score": best_score,
-                "all_matches": debug_matches,
-            }
-            return (
-                best_match["name"],
-                best_match["slug"],
-                colors_code,
-                color_display_name,
-                False,
-                debug_info,
-            )
-
-        # Step 3: Heuristic Posture + Color Fallback
         has_fast_mana = sum(1 for c in FAST_MANA_CARDS if c in norm_cards) >= 2
         has_tempo = sum(1 for c in TEMPO_CARDS if c in norm_cards) >= 2
         has_control = sum(1 for c in CONTROL_CARDS if c in norm_cards) >= 2
@@ -291,17 +355,120 @@ class ArchetypeEngine:
         fallback_name = f"{color_display_name} {posture}"
         fallback_slug = slugify_archetype(fallback_name)
 
+        return FallbackPostureResult(
+            posture=posture,
+            archetype_name=fallback_name,
+            archetype_slug=fallback_slug,
+        )
+
+    def get_fallback_posture(
+        self,
+        cards: Iterable[Any],
+        color_display_name: str,
+    ) -> FallbackPostureResult:
+        """Public method to determine tactical posture fallback."""
+        return self._get_fallback_posture(cards, color_display_name)
+
+    def classify(
+        self,
+        mainboard_cards: Iterable[Any],
+        format_name: str,
+        card_colors_map: dict[str, list[str]] | None = None,
+        sideboard_cards: Iterable[Any] | None = None,
+        knn_index: Any | None = None,
+    ) -> ClassificationResult:
+        """Classify deck cards into archetype and color combination.
+
+        Three-stage classification pipeline:
+        1. Stage 1: Explicit rules from mtg-archetypes
+        2. Stage 2: TF-IDF kNN closeness to a rule-classified deck (similarity >= knn_threshold)
+        3. Stage 3: Heuristic Tactical Posture + Color fallback
+
+        Returns:
+            ClassificationResult containing archetype, colors, fallback flag, and debug info.
+        """
+        fmt = format_name.lower().strip()
+        mb_counts = expand_card_counts(mainboard_cards)
+        sb_counts = expand_card_counts(sideboard_cards or [])
+        total_counts = mb_counts + sb_counts
+
+        norm_mainboard = set(mb_counts.keys())
+
+        # Step 1: Deduce colors (based on mainboard mana base & spells)
+        colors_code, color_display_name = deduce_deck_colors(
+            norm_mainboard, card_colors_map
+        )
+
+        # Step 2: Try explicit rules via mtg-archetypes
+        clf_result = self.classifier.classify(
+            mainboard_cards, sideboard_cards, format=fmt
+        )
+        if clf_result.matched and clf_result.name:
+            debug_info = {
+                "matched_rule": clf_result.matched_rule,
+                "score": clf_result.priority * 10,
+                "category": clf_result.category,
+                "classification_method": "rule",
+            }
+            return ClassificationResult(
+                archetype_name=clf_result.name,
+                archetype_slug=clf_result.slug or slugify_archetype(clf_result.name),
+                colors_code=colors_code,
+                color_display_name=color_display_name,
+                classification_type=ClassificationType.RULE,
+                debug_info=debug_info,
+            )
+
+        # Step 3: TF-IDF kNN Closeness Fallback (only against rule-classified decks in same format)
+        if self.enable_knn:
+            knn_match = self._find_knn_match(
+                mainboard_cards, sideboard_cards, fmt, knn_index=knn_index
+            )
+            if knn_match:
+                debug_info = {
+                    "matched_rule": None,
+                    "matched_knn": knn_match.archetype_name,
+                    "similarity": knn_match.similarity,
+                    "matched_deck_id": knn_match.matched_deck_id,
+                    "classification_method": "knn",
+                }
+                return ClassificationResult(
+                    archetype_name=knn_match.archetype_name,
+                    archetype_slug=knn_match.archetype_slug,
+                    colors_code=colors_code,
+                    color_display_name=color_display_name,
+                    classification_type=ClassificationType.KNN,
+                    debug_info=debug_info,
+                )
+
+        # Step 4: Heuristic Posture + Color Fallback
+        if self.enable_posture:
+            fallback = self._get_fallback_posture(total_counts, color_display_name)
+            debug_info = {
+                "matched_rule": None,
+                "fallback_posture": fallback.posture,
+                "fallback_name": fallback.archetype_name,
+                "classification_method": "fallback",
+            }
+            return ClassificationResult(
+                archetype_name=fallback.archetype_name,
+                archetype_slug=fallback.archetype_slug,
+                colors_code=colors_code,
+                color_display_name=color_display_name,
+                classification_type=ClassificationType.FALLBACK,
+                debug_info=debug_info,
+            )
+
+        # Unclassified fallback when posture is disabled
         debug_info = {
             "matched_rule": None,
-            "fallback_posture": posture,
-            "fallback_name": fallback_name,
+            "classification_method": None,
         }
-
-        return (
-            fallback_name,
-            fallback_slug,
-            colors_code,
-            color_display_name,
-            True,
-            debug_info,
+        return ClassificationResult(
+            archetype_name=None,
+            archetype_slug=None,
+            colors_code=colors_code,
+            color_display_name=color_display_name,
+            classification_type=None,
+            debug_info=debug_info,
         )

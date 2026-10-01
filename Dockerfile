@@ -46,7 +46,6 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application source code
-COPY archetypes/ ./archetypes/
 COPY config/ ./config/
 COPY core/ ./core/
 COPY docker-entrypoint.sh ./

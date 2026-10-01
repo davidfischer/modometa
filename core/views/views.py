@@ -35,6 +35,7 @@ from core.views.charts import build_tournament_list_archetype_chart
 from core.views.charts import get_archetype_matrix_data
 from core.views.charts import tournament_deck_sort_key
 from core.views.utils import build_deck_mainboard_sections
+from core.views.utils import get_card_legality_badge
 from core.views.utils import get_cards_map
 from core.views.utils import get_dataset_start_year
 from core.views.utils import get_format_card_stats
@@ -614,6 +615,7 @@ def deck_detail(request, player, event, deck_index=1):
     for item in deck.mainboard:
         card = cards_map.get(item["card"])
         slug = card.slug if card and card.slug else generate_card_slug(item["card"])
+        badge = get_card_legality_badge(item["card"], card, deck.format, illegal_set)
         annotated_mainboard.append(
             {
                 "card": item["card"],
@@ -629,7 +631,8 @@ def deck_detail(request, player, event, deck_index=1):
                 "gatherer_url": card.gatherer_url
                 if card
                 else get_gatherer_url(name=item["card"]),
-                "is_banned": item["card"] in illegal_set,
+                "is_banned": badge is not None,
+                "legality_badge": badge,
             }
         )
 
@@ -637,6 +640,7 @@ def deck_detail(request, player, event, deck_index=1):
     for item in deck.sideboard:
         card = cards_map.get(item["card"])
         slug = card.slug if card and card.slug else generate_card_slug(item["card"])
+        badge = get_card_legality_badge(item["card"], card, deck.format, illegal_set)
         annotated_sideboard.append(
             {
                 "card": item["card"],
@@ -652,7 +656,8 @@ def deck_detail(request, player, event, deck_index=1):
                 "gatherer_url": card.gatherer_url
                 if card
                 else get_gatherer_url(name=item["card"]),
-                "is_banned": item["card"] in illegal_set,
+                "is_banned": badge is not None,
+                "legality_badge": badge,
             }
         )
     annotated_sideboard.sort(key=lambda x: (x.get("cmc", 0.0), x.get("card", "")))

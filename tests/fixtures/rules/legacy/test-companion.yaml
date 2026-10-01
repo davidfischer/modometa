@@ -1,0 +1,10 @@
+name: Test Companion
+category: Control
+priority: 50
+mandatory:
+  - card: Yorion, Sky Nomad
+    min: 1
+    in: sideboard
+signatures:
+  - Plains
+min_signatures: 1

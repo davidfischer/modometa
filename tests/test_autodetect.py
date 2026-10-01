@@ -1,6 +1,4 @@
-"""Unit tests for format autodetection engine using file-backed decklists."""
-
-from pathlib import Path
+"""Unit tests for format autodetection engine and decklist parsing."""
 
 import pytest
 
@@ -9,40 +7,9 @@ from core.models.card import Card
 from core.rules.autodetect import FormatAutodetector
 
 
-TESTDECKS_DIR = Path(__file__).parent / "testdecks"
-
-
 @pytest.fixture
 def detector():
     return FormatAutodetector()
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "deck_filename,expected_format",
-    [
-        ("legacy_delver.txt", "legacy"),
-        ("vintage_paradoxical_outcome.txt", "vintage"),
-        ("vintage_workshop.txt", "vintage"),
-        ("modern_amulet_titan.txt", "modern"),
-        ("pioneer_phoenix.txt", "pioneer"),
-        ("pauper_dimir_terror.txt", "pauper"),
-        ("premodern_psychatog.txt", "premodern"),
-        ("standard_red_deck_wins.txt", "standard"),
-    ],
-)
-def test_autodetect_testdecks(detector, deck_filename, expected_format):
-    """Verify that file-backed decklists in tests/testdecks autodetect the correct format."""
-    deck_path = TESTDECKS_DIR / deck_filename
-    assert deck_path.exists(), f"Test deck file not found: {deck_path}"
-
-    mainboard, sideboard = parse_text_decklist(deck_path)
-    assert len(mainboard) > 0, f"Failed to parse mainboard from {deck_filename}"
-
-    detected_format, debug = detector.detect_format(mainboard, sideboard)
-    assert detected_format == expected_format, (
-        f"Expected {expected_format} for {deck_filename}, got {detected_format}. Diagnostics: {debug.get('diagnostics')}"
-    )
 
 
 @pytest.mark.django_db

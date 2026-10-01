@@ -11,6 +11,8 @@ from django.db.utils import IntegrityError
 
 from core.formats import Format
 from core.formats import is_valid_format
+from core.models.card import Card
+from core.models.card import CardLookup
 from core.models.deck import Deck
 from core.models.tournament import Tournament
 from core.pipeline.ingest import deduce_format_and_type
@@ -109,11 +111,13 @@ def test_ingest_tournaments_command_rejects_unsupported_format():
 
 
 @pytest.mark.django_db
-def test_classify_deck_command_rejects_unsupported_format():
+def test_classify_deck_command_rejects_unsupported_format(tmp_path):
+    deck_file = tmp_path / "deck.txt"
+    deck_file.write_text("4 Lightning Bolt\n")
     err = StringIO()
     call_command(
         "classify_deck",
-        file="tests/testdecks/legacy_delver.txt",
+        file=str(deck_file),
         format="commander",
         stderr=err,
     )
@@ -128,9 +132,6 @@ def test_discover_archetypes_command_rejects_unsupported_format():
 
 @pytest.mark.django_db
 def test_discover_archetypes_errors_on_empty_card_database():
-    from core.models.card import Card
-    from core.models.card import CardLookup
-
     CardLookup.objects.all().delete()
     Card.objects.all().delete()
     with pytest.raises(CommandError, match="No cards found in database"):
@@ -138,59 +139,8 @@ def test_discover_archetypes_errors_on_empty_card_database():
 
 
 @pytest.mark.django_db
-def test_discover_archetypes_errors_on_unrecognized_yaml_card(monkeypatch, tmp_path):
-    import yaml
-    from django.conf import settings
-
-    from core.models.card import Card
-
+def test_discover_archetypes_errors_on_unrecognized_deck_card():
     Card.objects.create(name="Force of Will", normalized_name="force of will")
-    Card.objects.create(name="Brainstorm", normalized_name="brainstorm")
-
-    # Create dummy yaml with unrecognized card
-    yaml_dir = tmp_path / "archetypes"
-    yaml_dir.mkdir()
-    yaml_file = yaml_dir / "legacy.yaml"
-    rules = [
-        {
-            "name": "Izzet Delver",
-            "signatures": ["force of will", "invalid doodle card"],
-        }
-    ]
-    with open(yaml_file, "w") as fp:
-        yaml.safe_dump(rules, fp)
-
-    monkeypatch.setattr(settings, "ARCHETYPES_DIR", yaml_dir)
-
-    with pytest.raises(CommandError, match="Unrecognized card 'invalid doodle card'"):
-        call_command("discover_archetypes", format="legacy")
-
-
-@pytest.mark.django_db
-def test_discover_archetypes_errors_on_unrecognized_deck_card(monkeypatch, tmp_path):
-    import yaml
-    from django.conf import settings
-
-    from core.models.card import Card
-    from core.models.deck import Deck
-    from core.models.tournament import Tournament
-
-    Card.objects.create(name="Force of Will", normalized_name="force of will")
-
-    # Valid yaml
-    yaml_dir = tmp_path / "archetypes"
-    yaml_dir.mkdir()
-    yaml_file = yaml_dir / "legacy.yaml"
-    rules = [
-        {
-            "name": "Delver",
-            "signatures": ["force of will"],
-        }
-    ]
-    with open(yaml_file, "w") as fp:
-        yaml.safe_dump(rules, fp)
-
-    monkeypatch.setattr(settings, "ARCHETYPES_DIR", yaml_dir)
 
     t = Tournament.objects.create(
         id="tourn-test-1",
@@ -216,16 +166,7 @@ def test_discover_archetypes_errors_on_unrecognized_deck_card(monkeypatch, tmp_p
 
 
 @pytest.mark.django_db
-def test_discover_archetypes_sorted_by_cluster_size(monkeypatch, tmp_path):
-    from io import StringIO
-
-    import yaml
-    from django.conf import settings
-
-    from core.models.card import Card
-    from core.models.deck import Deck
-    from core.models.tournament import Tournament
-
+def test_discover_archetypes_sorted_by_cluster_size():
     cards = [
         "Brainstorm",
         "Force of Will",
@@ -236,14 +177,6 @@ def test_discover_archetypes_sorted_by_cluster_size(monkeypatch, tmp_path):
     ]
     for c in cards:
         Card.objects.create(name=c, normalized_name=c.lower())
-
-    yaml_dir = tmp_path / "archetypes"
-    yaml_dir.mkdir()
-    yaml_file = yaml_dir / "legacy.yaml"
-    with open(yaml_file, "w") as fp:
-        yaml.safe_dump([], fp)
-
-    monkeypatch.setattr(settings, "ARCHETYPES_DIR", yaml_dir)
 
     t = Tournament.objects.create(
         id="tourn-sort-test",

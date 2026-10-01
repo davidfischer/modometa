@@ -1860,6 +1860,40 @@ def test_deck_detail_banned_card_badge(client):
 
 
 @pytest.mark.django_db
+def test_deck_detail_restricted_badge(client):
+    Card.objects.create(
+        id="test-card-fantasticar",
+        oracle_id="test-oracle-fantasticar",
+        name="The Fantasticar",
+        normalized_name="the fantasticar",
+        slug="the-fantasticar",
+        legalities={"vintage": "restricted", "legacy": "banned"},
+    )
+    t = Tournament.objects.create(
+        id="tourn_restricted_badge",
+        name="Vintage Event",
+        format="vintage",
+        date=date.today(),
+    )
+    deck = Deck.objects.create(
+        id="deck_restricted_badge",
+        tournament=t,
+        format="vintage",
+        player="Capitano_CL",
+        player_lower="capitano_cl",
+        illegal_cards=["The Fantasticar"],
+        mainboard=[{"card": "The Fantasticar", "count": 4}],
+        sideboard=[],
+    )
+    response = client.get(f"/player/{deck.player}/deck/{deck.tournament_id}/1/")
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Restricted" in content
+    assert "Banned" not in content
+    assert "bg-amber-950/40" in content
+
+
+@pytest.mark.django_db
 def test_deck_detail_similar_decks_mana_symbols(client):
     t = Tournament.objects.create(
         id="tourn_similar_mana",
@@ -2663,7 +2697,7 @@ def test_format_overview_unsupported_format_notification(client):
     assert resp_supported.status_code == 200
     assert resp_supported.context["is_supported_format"] is True
     assert (
-        "https://github.com/davidfischer/modometa/tree/main/archetypes"
+        "https://github.com/davidfischer/mtg-archetypes"
         not in resp_supported.content.decode()
     )
 
@@ -2672,7 +2706,7 @@ def test_format_overview_unsupported_format_notification(client):
     assert resp_unsupported.status_code == 200
     assert resp_unsupported.context["is_supported_format"] is False
     content = resp_unsupported.content.decode()
-    assert "https://github.com/davidfischer/modometa/tree/main/archetypes" in content
+    assert "https://github.com/davidfischer/mtg-archetypes" in content
     assert "Work in progress:" in content
     assert "Archetypes for Standard are a work in progress" in content
 
@@ -2682,7 +2716,7 @@ def test_format_overview_unsupported_format_notification(client):
         assert resp_overridden.status_code == 200
         assert resp_overridden.context["is_supported_format"] is True
         assert (
-            "https://github.com/davidfischer/modometa/tree/main/archetypes"
+            "https://github.com/davidfischer/mtg-archetypes"
             not in resp_overridden.content.decode()
         )
 

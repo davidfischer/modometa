@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 from django.conf import settings
+from mtg_archetypes import slugify_archetype
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfTransformer
 
@@ -40,11 +41,13 @@ class DeckKNNIndex:
         self.deck_formats: list[str] | np.ndarray = []
         self.deck_colors: list[str] | np.ndarray = []
         self.deck_color_names: list[str] | np.ndarray = []
+        self.deck_classification_methods: list[str] | np.ndarray = []
 
         self.vocab: dict[str, int] = {}
         self.inv_vocab: list[str] | np.ndarray = []
         self.tfidf_matrix: csr_matrix | None = None
         self.transformer: TfidfTransformer | None = None
+        self._format_submatrices: dict[str, tuple[csr_matrix, np.ndarray]] = {}
 
         if not lazy:
             self._build_index()
@@ -61,6 +64,8 @@ class DeckKNNIndex:
                 "format",
                 "player",
                 "archetype",
+                "classification_method",
+                "is_auto_classified",
                 "colors",
                 "color_name",
                 "tournament__date",
@@ -82,6 +87,10 @@ class DeckKNNIndex:
             self.deck_archetypes.append(d["archetype"])
             self.deck_colors.append(d.get("colors", "") or "")
             self.deck_color_names.append(d.get("color_name", "") or "")
+            method = d.get("classification_method") or (
+                "fallback" if d.get("is_auto_classified") else ""
+            )
+            self.deck_classification_methods.append(method)
             self.deck_dates.append(d["tournament__date"])
 
             # Count cards: mainboard 1.0, sideboard 0.5
@@ -124,6 +133,7 @@ class DeckKNNIndex:
         self.deck_archetypes = np.array(self.deck_archetypes)
         self.deck_colors = np.array(self.deck_colors)
         self.deck_color_names = np.array(self.deck_color_names)
+        self.deck_classification_methods = np.array(self.deck_classification_methods)
         self.deck_dates = np.array(self.deck_dates)
         self._deck_dates_d = self._compute_dates_d(self.deck_dates)
 
@@ -157,6 +167,10 @@ class DeckKNNIndex:
             self.deck_color_names = np.array(self.deck_color_names)
         if not isinstance(self.deck_dates, np.ndarray):
             self.deck_dates = np.array(self.deck_dates)
+        if not isinstance(self.deck_classification_methods, np.ndarray):
+            self.deck_classification_methods = np.array(
+                self.deck_classification_methods
+            )
 
     def _get_dates_d(self) -> np.ndarray:
         if getattr(self, "_deck_dates_d", None) is None:
@@ -183,6 +197,7 @@ class DeckKNNIndex:
             deck_archetypes=np.array(self.deck_archetypes),
             deck_colors=np.array(self.deck_colors),
             deck_color_names=np.array(self.deck_color_names),
+            deck_classification_methods=np.array(self.deck_classification_methods),
             deck_dates=np.array(
                 [
                     d.isoformat() if hasattr(d, "isoformat") else str(d)
@@ -220,6 +235,11 @@ class DeckKNNIndex:
                 f["deck_color_names"]
                 if "deck_color_names" in f
                 else np.array([""] * len(instance.deck_ids))
+            )
+            instance.deck_classification_methods = (
+                f["deck_classification_methods"]
+                if "deck_classification_methods" in f
+                else np.array(["rule"] * len(instance.deck_ids))
             )
             instance.deck_dates = f["deck_dates"]
             instance._deck_dates_d = instance._compute_dates_d(instance.deck_dates)
@@ -346,6 +366,86 @@ class DeckKNNIndex:
 
         return results
 
+    def _get_format_submatrix(self, format_name: str) -> tuple[csr_matrix, np.ndarray]:
+        """Get or lazily cache the format-sliced TF-IDF submatrix and original indices."""
+        if not hasattr(self, "_format_submatrices"):
+            self._format_submatrices = {}
+        if format_name not in self._format_submatrices:
+            self._ensure_arrays()
+            mask = self.deck_formats == format_name
+            indices = np.where(mask)[0]
+            if len(indices) == 0:
+                submatrix = csr_matrix(
+                    (0, self.tfidf_matrix.shape[1]), dtype=np.float32
+                )
+            else:
+                submatrix = self.tfidf_matrix[indices]
+            self._format_submatrices[format_name] = (submatrix, indices)
+        return self._format_submatrices[format_name]
+
+    def find_closest_classified(
+        self,
+        query_vec: csr_matrix,
+        format_filter: str,
+        known_archetypes: set[str] | None = None,
+        min_similarity: float = 0.85,
+        only_rule_classified: bool = True,
+    ) -> tuple[str, str, float, str] | None:
+        """Find the closest classified deck in the same format with raw cosine similarity >= min_similarity.
+
+        Returns:
+            (archetype_name, archetype_slug, similarity, deck_id) or None.
+        """
+        if self.tfidf_matrix is None or self.tfidf_matrix.shape[0] == 0:
+            return None
+
+        self._ensure_arrays()
+        submatrix, orig_indices = self._get_format_submatrix(format_filter)
+        if submatrix.shape[0] == 0:
+            return None
+
+        # Cosine similarity against format submatrix
+        similarities = (submatrix @ query_vec.T).toarray().ravel()
+        cand_mask = similarities >= min_similarity
+        cand_local_indices = np.where(cand_mask)[0]
+        if len(cand_local_indices) == 0:
+            return None
+
+        cand_orig_indices = orig_indices[cand_local_indices]
+        cand_sims = similarities[cand_local_indices]
+
+        # Filter candidates to only classified decks
+        if known_archetypes is not None:
+            classified_mask = np.fromiter(
+                (
+                    self.deck_archetypes[i] in known_archetypes
+                    for i in cand_orig_indices
+                ),
+                dtype=bool,
+                count=len(cand_orig_indices),
+            )
+            cand_orig_indices = cand_orig_indices[classified_mask]
+            cand_sims = cand_sims[classified_mask]
+            if len(cand_orig_indices) == 0:
+                return None
+
+        # Filter candidates to only rule-classified decks
+        if only_rule_classified and len(self.deck_classification_methods) > 0:
+            cand_methods = self.deck_classification_methods[cand_orig_indices]
+            rule_mask = cand_methods == "rule"
+            cand_orig_indices = cand_orig_indices[rule_mask]
+            cand_sims = cand_sims[rule_mask]
+            if len(cand_orig_indices) == 0:
+                return None
+
+        best_idx = np.argmax(cand_sims)
+        best_sim = float(cand_sims[best_idx])
+        best_orig_idx = cand_orig_indices[best_idx]
+        best_arch = str(self.deck_archetypes[best_orig_idx])
+        best_id = str(self.deck_ids[best_orig_idx])
+
+        return best_arch, slugify_archetype(best_arch), best_sim, best_id
+
 
 def build_knn_index(
     dest_path: Path | str | None = None,
@@ -373,7 +473,19 @@ def build_knn_index(
         .all()
         .order_by("tournament__date", "id")
     )
-    deck_ids, deck_formats, deck_players, deck_archetypes, deck_dates = (
+    (
+        deck_ids,
+        deck_formats,
+        deck_players,
+        deck_archetypes,
+        deck_colors,
+        deck_color_names,
+        deck_classification_methods,
+        deck_dates,
+    ) = (
+        [],
+        [],
+        [],
         [],
         [],
         [],
@@ -389,6 +501,10 @@ def build_knn_index(
             "format",
             "player",
             "archetype",
+            "colors",
+            "color_name",
+            "classification_method",
+            "is_auto_classified",
             "tournament__date",
             "mainboard",
             "sideboard",
@@ -398,6 +514,12 @@ def build_knn_index(
         deck_formats.append(d["format"])
         deck_players.append(d["player"])
         deck_archetypes.append(d["archetype"])
+        deck_colors.append(d.get("colors", "") or "")
+        deck_color_names.append(d.get("color_name", "") or "")
+        method = d.get("classification_method") or (
+            "fallback" if d.get("is_auto_classified") else ""
+        )
+        deck_classification_methods.append(method)
         d_date = d["tournament__date"]
         deck_dates.append(
             d_date.isoformat() if hasattr(d_date, "isoformat") else str(d_date)
@@ -460,6 +582,9 @@ def build_knn_index(
         deck_formats=np.array(deck_formats),
         deck_players=np.array(deck_players),
         deck_archetypes=np.array(deck_archetypes),
+        deck_colors=np.array(deck_colors),
+        deck_color_names=np.array(deck_color_names),
+        deck_classification_methods=np.array(deck_classification_methods),
         deck_dates=np.array(deck_dates),
         vocab=np.array(inv_vocab),
     )

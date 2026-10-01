@@ -457,14 +457,7 @@ class IngestionPipeline:
                     sideboard = _consolidate_deck_entries(sideboard_raw)
 
                     # Classify Archetype and Colors
-                    (
-                        arch_name,
-                        arch_slug,
-                        colors_code,
-                        color_name,
-                        is_fallback,
-                        _,
-                    ) = self.archetype_engine.classify(
+                    clf_result = self.archetype_engine.classify(
                         mainboard,
                         fmt_slug,
                         card_colors_map=self._card_colors,
@@ -511,11 +504,12 @@ class IngestionPipeline:
                             draws=draws,
                             points=points,
                             omwp=omwp,
-                            archetype=arch_name,
-                            archetype_slug=arch_slug,
-                            is_auto_classified=is_fallback,
-                            colors=colors_code,
-                            color_name=color_name,
+                            archetype=clf_result.archetype_name,
+                            archetype_slug=clf_result.archetype_slug,
+                            is_auto_classified=clf_result.is_fallback,
+                            classification_method=clf_result.classification_type,
+                            colors=clf_result.colors_code,
+                            color_name=clf_result.color_display_name,
                             mainboard=mainboard,
                             sideboard=sideboard,
                             anchor_uri=anchor_uri,

@@ -165,18 +165,13 @@ class FormatAutodetector:
                 score += FORMAT_SPECIFICITY.get(fmt, 0)
 
             # Test Archetype engine match
-            (
-                arch_name,
-                arch_slug,
-                _,
-                _,
-                is_fallback,
-                debug_arch,
-            ) = self.archetype_engine.classify(mb_items, fmt, sideboard_cards=sb_items)
+            clf_result = self.archetype_engine.classify(
+                mb_items, fmt, sideboard_cards=sb_items
+            )
 
-            if not is_fallback:
+            if clf_result.is_rule:
                 # Direct YAML rule matched in this format!
-                rule_prio = debug_arch.get("score", 50)
+                rule_prio = clf_result.debug_info.get("score", 50)
                 score += 150.0 + rule_prio
 
             # Special case for Vintage:
@@ -202,7 +197,9 @@ class FormatAutodetector:
                 "not_legal_sample": not_legal_cards[:3],
                 "banned_count": banned_count,
                 "banned_sample": banned_cards[:3],
-                "matched_archetype": arch_name if not is_fallback else None,
+                "matched_archetype": (
+                    clf_result.archetype_name if clf_result.is_rule else None
+                ),
             }
 
         # Select format with highest score

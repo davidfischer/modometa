@@ -8,6 +8,12 @@ from core.formats import is_valid_format
 from .tournament import Tournament
 
 
+class ClassificationMethod(models.TextChoices):
+    RULE = "rule", "Deterministic Rule"
+    KNN = "knn", "TF-IDF kNN Closeness"
+    FALLBACK = "fallback", "Tactical Posture Fallback"
+
+
 class Deck(models.Model):
     """A player's decklist submitted in an MTGO event."""
 
@@ -40,6 +46,19 @@ class Deck(models.Model):
             "archetype rules in the format's YAML definition."
         ),
     )
+    classification_method = models.CharField(
+        max_length=16,
+        choices=ClassificationMethod.choices,
+        blank=True,
+        null=True,
+        default=None,
+        db_index=True,
+        help_text=(
+            "Method used to classify this deck: 'rule' (matched explicit rule), "
+            "'knn' (matched via TF-IDF kNN closeness to a rule-classified deck), or "
+            "'fallback' (heuristic tactical posture + color)."
+        ),
+    )
 
     colors = models.CharField(max_length=10)  # e.g. "UB", "UR", "C"
     color_name = models.CharField(
@@ -68,6 +87,7 @@ class Deck(models.Model):
             models.Index(fields=["format", "is_5_0"]),
             models.Index(fields=["format", "is_5_0", "tournament"]),
             models.Index(fields=["format", "colors"]),
+            models.Index(fields=["format", "classification_method"]),
             models.Index(fields=["player_lower", "format"]),
         ]
         constraints = [

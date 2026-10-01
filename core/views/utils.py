@@ -346,3 +346,45 @@ def build_deck_mainboard_sections(annotated_mainboard: list[dict]) -> list[dict]
             }
         )
     return sections
+
+
+def get_card_legality_badge(
+    card_name: str,
+    card_obj: Card | None,
+    fmt: str,
+    illegal_set: set[str],
+) -> dict[str, str] | None:
+    """Return badge metadata for a card in a deck if it is illegal in the format."""
+    norm_name = normalize_card_name(card_name)
+    norm_illegal = {normalize_card_name(c) for c in illegal_set}
+    if norm_name not in norm_illegal and card_name not in illegal_set:
+        return None
+
+    fmt_slug = fmt.lower().strip()
+    status = (
+        card_obj.legalities.get(fmt_slug, "not_legal").lower()
+        if card_obj and card_obj.legalities
+        else "banned"
+    )
+
+    if status == "restricted":
+        return {
+            "label": "Restricted",
+            "badge_type": "restricted",
+        }
+    elif status == "banned":
+        return {
+            "label": "Banned",
+            "badge_type": "banned",
+        }
+    elif status == "not_legal":
+        return {
+            "label": "Not Legal",
+            "badge_type": "not_legal",
+        }
+    else:
+        # Legal in format, but illegal in deck (e.g. exceeded 4-of limit)
+        return {
+            "label": "Illegal",
+            "badge_type": "banned",
+        }

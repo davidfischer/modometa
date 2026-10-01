@@ -1,0 +1,19 @@
+{% if badge %}
+  {% if badge.badge_type == "restricted" %}
+    <span class="rounded bg-amber-950/40 px-1.5 py-0.5 text-2xs font-semibold text-amber-300 border border-amber-800/60">
+      {{ badge.label }}
+    </span>
+  {% elif badge.badge_type == "not_legal" %}
+    <span class="rounded bg-zinc-800/60 px-1.5 py-0.5 text-2xs font-semibold text-zinc-400 border border-zinc-700/60">
+      {{ badge.label }}
+    </span>
+  {% else %}
+    <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
+      {{ badge.label }}
+    </span>
+  {% endif %}
+{% elif is_banned %}
+  <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
+    Banned
+  </span>
+{% endif %}

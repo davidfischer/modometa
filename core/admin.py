@@ -88,6 +88,7 @@ class DeckAdmin(admin.ModelAdmin):
         "archetype",
         "color_name",
         "format",
+        "classification_method",
         "result",
         "is_top8",
         "is_5_0",
@@ -96,6 +97,7 @@ class DeckAdmin(admin.ModelAdmin):
     list_filter = (
         TimeframeFilter,
         "format",
+        "classification_method",
         "is_top8",
         "is_5_0",
         "is_auto_classified",

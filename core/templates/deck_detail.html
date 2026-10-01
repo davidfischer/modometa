@@ -148,10 +148,8 @@
                           <a href="{% url 'core:card_detail' item.slug %}" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
                             {{ item.card }}
                           </a>
-                          {% if item.is_banned or item.card in deck.illegal_cards %}
-                            <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
-                              Banned
-                            </span>
+                          {% if item.legality_badge or item.is_banned %}
+                            {% include "includes/card_legality_badge.html" with badge=item.legality_badge is_banned=item.is_banned %}
                           {% endif %}
                         </div>
                         {% if item.mana_cost %}
@@ -182,10 +180,8 @@
                     <a href="{% url 'core:card_detail' item.slug %}" data-card-image="{{ item.image_uri }}" class="text-zinc-200 hover:text-emerald-400 font-medium">
                       {{ item.card }}
                     </a>
-                    {% if item.is_banned or item.card in deck.illegal_cards %}
-                      <span class="rounded bg-rose-950/40 px-1.5 py-0.5 text-2xs font-semibold text-rose-300 border border-rose-800/60">
-                        Banned
-                      </span>
+                    {% if item.legality_badge or item.is_banned %}
+                      {% include "includes/card_legality_badge.html" with badge=item.legality_badge is_banned=item.is_banned %}
                     {% endif %}
                   </div>
                   {% if item.mana_cost %}

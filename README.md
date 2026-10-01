@@ -1,13 +1,6 @@
 # MODOMeta — MTGO Metagame Analyzer 🎴
 
-[MODOMeta](https://modometa.com) is a Magic the Gathering Online ([MTGO](https://www.mtgo.com)) metagame analyzer focused on tracking archetype play rates, Challenge Top 8 shares, League 5-0 shares, and conversion rates across all major MTGO formats:
-- **Vintage**
-- **Legacy**
-- **Premodern**
-- **Modern**
-- **Pauper**
-- **Pioneer** (WIP)
-- **Standard** (WIP)
+[MODOMeta](https://modometa.com) is a Magic the Gathering Online ([MTGO](https://www.mtgo.com)) metagame analyzer focused on tracking archetype play rates, Challenge Top 8 shares, League 5-0 shares, and conversion rates across major MTGO formats.
 
 The database for MODOMeta is built entirely from public sources: [Scryfall card data](https://scryfall.com/docs/api/bulk-data) and a cache of [MTGO tournament results](https://github.com/davidfischer/modometa-mtgo-data). If you know SQL, you can download and explore the database that runs MODOMeta yourself at https://data.modometa.com/modometa.db
 
@@ -16,8 +9,9 @@ The database for MODOMeta is built entirely from public sources: [Scryfall card 
 ## Key Features
 
 1. **Archetype Classification**:
-   - Declarative rules in `archetypes/{format}.yaml` with `mandatory` cards, `signatures`, `anti_signatures`, and `priority`. See the README under `archetypes/` for more details.
-   - Posture (Tempo, Aggro, Control, etc.) and mana-base fallback ("Grixis", etc.)
+   - First-stage explicit rules powered by [`mtg-archetypes`](https://pypi.org/project/mtg-archetypes/) ([GitHub](https://github.com/davidfischer/mtg-archetypes)).
+   - Second-stage TF-IDF kNN closeness matching (≥ 85% cosine similarity to an established archetype).
+   - Tactical posture (Tempo, Aggro, Control, etc.) and mana-base fallback ("Grixis", etc.)
      ensures no deck is left unlabeled.
 2. **True Color Combination Deduction**:
    - Deduces deck colors from mana-producing lands/sources and non-alternate cost spells.
@@ -94,14 +88,15 @@ uv run modometa discover_archetypes --format modern --min-cluster 4
 
 ### Reclassify Decks in Database after Archetype Rules Changes
 
-For more details on archetype classification, see the README under `archetypes/`.
+Archetype rules are maintained upstream in the [`mtg-archetypes`](https://github.com/davidfischer/mtg-archetypes) package.
 
-After changing any `archetypes/*.yaml` files:
+After updating `mtg-archetypes` rules:
 
 ```bash
 # Reclassify all formats in-place
-# Changes archetype and deck color combination
-# Takes ~30s/yr of data
+# Changes archetype and deck color combination: ~30 sec/yr of data
+# Use `uv run --with-editable ../mtg-archetypes modometa reclassify_decks`
+# if also working on "mtg-archetypes"
 uv run modometa reclassify_decks
 
 # Or target a single format

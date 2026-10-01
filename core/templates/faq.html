@@ -27,7 +27,7 @@
       "name": "How does {{ SITE_NAME }} identify archetypes and colors?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "MODOMeta uses declarative YAML rules per format with card-inclusion signatures, combined with TF-IDF vectorization and nearest-neighbor classification for unclassified decks."
+        "text": "MODOMeta uses explicit card-inclusion rules powered by the open-source mtg-archetypes package, combined with TF-IDF vectorization (0.85 cosine similarity) and tactical posture fallback for unclassified decks."
       }
     },
     {
@@ -308,24 +308,21 @@
       </p>
       <ol class="list-decimal list-inside text-sm text-zinc-300 space-y-2 pl-1">
         <li>
-          <strong>Curated Signatures:</strong> Formats define archetype signatures with mandatory cards, minimum signature card thresholds, and anti-signatures (cards that exclude a deck from an archetype, like preventing Delver lists with Bowmasters from matching Izzet Delver).
-          The archetype signatures are public. You can read more about them in our <a href="https://github.com/davidfischer/modometa/tree/main/archetypes" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">repository</a> or use them yourself.
+          <strong>Explicit Archetype Rules:</strong> Formats define archetype signatures with mandatory cards, minimum signature card thresholds, and anti-signatures (cards that exclude a deck from an archetype, like preventing Delver lists with Bowmasters from matching Izzet Delver).
+          The archetype signatures are public and powered by the open-source <a href="https://github.com/davidfischer/mtg-archetypes" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">mtg-archetypes</a> library.
         </li>
         <li>
-          <strong>TF-IDF &amp; k-Nearest Neighbors (kNN):</strong> Unclassified decks are matched against known archetypes using TF-IDF cosine similarity with recency decay.
-          Decks that don't match the curated signatures perfectly but are "close" get classified as the same archetype.
+          <strong>TF-IDF &amp; k-Nearest Neighbors (kNN) Closeness:</strong> If a deck does not match an explicit rule, it is compared against verified classified decks in the same format using TF-IDF cosine similarity. Decks with &ge; 85% card similarity to an established archetype list inherit that classification.
         </li>
         <li>
-          <strong>True Color Deductions:</strong> Color identities are inferred by examining whether the deck's mana base (lands and permanent mana producers) can produce the colors required by its castable spells.
-          Free pitch spells/cards (<code class="font-mono text-zinc-300">Faerie Macabre</code>) and Phyrexian mana (<code class="font-mono text-zinc-300">Dismember</code>, <code class="font-mono text-zinc-300">Surgical Extraction</code>) do not count toward a deck's color identity.
-          Decks not classified by the curated signatures or nearest neighbor get tagged as "Abzan Midrange" or "Grixis Control".
+          <strong>Tactical Posture &amp; True Color Fallback:</strong> Decks not matching explicit rules or the 85% kNN closeness threshold fall back to tactical posture analysis (Combo, Tempo, Control, Aggro, Midrange) combined with true color deduction based on castable spells and mana-producing lands (e.g. &ldquo;Abzan Midrange&rdquo;, &ldquo;Grixis Control&rdquo;).
         </li>
       </ol>
 
       <p class="text-sm text-zinc-300 leading-relaxed">
         If you think a certain classification could be improved (without becoming too specific or brittle),
-        feel free to create an <a href="https://github.com/davidfischer/modometa/issues" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">issue</a>
-        or <a href="https://github.com/davidfischer/modometa/pulls" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">pull request</a>.
+        feel free to create an <a href="https://github.com/davidfischer/mtg-archetypes/issues" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">issue</a>
+        or <a href="https://github.com/davidfischer/mtg-archetypes/pulls" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">pull request</a> on the <a href="https://github.com/davidfischer/mtg-archetypes" class="text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">mtg-archetypes repository</a>.
       </p>
     </div>
   </div>
@@ -432,6 +429,17 @@
           </div>
           <p class="text-sm text-zinc-400">
             Similar to the LDCP for Legacy, detailed matchup results are sourced from the <a href="https://discord.gg/2eVcsjK" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Vintage MTGO Community</a> player-driven spreadsheets.
+          </p>
+        </div>
+
+        <!-- mtg-archetypes -->
+        <div id="mtg-archetypes-credit" class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 space-y-2 scroll-mt-24">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">mtg-archetypes</h4>
+            <span class="text-2xs text-emerald-400 font-mono">Classifier</span>
+          </div>
+          <p class="text-sm text-zinc-400">
+            Declarative archetype classification rules, card requirements, and priority matching are powered by the <a href="https://github.com/davidfischer/mtg-archetypes" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">mtg-archetypes</a> library.
           </p>
         </div>
       </div>

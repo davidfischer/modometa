@@ -1,0 +1,9 @@
+name: Test Tempo
+category: Tempo
+priority: 100
+mandatory:
+  - card: Delver of Secrets
+    min: 1
+signatures:
+  - Lightning Bolt
+min_signatures: 1

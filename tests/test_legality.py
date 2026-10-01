@@ -3,6 +3,8 @@
 import pytest
 
 from core.models.card import Card
+from core.models.card import CardLookup
+from core.pipeline.ingest import _consolidate_deck_entries
 from core.rules.legality import LegalityEngine
 
 
@@ -95,8 +97,6 @@ def test_alternate_name_resolution(legality):
         normalized_name="hide on the ceiling",
         legalities={"legacy": "legal", "vintage": "legal"},
     )
-    from core.models.card import CardLookup
-
     CardLookup.objects.create(
         lookup_name="spectral restitching",
         canonical_name="Hide on the Ceiling",
@@ -112,8 +112,6 @@ def test_alternate_name_resolution(legality):
 @pytest.mark.django_db
 def test_consolidate_deck_entries():
     """Duplicate cards across split entries are consolidated into single line counts."""
-    from core.pipeline.ingest import _consolidate_deck_entries
-
     raw = [
         {"card": "Brainstorm", "count": 2},
         {"card": "Force of Will", "count": 4},
@@ -124,3 +122,23 @@ def test_consolidate_deck_entries():
     by_name = {item["card"]: item["count"] for item in consolidated}
     assert by_name["Brainstorm"] == 4
     assert by_name["Force of Will"] == 4
+
+
+@pytest.mark.django_db
+def test_four_of_limit_canonical_casing(legality):
+    """Deck with >4 copies records canonical card name in illegal_cards."""
+    Card.objects.create(
+        id="test-bolt",
+        oracle_id="test-bolt-oracle",
+        name="Lightning Bolt",
+        normalized_name="lightning bolt",
+        legalities={"modern": "legal"},
+    )
+    mainboard = [
+        {"card": "Lightning Bolt", "count": 5},
+        {"card": "Mountain", "count": 55},
+    ]
+    is_legal, errors, illegal_cards = legality.validate_deck(mainboard, [], "modern")
+    assert is_legal is False
+    assert illegal_cards == ["Lightning Bolt"]
+    assert any("5 copies of Lightning Bolt" in e for e in errors)
